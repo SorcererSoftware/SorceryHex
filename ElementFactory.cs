@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media;
@@ -18,6 +20,7 @@ namespace SorceryHex {
       public DataHolder(byte[] data) { _data = data; }
       public int Length { get { return _data.Length; } }
       public IEnumerable<FrameworkElement> CreateElements(int start, int length) {
+         Debug.Assert(length < 0x20 * 0x40);
          return Enumerable.Range(start, length).Select(i => {
             var path = UsePath();
             if (i < 0 || i >= Length) { path.Data = null; return path; }
@@ -73,7 +76,7 @@ namespace SorceryHex {
                i += _pointers[pointerIndex] + 4 - loc;
                pointerIndex++;
             } else {
-               list.AddRange(_base.CreateElements(loc, _pointers[pointerIndex] - loc));
+               list.AddRange(_base.CreateElements(loc, Math.Min(_pointers[pointerIndex] - loc, length - i)));
                i += _pointers[pointerIndex] - loc;
             }
          }
@@ -135,7 +138,9 @@ namespace SorceryHex {
          var rightEdge = UsePath();
          rightEdge.Data = RightArrow;
 
-         return new[] { leftEdge, data1, data2, rightEdge }.Skip(4 - length);
+         var set = new[] { leftEdge, data1, data2, rightEdge };
+         foreach (var element in set.Take(4 - length)) Recycle(element);
+         return set.Skip(4 - length);
       }
 
       Path UsePath() {
