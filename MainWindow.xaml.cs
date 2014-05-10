@@ -1,18 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace SorceryHex {
 
    static class Utils {
       public static readonly string Hex = "0123456789ABCDEF";
       public static Func<A, C> Compose<A, B, C>(this Func<A, B> x, Func<B, C> y) { return a => y(x(a)); }
+      public static readonly Typeface Font = new Typeface("Consolas");
+      public static readonly Geometry[] ByteFlyweights =
+         Enumerable.Range(0, 0x100).Select(i => (byte)i)
+         .Select(b => Utils.Hex.Substring(b / 0x10, 1) + Utils.Hex.Substring(b % 0x10, 1))
+         .Select(str => str.ToGeometry())
+         .ToArray();
+
+      public static Geometry ToGeometry(this string text) {
+         return
+            new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Font, 15.0, Brushes.Black)
+            .BuildGeometry(new Point());
+      }
 
       public static string ToHexString(this int value) {
          if (value < 0) return "";
@@ -156,8 +170,8 @@ namespace SorceryHex {
          int add = Body.ColumnDefinitions.Count * rows;
          if (_offset - add < -MaxColumnCount || _offset - add > _holder.Length) return;
 
-         IList<UIElement> children = new List<UIElement>();
-         foreach (UIElement child in Body.Children) children.Add(child);
+         IList<FrameworkElement> children = new List<FrameworkElement>();
+         foreach (FrameworkElement child in Body.Children) children.Add(child);
          foreach (var element in children) {
             int row = Grid.GetRow(element);
             row += rows;
@@ -178,8 +192,8 @@ namespace SorceryHex {
          int all = Body.RowDefinitions.Count * Body.ColumnDefinitions.Count;
          if (_offset - shift < -MaxColumnCount || _offset - shift > _holder.Length) return;
 
-         IList<UIElement> children = new List<UIElement>();
-         foreach (UIElement child in Body.Children) children.Add(child);
+         IList<FrameworkElement> children = new List<FrameworkElement>();
+         foreach (FrameworkElement child in Body.Children) children.Add(child);
          foreach (var element in children) {
             int loc = CombineLocation(element, Body.ColumnDefinitions.Count);
             loc += shift;
@@ -237,8 +251,8 @@ namespace SorceryHex {
          Headers.Height = newRows * ElementHeight;
 
          // update element locations (remove excess elements)
-         IList<UIElement> children = new List<UIElement>();
-         foreach (UIElement child in Body.Children) children.Add(child);
+         IList<FrameworkElement> children = new List<FrameworkElement>();
+         foreach (FrameworkElement child in Body.Children) children.Add(child);
          foreach (var element in children) {
             int loc = CombineLocation(element, oldCols);
             if (loc >= newTotal) {
@@ -251,6 +265,8 @@ namespace SorceryHex {
 
          // update header column
          UpdateHeaderColumn(oldRows, newRows);
+
+         if (oldCols != newCols) UpdateHeaderText();
 
          // add more elements if needed
          if (oldTotal < newTotal) Add(oldTotal, newTotal - oldTotal);
@@ -334,7 +350,10 @@ namespace SorceryHex {
       void AboutClick(object sender, RoutedEventArgs e) {
          switch (((MenuItem)sender).Header.ToString()) {
             case "_About":
-               System.Diagnostics.Process.Start("http://sorcerersoftware.appspot.com");
+               Process.Start("http://sorcerersoftware.appspot.com");
+               break;
+            case "About _Solarized":
+               Process.Start("http://ethanschoonover.com/solarized");
                break;
          }
       }
