@@ -48,7 +48,6 @@ namespace SorceryHex {
    class GbaDataFormatter : IElementFactory {
       static readonly Geometry LeftArrow  = Geometry.Parse("m0,0 l0,2 -1,-1 z");
       static readonly Geometry RightArrow = Geometry.Parse("m0,0 l0,2  1,-1 z");
-      static readonly Brush Red = new SolidColorBrush(Solarized.Theme.red);
       readonly IElementFactory _base;
       readonly byte[] _data;
       readonly IList<int> _pointers = new List<int>();
@@ -148,7 +147,7 @@ namespace SorceryHex {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Stretch = Stretch.Uniform,
-            Fill = Red,
+            Fill = Solarized.Brushes.Red,
             Margin = new Thickness(1),
             Tag = this
          };

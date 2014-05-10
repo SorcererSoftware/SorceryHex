@@ -353,7 +353,7 @@ namespace SorceryHex {
                Process.Start("http://sorcerersoftware.appspot.com");
                break;
             case "About _Solarized":
-               Process.Start("http://ethanschoonover.com/solarized");
+               Process.Start(Solarized.Theme.Info);
                break;
          }
       }

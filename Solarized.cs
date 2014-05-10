@@ -5,9 +5,8 @@ using System.Windows.Media;
 
 // based on Ethan Schoonover's precision colors for machines and people. http://ethanschoonover.com/solarized
 namespace Solarized {
-   public class Theme {
-      #region Constants
 
+   public class Colors {
       static Color color(int value) {
          var bytes = BitConverter.GetBytes(value);
          return Color.FromArgb(0xFF, bytes[2], bytes[1], bytes[0]);
@@ -17,19 +16,40 @@ namespace Solarized {
       public static readonly Color base02 = color(0x073642);
       public static readonly Color base01 = color(0x586e75);
       public static readonly Color base00 = color(0x657b83);
-      public static readonly Color base0 = color(0x839496);
-      public static readonly Color base1 = color(0x93a1a1);
-      public static readonly Color base2 = color(0xeee8d5);
-      public static readonly Color base3 = color(0xfdf6e3);
+      public static readonly Color base0  = color(0x839496);
+      public static readonly Color base1  = color(0x93a1a1);
+      public static readonly Color base2  = color(0xeee8d5);
+      public static readonly Color base3  = color(0xfdf6e3);
 
-      public static readonly Color yellow = color(0x5b8900);
-      public static readonly Color orange = color(0xcb4b16);
-      public static readonly Color red = color(0xdc322f);
-      public static readonly Color magenta = color(0xd33682);
-      public static readonly Color violet = color(0x6c71c4);
-      public static readonly Color blue = color(0x268bd2);
-      public static readonly Color cyan = color(0x2aa198);
-      public static readonly Color green = color(0x859900);
+      public static readonly Color Yellow = color(0x5b8900);
+      public static readonly Color Orange = color(0xcb4b16);
+      public static readonly Color Red    = color(0xdc322f);
+      public static readonly Color Magenta= color(0xd33682);
+      public static readonly Color Violet = color(0x6c71c4);
+      public static readonly Color Blue   = color(0x268bd2);
+      public static readonly Color Cyan   = color(0x2aa198);
+      public static readonly Color Green  = color(0x859900);
+   }
+
+   public static class Brushes {
+      static Brush brush(Color color) {
+         var brush = new SolidColorBrush(color);
+         brush.Freeze();
+         return brush;
+      }
+
+      public static readonly Brush Yellow = brush(Colors.Yellow);
+      public static readonly Brush Orange = brush(Colors.Orange);
+      public static readonly Brush Red    = brush(Colors.Red);
+      public static readonly Brush Magenta= brush(Colors.Magenta);
+      public static readonly Brush Violet = brush(Colors.Violet);
+      public static readonly Brush Blue   = brush(Colors.Blue);
+      public static readonly Brush Cyan   = brush(Colors.Cyan);
+      public static readonly Brush Green  = brush(Colors.Green);
+   }
+
+   public class Theme : Colors {
+      #region Constants
 
       public static readonly string Info = "http://ethanschoonover.com/solarized";
 
@@ -50,8 +70,6 @@ namespace Solarized {
       public Brush Secondary { get { return _secondary; } }
       public Brush Backlight { get { return _backlight; } }
       public Brush Background { get { return _background; } }
-
-      public IReadOnlyCollection<Color> Accents { get; private set; }
 
       #endregion
 
@@ -81,7 +99,6 @@ namespace Solarized {
 
       public Theme() {
          CurrentVariant = DateTime.Now.Hour < 7 || DateTime.Now.Hour > 18 ? Variant.Dark : Variant.Light;
-         Accents = new[] { orange, red, yellow, magenta, violet, blue, cyan, green };
       }
    }
 }
