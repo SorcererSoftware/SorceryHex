@@ -9,7 +9,7 @@ namespace SorceryHex {
          base.OnStartup(e);
          var rom = Utils.LoadRom(e.Args);
          if (rom == null) { this.Shutdown(); return; }
-         var window = new MainWindow(new GbaDataFormatter(new DataHolder(rom), rom));
+         var window = new MainWindow(new RangeChecker(new GbaDataFormatter(new DataHolder(rom), rom)));
          window.Show();
       }
    }

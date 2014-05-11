@@ -13,6 +13,39 @@ namespace SorceryHex {
       void Recycle(FrameworkElement element);
    }
 
+   class RangeChecker : IElementFactory {
+
+      readonly IElementFactory _base;
+      readonly Queue<FrameworkElement> _recycles = new Queue<FrameworkElement>();
+
+      public int Length { get { return _base.Length; } }
+
+      public RangeChecker(IElementFactory next) { _base = next; }
+
+      public IEnumerable<FrameworkElement> CreateElements(int start, int length) {
+         var list = new List<FrameworkElement>();
+
+         int pre = 0, post = 0;
+         if (start < 0) { pre = -start; start = 0; }
+         if (start + length >= Length) { post = start + length - Length; length = Length - start; }
+
+         if (pre > 0) list.AddRange(Enumerable.Range(0, pre).Select(UseElement));
+         list.AddRange(_base.CreateElements(start, length));
+         if (post > 0) list.AddRange(Enumerable.Range(0, post).Select(UseElement));
+
+         return list;
+      }
+
+      public void Recycle(FrameworkElement element) {
+         if (element.Tag == this) _recycles.Enqueue((Rectangle)element);
+         else _base.Recycle(element);
+      }
+
+      FrameworkElement UseElement(int i) {
+         return _recycles.Count > 0 ? _recycles.Dequeue() : new Rectangle { Tag = this };
+      }
+   }
+
    class DataHolder : IElementFactory {
       readonly byte[] _data;
       readonly Queue<Path> _recycles = new Queue<Path>();
@@ -23,12 +56,12 @@ namespace SorceryHex {
          Debug.Assert(length < 0x20 * 0x40);
          return Enumerable.Range(start, length).Select(i => {
             var path = UsePath();
-            if (i < 0 || i >= Length) { path.Data = null; return path; }
+            path.Data = Utils.ByteFlyweights[_data[i]];
 
             bool lightweight = _data[i] == 0xFF || _data[i] == 0x00;
-            path.Data = Utils.ByteFlyweights[_data[i]];
             path.Fill = lightweight ? Solarized.Theme.Instance.Secondary : Solarized.Theme.Instance.Primary;
             path.Opacity = lightweight ? .75 : 1;
+
             return path;
          });
       }
