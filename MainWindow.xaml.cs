@@ -74,7 +74,7 @@ namespace SorceryHex {
    /// <summary>
    /// Interaction logic for MainWindow.xaml
    /// </summary>
-   partial class MainWindow : Window {
+   partial class MainWindow : Window, ICommandFactory {
       #region Utils
 
       const int MaxColumnCount = 0x20;
@@ -122,7 +122,7 @@ namespace SorceryHex {
 
       void Add(int start, int length) {
          int rows = Body.RowDefinitions.Count, cols = Body.ColumnDefinitions.Count;
-         var elements = _holder.CreateElements(_offset + start, length).ToArray();
+         var elements = _holder.CreateElements(this, _offset + start, length).ToArray();
          for (var i = 0; i < elements.Length; i++) {
             SplitLocation(elements[i], cols, start + i);
             Body.Children.Add(elements[i]);
@@ -177,7 +177,7 @@ namespace SorceryHex {
             row += rows;
             if (row < 0 || row >= Body.RowDefinitions.Count) {
                Body.Children.Remove(element);
-               _holder.Recycle(element);
+               Recycle(element);
             } else {
                Grid.SetRow(element, row);
             }
@@ -199,7 +199,7 @@ namespace SorceryHex {
             loc += shift;
             if (loc < 0 || loc >= all) {
                Body.Children.Remove(element);
-               _holder.Recycle(element);
+               Recycle(element);
             } else {
                SplitLocation(element, Body.ColumnDefinitions.Count, loc);
             }
@@ -222,6 +222,11 @@ namespace SorceryHex {
          ShiftRows(rowPart * sign);
          UpdateHeaderText();
          ScrollBar.Value = _offset;
+      }
+
+      void Recycle(FrameworkElement element) {
+         _holder.Recycle(element);
+         if (_jumpers.ContainsKey(element)) _jumpers.Remove(element);
       }
 
       #endregion
@@ -257,7 +262,7 @@ namespace SorceryHex {
             int loc = CombineLocation(element, oldCols);
             if (loc >= newTotal) {
                Body.Children.Remove(element);
-               _holder.Recycle(element);
+               Recycle(element);
             } else {
                SplitLocation(element, newCols, loc);
             }
@@ -289,6 +294,11 @@ namespace SorceryHex {
 
       void MouseClick(object sender, MouseButtonEventArgs e) {
          MainFocus();
+         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) {
+            // check for jump
+            var element = _jumpers.Keys.FirstOrDefault(jumper => jumper.IsMouseOver);
+            if (element != null) JumpTo(_jumpers[element]);
+         }
       }
 
       void HandleKey(object sender, KeyEventArgs e) {
@@ -356,6 +366,15 @@ namespace SorceryHex {
                Process.Start(Solarized.Theme.Info);
                break;
          }
+      }
+
+      #endregion
+
+      #region Command Factory
+
+      readonly Dictionary<FrameworkElement, int> _jumpers = new Dictionary<FrameworkElement, int>();
+      public void CreateJumpCommand(FrameworkElement element, int jumpLocation) {
+         _jumpers[element] = jumpLocation;
       }
 
       #endregion
