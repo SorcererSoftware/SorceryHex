@@ -89,7 +89,7 @@ namespace SorceryHex {
       }
    }
 
-   class GbaDataFormatter : IElementFactory {
+   class GbaPointerFormatter : IElementFactory {
       static readonly Geometry LeftArrow  = Geometry.Parse("m0,0 l0,2 -1,-1 z");
       static readonly Geometry RightArrow = Geometry.Parse("m0,0 l0,2  1,-1 z");
       static readonly Geometry Hat = Geometry.Parse("m0,0 l0,-1 1,0 z");
@@ -103,7 +103,7 @@ namespace SorceryHex {
       readonly Queue<Path> _spareHats = new Queue<Path>();
 
       public int Length { get { return _data.Length; } }
-      public GbaDataFormatter(IElementFactory fallback, byte[] data) {
+      public GbaPointerFormatter(IElementFactory fallback, byte[] data) {
          _data = data;
          _base = fallback;
          LoadPointers();
@@ -180,9 +180,7 @@ namespace SorceryHex {
             if (_data[i + 3] != 0x08) continue;
             _pointers.Add(i);
 
-            int value = _data[i];
-            value |= _data[i + 1] << 0x08;
-            value |= _data[i + 2] << 0x10;
+            int value = _data.ReadPointer(i);
             if (!backPointers.ContainsKey(value)) backPointers[value] = new List<int>();
             backPointers[value].Add(i);
 
@@ -222,9 +220,7 @@ namespace SorceryHex {
 
       IEnumerable<FrameworkElement> CreatePointerElements(ICommandFactory commander, int start, int length) {
          int pointerStart = start + length - 4;
-         int value = _data[pointerStart];
-         value |= _data[pointerStart + 1] << 0x08;
-         value |= _data[pointerStart + 2] << 0x10;
+         int value = _data.ReadPointer(pointerStart);
          var str = value.ToHexString();
          while (str.Length < 6) str = "0" + str;
 
@@ -286,6 +282,30 @@ namespace SorceryHex {
          grid.Children.Add(hat);
          commander.CreateJumpCommand(hat, jumpLocations);
          return grid;
+      }
+   }
+
+   class GbaImagesFormatter : IElementFactory {
+      readonly IElementFactory _base;
+      readonly byte[] _data;
+      readonly IList<int> _imageLocations;
+      readonly IList<int> _imageLengths;
+
+      public int Length { get { return _data.Length; } }
+
+      public GbaImagesFormatter(IElementFactory fallback, byte[] data) {
+         _base = fallback;
+         _data = data;
+         _imageLocations = GbaImages.FindLZImages(_data);
+         _imageLengths = _imageLocations.Select(loc => GbaImages.CompressedLZSize(_data, loc)).ToList();
+      }
+
+      public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+         throw new NotImplementedException();
+      }
+
+      public void Recycle(ICommandFactory commander, FrameworkElement element) {
+         throw new NotImplementedException();
       }
    }
 }

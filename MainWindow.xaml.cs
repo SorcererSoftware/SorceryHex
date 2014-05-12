@@ -22,6 +22,11 @@ namespace SorceryHex {
          .Select(str => str.ToGeometry())
          .ToArray();
 
+      public static int ReadPointer(this byte[] memory, int offset) {
+         if (memory[offset + 3] != 0x08) return -1;
+         return (memory[offset + 2] << 16) | (memory[offset + 1] << 8) | memory[offset + 0];
+      }
+
       public static Geometry ToGeometry(this string text) {
          return
             new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Font, 15.0, Brushes.Black)
