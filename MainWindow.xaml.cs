@@ -357,6 +357,7 @@ namespace SorceryHex {
          MultiBoxLabel.Text = "Goto";
          MultiBoxContainer.Visibility = Visibility.Visible;
          Keyboard.Focus(MultiBox);
+         MultiBox.SelectAll();
       }
 
       void AboutClick(object sender, RoutedEventArgs e) {
