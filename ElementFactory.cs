@@ -92,10 +92,13 @@ namespace SorceryHex {
    class GbaDataFormatter : IElementFactory {
       static readonly Geometry LeftArrow  = Geometry.Parse("m0,0 l0,2 -1,-1 z");
       static readonly Geometry RightArrow = Geometry.Parse("m0,0 l0,2  1,-1 z");
+      static readonly Geometry Hat = Geometry.Parse("m0,0 l0,1 1,0 z");
       readonly IElementFactory _base;
       readonly byte[] _data;
       readonly IList<int> _pointers = new List<int>();
       readonly Queue<Border> _recycles = new Queue<Border>();
+      readonly Queue<Grid> _spareContainers = new Queue<Grid>();
+      readonly Queue<Path> _spareHats = new Queue<Path>();
 
       public int Length { get { return _data.Length; } }
       public GbaDataFormatter(IElementFactory fallback, byte[] data) {
@@ -145,7 +148,13 @@ namespace SorceryHex {
          var grid = element as Grid;
          if (grid != null) {
             Debug.Assert(grid.Children.Count == 2);
-            // TODO reverse pointer deconstruction
+            var child = (FrameworkElement)grid.Children[0];
+            var hat = (Path)grid.Children[1];
+            grid.Children.Clear();
+            _spareContainers.Enqueue(grid);
+            _spareHats.Enqueue(hat);
+            commander.RemoveJumpCommand(hat);
+            Recycle(commander, child);
          }
 
          Debug.Fail("How did we get here? We tagged it, but we can't recycle it!");
@@ -222,6 +231,28 @@ namespace SorceryHex {
             Background = Brushes.Transparent,
             Tag = this
          };
+      }
+
+      FrameworkElement WrapForList(ICommandFactory commander, FrameworkElement element, params int[] jumpLocations) {
+         Grid grid = null;
+         if (_spareContainers.Count > 0) grid = _spareContainers.Dequeue();
+         else grid = new Grid();
+
+         Path hat = null;
+         if (_spareHats.Count > 0) hat = _spareHats.Dequeue();
+         else hat = new Path {
+            Data = Hat,
+            Fill = Solarized.Brushes.Red,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = 10, Height = 10,
+         };
+
+         grid.Children.Add(element);
+         grid.Children.Add(hat);
+         commander.CreateJumpCommand(hat, jumpLocations);
+         return grid;
       }
    }
 }
