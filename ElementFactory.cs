@@ -9,17 +9,17 @@ using System.Windows.Shapes;
 
 namespace SorceryHex {
    public interface ICommandFactory {
-      void CreateJumpCommand(FrameworkElement element, int jumpLocation);
+      void CreateJumpCommand(FrameworkElement element, params int[] jumpLocation);
+      void RemoveJumpCommand(FrameworkElement element);
    }
 
    public interface IElementFactory {
       int Length { get; }
       IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
-      void Recycle(FrameworkElement element);
+      void Recycle(ICommandFactory commander, FrameworkElement element);
    }
 
    class RangeChecker : IElementFactory {
-
       readonly IElementFactory _base;
       readonly Queue<FrameworkElement> _recycles = new Queue<FrameworkElement>();
 
@@ -41,13 +41,15 @@ namespace SorceryHex {
          return list;
       }
 
-      public void Recycle(FrameworkElement element) {
+      public void Recycle(ICommandFactory commander, FrameworkElement element) {
          if (element.Tag == this) _recycles.Enqueue((Rectangle)element);
-         else _base.Recycle(element);
+         else _base.Recycle(commander, element);
       }
 
       FrameworkElement UseElement(int i) {
-         return _recycles.Count > 0 ? _recycles.Dequeue() : new Rectangle { Tag = this };
+         if (_recycles.Count > 0) return _recycles.Dequeue();
+
+         return new Rectangle { Tag = this };
       }
    }
 
@@ -70,15 +72,19 @@ namespace SorceryHex {
             return path;
          });
       }
-      public void Recycle(FrameworkElement element) {
+      public void Recycle(ICommandFactory commander, FrameworkElement element) {
+         Debug.Assert(element.Tag == this);
          _recycles.Enqueue((Path)element);
       }
 
       Path UsePath() {
-         return _recycles.Count > 0 ? _recycles.Dequeue() : new Path {
+         if (_recycles.Count > 0) return _recycles.Dequeue();
+
+         return new Path {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(4.0, 3.0, 4.0, 3.0)
+            Margin = new Thickness(4.0, 3.0, 4.0, 3.0),
+            Tag = this
          };
       }
    }
@@ -118,14 +124,31 @@ namespace SorceryHex {
             }
          }
 
+         // TODO wrap elements with reverse pointers
+
+         foreach (var element in list.Skip(length)) Recycle(commander, element);
          return list.Take(length);
       }
-      public void Recycle(FrameworkElement element) {
-         if (element.Tag == this) {
-            _recycles.Enqueue((Border)element);
-         } else {
-            _base.Recycle(element);
+      public void Recycle(ICommandFactory commander, FrameworkElement element) {
+         if (element.Tag != this) {
+            _base.Recycle(commander, element);
+            return;
          }
+
+         var border = element as Border;
+         if (border != null) {
+            _recycles.Enqueue(border);
+            commander.RemoveJumpCommand(border);
+            return;
+         }
+
+         var grid = element as Grid;
+         if (grid != null) {
+            Debug.Assert(grid.Children.Count == 2);
+            // TODO reverse pointer deconstruction
+         }
+
+         Debug.Fail("How did we get here? We tagged it, but we can't recycle it!");
       }
 
       /// <summary>
@@ -176,7 +199,7 @@ namespace SorceryHex {
          commander.CreateJumpCommand(rightEdge, value);
 
          var set = new[] { leftEdge, data1, data2, rightEdge };
-         foreach (var element in set.Take(4 - length)) Recycle(element);
+         foreach (var element in set.Take(4 - length)) Recycle(commander, element);
          return set.Skip(4 - length);
       }
 

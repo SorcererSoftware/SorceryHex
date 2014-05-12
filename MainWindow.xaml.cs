@@ -158,7 +158,10 @@ namespace SorceryHex {
 
       void JumpTo(int location) {
          location = Math.Min(Math.Max(-MaxColumnCount, location), _holder.Length);
+
+         foreach (FrameworkElement element in Body.Children) Recycle(element);
          Body.Children.Clear();
+
          _offset = location;
          Add(0, Body.RowDefinitions.Count * Body.ColumnDefinitions.Count);
          ScrollBar.Value = _offset;
@@ -225,8 +228,7 @@ namespace SorceryHex {
       }
 
       void Recycle(FrameworkElement element) {
-         _holder.Recycle(element);
-         if (_jumpers.ContainsKey(element)) _jumpers.Remove(element);
+         _holder.Recycle(this, element);
       }
 
       #endregion
@@ -373,8 +375,11 @@ namespace SorceryHex {
       #region Command Factory
 
       readonly Dictionary<FrameworkElement, int> _jumpers = new Dictionary<FrameworkElement, int>();
-      public void CreateJumpCommand(FrameworkElement element, int jumpLocation) {
-         _jumpers[element] = jumpLocation;
+      public void CreateJumpCommand(FrameworkElement element, params int[] jumpLocation) {
+         _jumpers[element] = jumpLocation[0]; // TODO support multiple jump locations
+      }
+      public void RemoveJumpCommand(FrameworkElement element) {
+         _jumpers.Remove(element);
       }
 
       #endregion
