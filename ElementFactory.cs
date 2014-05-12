@@ -92,10 +92,12 @@ namespace SorceryHex {
    class GbaDataFormatter : IElementFactory {
       static readonly Geometry LeftArrow  = Geometry.Parse("m0,0 l0,2 -1,-1 z");
       static readonly Geometry RightArrow = Geometry.Parse("m0,0 l0,2  1,-1 z");
-      static readonly Geometry Hat = Geometry.Parse("m0,0 l0,1 1,0 z");
+      static readonly Geometry Hat = Geometry.Parse("m0,0 l0,-1 1,0 z");
       readonly IElementFactory _base;
       readonly byte[] _data;
+      class BackPointer { public int Destination; public int[] Sources; }
       readonly IList<int> _pointers = new List<int>();
+      readonly IList<BackPointer> _backpointers = new List<BackPointer>();
       readonly Queue<Border> _recycles = new Queue<Border>();
       readonly Queue<Grid> _spareContainers = new Queue<Grid>();
       readonly Queue<Path> _spareHats = new Queue<Path>();
@@ -127,11 +129,16 @@ namespace SorceryHex {
             }
          }
 
-         // TODO wrap elements with reverse pointers
+         for (var i = FindBackPointersForStartPoint(start); i < _backpointers.Count && _backpointers[i].Destination < start + length; i++) {
+            var backPointer = _backpointers[i];
+            int index = backPointer.Destination - start;
+            list[index] = WrapForList(commander, list[index], backPointer.Sources);
+         }
 
          foreach (var element in list.Skip(length)) Recycle(commander, element);
          return list.Take(length);
       }
+
       public void Recycle(ICommandFactory commander, FrameworkElement element) {
          if (element.Tag != this) {
             _base.Recycle(commander, element);
@@ -155,6 +162,7 @@ namespace SorceryHex {
             _spareHats.Enqueue(hat);
             commander.RemoveJumpCommand(hat);
             Recycle(commander, child);
+            return;
          }
 
          Debug.Fail("How did we get here? We tagged it, but we can't recycle it!");
@@ -166,11 +174,23 @@ namespace SorceryHex {
       /// </summary>
       void LoadPointers() {
          _pointers.Clear();
+         var backPointers = new Dictionary<int, IList<int>>();
          var end = Length - 3;
          for (int i = 0; i < end; i++) {
             if (_data[i + 3] != 0x08) continue;
             _pointers.Add(i);
+
+            int value = _data[i];
+            value |= _data[i + 1] << 0x08;
+            value |= _data[i + 2] << 0x10;
+            if (!backPointers.ContainsKey(value)) backPointers[value] = new List<int>();
+            backPointers[value].Add(i);
+
             i += 3;
+         }
+
+         foreach (var back in backPointers.Keys.OrderBy(i => i)) {
+            _backpointers.Add(new BackPointer { Destination = back, Sources = backPointers[back].ToArray() });
          }
       }
 
@@ -184,6 +204,19 @@ namespace SorceryHex {
             else pointerEndIndex = guessIndex - 1;
          }
          while (pointerStartIndex < _pointers.Count && _pointers[pointerStartIndex] < start - 3) pointerStartIndex++;
+         return pointerStartIndex;
+      }
+
+      int FindBackPointersForStartPoint(int start) {
+         int pointerStartIndex = 0, pointerEndIndex = _backpointers.Count - 1;
+         while (pointerStartIndex < pointerEndIndex) {
+            int guessIndex = (pointerEndIndex + pointerStartIndex) / 2;
+            var destination = _backpointers[guessIndex].Destination;
+            if (destination == start) return guessIndex;
+            if (destination < start) pointerStartIndex = guessIndex + 1;
+            else pointerEndIndex = guessIndex - 1;
+         }
+         while (pointerStartIndex < _backpointers.Count && _backpointers[pointerStartIndex].Destination < start) pointerStartIndex++;
          return pointerStartIndex;
       }
 
@@ -236,7 +269,7 @@ namespace SorceryHex {
       FrameworkElement WrapForList(ICommandFactory commander, FrameworkElement element, params int[] jumpLocations) {
          Grid grid = null;
          if (_spareContainers.Count > 0) grid = _spareContainers.Dequeue();
-         else grid = new Grid();
+         else grid = new Grid { Tag = this };
 
          Path hat = null;
          if (_spareHats.Count > 0) hat = _spareHats.Dequeue();
@@ -246,7 +279,7 @@ namespace SorceryHex {
             Stretch = Stretch.Uniform,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
-            Width = 10, Height = 10,
+            Width = 10, Height = 10
          };
 
          grid.Children.Add(element);
