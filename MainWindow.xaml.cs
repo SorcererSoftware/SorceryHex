@@ -74,6 +74,21 @@ namespace SorceryHex {
             return rom;
          }
       }
+
+      public enum FindOptions { StartOrBefore, StartOrAfter }
+      public static int SearchForStartPoint<T>(int start, IList<T> list, Func<T, int> property, FindOptions option) {
+         int locStartIndex = 0, locEndIndex = list.Count - 1;
+         while (locStartIndex < locEndIndex) {
+            int guessIndex = (locEndIndex + locStartIndex) / 2;
+            var loc = property(list[guessIndex]);
+            if (loc == start) return guessIndex;
+            if (loc < start) locStartIndex = guessIndex + 1;
+            else locEndIndex = guessIndex - 1;
+         }
+         while (option == FindOptions.StartOrBefore && locStartIndex > 0 && property(list[locStartIndex]) > start) locStartIndex--;
+         while (option == FindOptions.StartOrAfter && locStartIndex < list.Count && property(list[locStartIndex]) < start) locStartIndex++;
+         return locStartIndex;
+      }
    }
 
    /// <summary>

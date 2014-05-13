@@ -14,7 +14,7 @@ namespace SorceryHex {
       // 10 00    (runLength 1+3, runOffset 0+1)   (00 00 00 00 00)
 
       public static IList<int> FindLZImages(byte[] memory) {
-         var list = new List<int>();
+         var list = new Dictionary<int, bool>();
          for (int offset = 3; offset < memory.Length; offset++) {
 
             // find a pointer
@@ -27,9 +27,10 @@ namespace SorceryHex {
 
             // images will be a multiple of 16*16*2 bytes when decompressed.
             if (memory[pointer + 1] % 0x80 != 0) continue;
-            list.Add(pointer);
+            list[pointer] = true;
          }
-         return list;
+
+         return list.Keys.OrderBy(i => i).ToList();
       }
 
       // start offset is changed to be the next place we think there is an LZ image
@@ -47,11 +48,15 @@ namespace SorceryHex {
       /// Similar to UnCompressLZ, except it returns only the length of
       /// the compressed data instead of the full uncompressed data set.
       /// </summary>
-      public static int CompressedLZSize(byte[] memory, int offset) {
+      public static void CalculateLZSizes(byte[] memory, int offset, out int uncompressed, out int compressed) {
          // all LZ compressed data starts with 0x10
-         if (memory[offset] != 0x10) return -1;
+         if (memory[offset] != 0x10) {
+            uncompressed = compressed = -1;
+            return;
+         }
+
          int length = (memory[offset + 3] << 16) | (memory[offset + 2] << 8) | (memory[offset + 1] << 0);
-         int uncompressed = 0, compressed = 4;
+         uncompressed = 0; compressed = 4;
          offset += 4;
 
          while (true) {
@@ -94,13 +99,17 @@ namespace SorceryHex {
                   var runOffset_lower = memory[offset++];
                   compressed++;
                   var runOffset = (runOffset_lower | runOffset_upper) + 1;
-                  if (runOffset > uncompressed) return -1;
+                  if (runOffset > uncompressed) {
+                     compressed = uncompressed = -1;
+                     return;
+                  }
                   uncompressed += runLength;
-                  if (uncompressed >= length) return compressed;
+                  if (uncompressed >= length) return;
                } else {
                   uncompressed++;
                   compressed++;
-                  if (uncompressed == length) return compressed;
+                  offset++;
+                  if (uncompressed == length) return;
                }
             }
          }

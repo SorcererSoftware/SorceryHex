@@ -129,7 +129,8 @@ namespace SorceryHex {
             }
          }
 
-         for (var i = FindBackPointersForStartPoint(start); i < _backpointers.Count && _backpointers[i].Destination < start + length; i++) {
+         var startIndex = Utils.SearchForStartPoint(start, _backpointers, bp => bp.Destination, Utils.FindOptions.StartOrAfter);
+         for (var i = startIndex; i < _backpointers.Count && _backpointers[i].Destination < start + length; i++) {
             var backPointer = _backpointers[i];
             int index = backPointer.Destination - start;
             list[index] = WrapForList(commander, list[index], backPointer.Sources);
@@ -205,19 +206,6 @@ namespace SorceryHex {
          return pointerStartIndex;
       }
 
-      int FindBackPointersForStartPoint(int start) {
-         int pointerStartIndex = 0, pointerEndIndex = _backpointers.Count - 1;
-         while (pointerStartIndex < pointerEndIndex) {
-            int guessIndex = (pointerEndIndex + pointerStartIndex) / 2;
-            var destination = _backpointers[guessIndex].Destination;
-            if (destination == start) return guessIndex;
-            if (destination < start) pointerStartIndex = guessIndex + 1;
-            else pointerEndIndex = guessIndex - 1;
-         }
-         while (pointerStartIndex < _backpointers.Count && _backpointers[pointerStartIndex].Destination < start) pointerStartIndex++;
-         return pointerStartIndex;
-      }
-
       IEnumerable<FrameworkElement> CreatePointerElements(ICommandFactory commander, int start, int length) {
          int pointerStart = start + length - 4;
          int value = _data.ReadPointer(pointerStart);
@@ -288,24 +276,74 @@ namespace SorceryHex {
    class GbaImagesFormatter : IElementFactory {
       readonly IElementFactory _base;
       readonly byte[] _data;
-      readonly IList<int> _imageLocations;
-      readonly IList<int> _imageLengths;
+      readonly IList<int> _imageLocations = new List<int>();
+      readonly IList<int> _imageLengths = new List<int>();
+      readonly Queue<Path> _recycles = new Queue<Path>();
 
       public int Length { get { return _data.Length; } }
 
       public GbaImagesFormatter(IElementFactory fallback, byte[] data) {
          _base = fallback;
          _data = data;
-         _imageLocations = GbaImages.FindLZImages(_data);
-         _imageLengths = _imageLocations.Select(loc => GbaImages.CompressedLZSize(_data, loc)).ToList();
+         var suspectLocations = GbaImages.FindLZImages(_data);
+         foreach (var loc in suspectLocations) {
+            int uncompressed, compressed;
+            GbaImages.CalculateLZSizes(_data, loc, out uncompressed, out compressed);
+            if (uncompressed == -1 || compressed == -1) continue;
+            _imageLocations.Add(loc);
+            _imageLengths.Add(compressed);
+         }
       }
 
       public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
-         throw new NotImplementedException();
+         var startIndex = Utils.SearchForStartPoint(start, _imageLocations, i => i, Utils.FindOptions.StartOrBefore);
+         var list = new List<FrameworkElement>();
+
+         for (int i = 0; i < length; ) {
+            int loc = start + i;
+            if (startIndex >= _imageLocations.Count) {
+               list.AddRange(_base.CreateElements(commander, loc, length - i));
+               i = length;
+            } else if (_imageLocations[startIndex] > loc) {
+               var sectionLength = Math.Min(length - i, _imageLocations[startIndex] - loc);
+               list.AddRange(_base.CreateElements(commander, loc, sectionLength));
+               i += sectionLength;
+            } else if (_imageLocations[startIndex] + _imageLengths[startIndex] < loc) {
+               startIndex++;
+            } else {
+               int imageEnd = _imageLocations[startIndex] + _imageLengths[startIndex];
+               imageEnd = Math.Min(imageEnd, start + length);
+               int lengthInView = imageEnd - loc;
+               list.AddRange(Enumerable.Range(0, lengthInView).Select(j => UsePath(loc + j)));
+               startIndex++;
+               i += lengthInView;
+            }
+         }
+
+         return list;
       }
 
       public void Recycle(ICommandFactory commander, FrameworkElement element) {
-         throw new NotImplementedException();
+         if (element.Tag == this) _recycles.Enqueue((Path)element);
+         else _base.Recycle(commander, element);
+      }
+
+      Path UsePath(int source) {
+         var geometry = Utils.ByteFlyweights[_data[source]];
+         if (_recycles.Count > 0) {
+            var element = _recycles.Dequeue();
+            element.Data = geometry;
+            return element;
+         }
+
+         return new Path {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4.0, 3.0, 4.0, 3.0),
+            Fill = Solarized.Brushes.Cyan,
+            Data = geometry,
+            Tag = this
+         };
       }
    }
 }
