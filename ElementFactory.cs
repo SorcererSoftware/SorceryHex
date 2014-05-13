@@ -13,10 +13,12 @@ namespace SorceryHex {
       void RemoveJumpCommand(FrameworkElement element);
    }
 
+   // TODO allow an element factory to warn its owner about data block boundaries
    public interface IElementFactory {
       int Length { get; }
       IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
+      bool IsWithinDataBlock(int location);
    }
 
    class RangeChecker : IElementFactory {
@@ -46,6 +48,8 @@ namespace SorceryHex {
          else _base.Recycle(commander, element);
       }
 
+      public bool IsWithinDataBlock(int location) { return _base.IsWithinDataBlock(location); }
+
       FrameworkElement UseElement(int i) {
          if (_recycles.Count > 0) return _recycles.Dequeue();
 
@@ -59,6 +63,7 @@ namespace SorceryHex {
 
       public DataHolder(byte[] data) { _data = data; }
       public int Length { get { return _data.Length; } }
+
       public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          Debug.Assert(length < 0x20 * 0x40);
          return Enumerable.Range(start, length).Select(i => {
@@ -72,10 +77,13 @@ namespace SorceryHex {
             return path;
          });
       }
+
       public void Recycle(ICommandFactory commander, FrameworkElement element) {
          Debug.Assert(element.Tag == this);
          _recycles.Enqueue((Path)element);
       }
+
+      public bool IsWithinDataBlock(int location) { return false; }
 
       Path UsePath() {
          if (_recycles.Count > 0) return _recycles.Dequeue();
@@ -90,19 +98,27 @@ namespace SorceryHex {
    }
 
    class GbaPointerFormatter : IElementFactory {
+      #region Fields
+
       static readonly Geometry LeftArrow  = Geometry.Parse("m0,0 l0,2 -1,-1 z");
       static readonly Geometry RightArrow = Geometry.Parse("m0,0 l0,2  1,-1 z");
       static readonly Geometry Hat = Geometry.Parse("m0,0 l0,-1 1,0 z");
+      class BackPointer { public int Destination; public int[] Sources; }
+
       readonly IElementFactory _base;
       readonly byte[] _data;
-      class BackPointer { public int Destination; public int[] Sources; }
       readonly IList<int> _pointers = new List<int>();
       readonly IList<BackPointer> _backpointers = new List<BackPointer>();
       readonly Queue<Border> _recycles = new Queue<Border>();
       readonly Queue<Grid> _spareContainers = new Queue<Grid>();
       readonly Queue<Path> _spareHats = new Queue<Path>();
 
+      #endregion
+
+      #region Interface
+
       public int Length { get { return _data.Length; } }
+
       public GbaPointerFormatter(IElementFactory fallback, byte[] data) {
          _data = data;
          _base = fallback;
@@ -169,6 +185,12 @@ namespace SorceryHex {
          Debug.Fail("How did we get here? We tagged it, but we can't recycle it!");
       }
 
+      public bool IsWithinDataBlock(int location) { return _base.IsWithinDataBlock(location); }
+
+      #endregion
+
+      #region Helpers
+
       /// <summary>
       /// Slightly Dumb: Might need more context.
       /// But ok for an initial sweep.
@@ -179,15 +201,19 @@ namespace SorceryHex {
          var end = Length - 3;
          for (int i = 0; i < end; i++) {
             if (_data[i + 3] != 0x08) continue;
-            _pointers.Add(i);
-
+            if (_base.IsWithinDataBlock(i)) continue;
+            if (_base.IsWithinDataBlock(i + 3)) continue;
             int value = _data.ReadPointer(i);
+            if (_base.IsWithinDataBlock(value)) continue;
+
+            _pointers.Add(i);
             if (!backPointers.ContainsKey(value)) backPointers[value] = new List<int>();
             backPointers[value].Add(i);
 
             i += 3;
          }
 
+         _backpointers.Clear();
          foreach (var back in backPointers.Keys.OrderBy(i => i)) {
             _backpointers.Add(new BackPointer { Destination = back, Sources = backPointers[back].ToArray() });
          }
@@ -271,6 +297,8 @@ namespace SorceryHex {
          commander.CreateJumpCommand(hat, jumpLocations);
          return grid;
       }
+
+      #endregion
    }
 
    class GbaImagesFormatter : IElementFactory {
@@ -326,6 +354,15 @@ namespace SorceryHex {
       public void Recycle(ICommandFactory commander, FrameworkElement element) {
          if (element.Tag == this) _recycles.Enqueue((Path)element);
          else _base.Recycle(commander, element);
+      }
+
+      public bool IsWithinDataBlock(int location) {
+         var startIndex = Utils.SearchForStartPoint(location, _imageLocations, i => i, Utils.FindOptions.StartOrBefore);
+         bool inMyDataBlock =
+            startIndex < _imageLocations.Count &&
+            location > _imageLocations[startIndex] &&
+            location < _imageLocations[startIndex] + _imageLengths[startIndex];
+         return inMyDataBlock || _base.IsWithinDataBlock(location);
       }
 
       Path UsePath(int source) {
