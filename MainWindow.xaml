@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
         x:Class="SorceryHex.MainWindow"
-        Title="SorceryHex" Height="350" Width="525"
+        Title="SorceryHex" Height="400" Width="525"
         MouseWheel="ScrollWheel" KeyDown="HandleKey">
     <DockPanel>
         <Grid DockPanel.Dock="Top">
@@ -11,6 +11,9 @@
                 <MenuItem Header="_File">
                     <MenuItem Header="_Open" Click="OpenClick"/>
                     <MenuItem Header="E_xit" Click="ExitClick"/>
+                </MenuItem>
+                <MenuItem Header="_View">
+                    <MenuItem Name="InterpretItem" Header="_Interpreter" IsCheckable="True" InputGestureText="Ctrl+I" Click="InterpretClick"/>
                 </MenuItem>
                 <MenuItem Header="_Search">
                     <MenuItem Header="_Goto" InputGestureText="Ctrl+G" Click="GotoClick"/>
@@ -39,9 +42,12 @@
             </Grid>
         </UserControl>
         <ScrollBar x:Name="ScrollBar" DockPanel.Dock="Right" Scroll="OnScroll"/>
-        <Grid x:Name="ResizeGrid" SizeChanged="Resize" Style="{StaticResource PanelStyle}" MouseLeftButtonDown="MouseClick">
-            <Grid x:Name="BackgroundBody" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-            <Grid x:Name="Body" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-        </Grid>
+        <DockPanel Background="{Binding Source={StaticResource Theme}, Path=Background}">
+            <WrapPanel Name="InterpretationPane" DockPanel.Dock="Right" Width="100" Visibility="Collapsed"/>
+            <Grid x:Name="ResizeGrid" SizeChanged="Resize" Style="{StaticResource PanelStyle}" MouseLeftButtonDown="MouseClick">
+                <Grid x:Name="BackgroundBody" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                <Grid x:Name="Body" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+            </Grid>
+        </DockPanel>
     </DockPanel>
 </Window>

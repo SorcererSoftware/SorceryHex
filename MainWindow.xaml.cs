@@ -331,6 +331,7 @@ namespace SorceryHex {
                case Key.Down:  ShiftRows(1); break;
                case Key.Up:    ShiftRows(-1); break;
                case Key.G:     GotoClick(null, null); break;
+               case Key.I:     InterpretItem.IsChecked = !InterpretItem.IsChecked; InterpretClick(InterpretItem, null); break;
             }
 
             if (arrowKeys.Contains(e.Key)) {
@@ -372,6 +373,11 @@ namespace SorceryHex {
       }
 
       void ExitClick(object sender, RoutedEventArgs e) { Close(); }
+
+      void InterpretClick(object sender, EventArgs e) {
+         var item = sender as MenuItem;
+         InterpretationPane.Visibility = item.IsChecked ? Visibility.Visible : Visibility.Collapsed;
+      }
 
       void GotoClick(object sender, EventArgs e) {
          MultiBoxLabel.Text = "Goto";
