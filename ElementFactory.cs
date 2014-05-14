@@ -36,6 +36,7 @@ namespace SorceryHex {
 
          int pre = 0, post = 0;
          if (start < 0) { pre = -start; start = 0; length -= pre; }
+         if (length < 0) { pre += length; length = 0; }
          if (start + length >= Length) { post = start + length - Length; length = Length - start; }
 
          if (pre > 0) list.AddRange(Enumerable.Range(0, pre).Select(UseElement));
