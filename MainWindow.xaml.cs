@@ -364,9 +364,18 @@ namespace SorceryHex {
          }
       }
 
+      static readonly Key[] HexKeys = new[] {
+         Key.NumPad0, Key.NumPad1, Key.NumPad2, Key.NumPad3, Key.NumPad4,
+         Key.NumPad5, Key.NumPad6, Key.NumPad7, Key.NumPad8, Key.NumPad9,
+         Key.D0, Key.D1, Key.D2, Key.D3, Key.D4,
+         Key.D5, Key.D6, Key.D7, Key.D8, Key.D9,
+         Key.A, Key.B, Key.C, Key.D, Key.E, Key.F
+      };
       void HandleMultiBoxKey(object sender, KeyEventArgs e) {
          // sanitize for goto
+         int caret = MultiBox.CaretIndex;
          MultiBox.Text = new string(MultiBox.Text.ToUpper().Where(Utils.Hex.Contains).ToArray());
+         MultiBox.CaretIndex = Math.Min(caret, MultiBox.Text.Length);
 
          // check for special keys
          if (e.Key == Key.Escape) {
@@ -379,6 +388,9 @@ namespace SorceryHex {
             MultiBoxContainer.Visibility = Visibility.Hidden;
             MainFocus();
          }
+
+         // only allow hex keys
+         if (!HexKeys.Contains(e.Key)) e.Handled = true;
       }
 
       #endregion
