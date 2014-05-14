@@ -10,6 +10,7 @@ namespace SorceryHex {
          var rom = Utils.LoadRom(e.Args);
          if (rom == null) { this.Shutdown(); return; }
          IElementFactory factory = new DataHolder(rom);
+         factory = new GbaHeaderFormatter(factory, rom);
          factory = new GbaImagesFormatter(factory, rom);
          factory = new GbaPointerFormatter(factory, rom);
          factory = new RangeChecker(factory);

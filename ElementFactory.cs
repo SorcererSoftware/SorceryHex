@@ -305,6 +305,122 @@ namespace SorceryHex {
       #endregion
    }
 
+   class GbaHeaderFormatter : IElementFactory {
+      static readonly Brush Brush = Solarized.Brushes.Violet;
+      static readonly Func<byte, Geometry> ToAscii = b => new string((char)b, 1).ToGeometry();
+      class Entry {
+         public readonly int Length;
+         public readonly string Name;
+         public Func<byte, Geometry> Parse;
+         public Entry(int len, string name, Func<byte,Geometry> parse) {
+            Length = len;
+            Name = name;
+            Parse = parse;
+         }
+         public Entry(int len, string name) : this(len, name, b => Utils.ByteFlyweights[b]) { }
+      }
+
+      readonly IElementFactory _base;
+      readonly byte[] _data;
+      readonly Queue<Border> _recycles = new Queue<Border>();
+      readonly Entry[] _format;
+      readonly int _headerLength;
+
+      public int Length { get { return _data.Length; } }
+
+      public GbaHeaderFormatter(IElementFactory fallback, byte[] data) {
+         _base = fallback;
+         _data = data;
+         _format = new[] {
+            new Entry(4, "Entry Point"),
+            new Entry(156, "Compressed Nintendo Logo"),
+            new Entry(12, "Game Title", ToAscii),
+            new Entry(4, "Game Code", ToAscii),
+            new Entry(2, "Maker Code", ToAscii),
+            new Entry(1, "Fixed Value"),
+            new Entry(1, "Main Unit Code"),
+            new Entry(1, "Device Type"),
+            new Entry(7, "Reserved Area"),
+            new Entry(1, "Software Version"),
+            new Entry(1, "Complement Check"),
+            new Entry(2, "Reserved Area")
+         };
+         _headerLength = _format.Sum(f => f.Length);
+      }
+
+      public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+         if (start >= _headerLength) return _base.CreateElements(commander, start, length);
+         var list = new List<FrameworkElement>();
+         int currentFormat = 0;
+         int currentOffset = 0;
+         int remainder = length;
+
+         while (currentFormat < _format.Length) {
+            if (start > currentOffset + _format[currentFormat].Length) {
+               currentOffset += _format[currentFormat].Length;
+               currentFormat++;
+               continue;
+            }
+
+            var format = _format[currentFormat];
+            for (int i = 0; i < format.Length; i++) {
+               if (start > currentOffset + i) continue;
+               int left = 0, right = 0;
+               if (i == 0) left = 2;
+               if (i == format.Length - 1) right = 2;
+               var element = UseTemplate(format.Parse(_data[currentOffset + i]), left, right, format.Name);
+               list.Add(element);
+               remainder--;
+               if (remainder == 0) return list;
+            }
+            currentOffset += _format[currentFormat].Length;
+            currentFormat++;
+         }
+
+         list.AddRange(_base.CreateElements(commander, _headerLength, remainder));
+         return list;
+      }
+
+      public void Recycle(ICommandFactory commander, FrameworkElement element) {
+         if (element.Tag == this) _recycles.Enqueue((Border)element);
+         else _base.Recycle(commander, element);
+      }
+
+      public bool IsWithinDataBlock(int location) {
+         if (location < 0xC0) return true;
+         return _base.IsWithinDataBlock(location);
+      }
+
+
+      FrameworkElement UseTemplate(Geometry data, double leftBorder, double rightBorder, string tip) {
+         if (_recycles.Count > 0) {
+            var element = _recycles.Dequeue();
+            ((Path)element.Child).Data = data;
+            element.Margin = new Thickness(leftBorder, 0, rightBorder, 1);
+            element.ToolTip = tip;
+            return element;
+         }
+
+         return new Border {
+            Child = new Path {
+               HorizontalAlignment = HorizontalAlignment.Center,
+               VerticalAlignment = VerticalAlignment.Center,
+               Fill = Brush,
+               Data = data,
+               ClipToBounds = false,
+               Margin = new Thickness(2, 3, 2, 1),
+            },
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            BorderBrush = Brush,
+            Background = Brushes.Transparent,
+            ToolTip = tip,
+            Margin = new Thickness(leftBorder, 0, rightBorder, 1),
+            Tag = this
+         };
+      }
+
+   }
+
    class GbaImagesFormatter : IElementFactory {
       readonly IElementFactory _base;
       readonly byte[] _data;
