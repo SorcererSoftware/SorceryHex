@@ -103,6 +103,7 @@ namespace SorceryHex {
       static readonly Geometry LeftArrow  = Geometry.Parse("m0,0 l0,2 -1,-1 z");
       static readonly Geometry RightArrow = Geometry.Parse("m0,0 l0,2  1,-1 z");
       static readonly Geometry Hat = Geometry.Parse("m0,0 l0,-1 1,0 z");
+      static readonly Brush Brush = Solarized.Brushes.Orange;
       class BackPointer { public int Destination; public int[] Sources; }
 
       readonly IElementFactory _base;
@@ -238,16 +239,16 @@ namespace SorceryHex {
          var str = value.ToHexString();
          while (str.Length < 6) str = "0" + str;
 
-         var leftEdge = UseTemplate(LeftArrow);
+         var leftEdge = UseTemplate(Utils.ByteFlyweights[_data[pointerStart]], 2, 0);
          commander.CreateJumpCommand(leftEdge, value);
 
-         var data1 = UseTemplate(str.Substring(0, 3).ToGeometry());
+         var data1 = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 1]], 0, 0);
          commander.CreateJumpCommand(data1, value);
 
-         var data2 = UseTemplate(str.Substring(3).ToGeometry());
+         var data2 = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 2]], 0, 0);
          commander.CreateJumpCommand(data2, value);
 
-         var rightEdge = UseTemplate(RightArrow);
+         var rightEdge = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 3]], 0, 2);
          commander.CreateJumpCommand(rightEdge, value);
 
          var set = new[] { leftEdge, data1, data2, rightEdge };
@@ -255,10 +256,11 @@ namespace SorceryHex {
          return set.Skip(4 - length);
       }
 
-      FrameworkElement UseTemplate(Geometry data) {
+      FrameworkElement UseTemplate(Geometry data, double leftBorder, double rightBorder) {
          if (_recycles.Count > 0) {
             var element = _recycles.Dequeue();
             ((Path)element.Child).Data = data;
+            element.Margin = new Thickness(leftBorder, 0, rightBorder, 1);
             return element;
          }
 
@@ -266,12 +268,14 @@ namespace SorceryHex {
             Child = new Path {
                HorizontalAlignment = HorizontalAlignment.Center,
                VerticalAlignment = VerticalAlignment.Center,
-               Stretch = Stretch.Uniform,
-               Fill = Solarized.Brushes.Red,
+               Fill = Brush,
                Data = data,
-               Margin = new Thickness(1)
+               Margin = new Thickness(4, 3, 4, 1),
             },
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            BorderBrush = Brush,
             Background = Brushes.Transparent,
+            Margin = new Thickness(leftBorder, 0, rightBorder, 1),
             Tag = this
          };
       }
@@ -285,7 +289,7 @@ namespace SorceryHex {
          if (_spareHats.Count > 0) hat = _spareHats.Dequeue();
          else hat = new Path {
             Data = Hat,
-            Fill = Solarized.Brushes.Red,
+            Fill = Brush,
             Stretch = Stretch.Uniform,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
