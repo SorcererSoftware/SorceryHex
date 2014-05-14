@@ -1,11 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace SorceryHex {
    class GbaImages {
+
+      const int Dpi = 96;
+      public static readonly Palette DefaultPalette = new Palette(new[] {
+         Colors.Black, Colors.Red, Colors.Orange, Colors.Yellow, 
+         Colors.Green, Colors.Blue, Colors.Indigo, Colors.Violet,
+         Colors.Gray, Colors.Cyan, Colors.Magenta, Colors.Fuchsia,
+         Colors.Brown, Colors.Gold, Colors.Gainsboro, Colors.ForestGreen
+      });
 
       // 10       (header)
       // 05 00 00 (final data is 5 bytes long)
@@ -171,6 +179,92 @@ namespace SorceryHex {
                }
             }
          }
+      }
+
+      public static void GuessWidthHeight(int dataLength, out int width, out int height) {
+         int pixelCount = dataLength / 2;
+         height = pixelCount / 0x10;
+         width = 1;
+         while (height > width && height % 2 == 0) { width *= 2; height /= 2; }
+         width *= 0x08; height *= 0x08;
+      }
+
+      public static ImageSource Expand16bitImage(byte[] image16bit, Palette palette32bit, int width, int height) {
+         // image16bit is organized as follows:
+         // each byte contains 2 pixels, values 0-0xF
+         // each set of 8x8 pixels is stored in a block
+         // so the image data is 8x8 blocks of 8x8 pixels
+         // this might be to helps with compression
+         var image32bit = new byte[image16bit.Length * 8];
+         for (int i = 0; i < image16bit.Length; i++) {
+            int paletteIndex = image16bit[i] & 0xF;
+            palette32bit.Write(image32bit, i * 2 + 0, paletteIndex);
+
+            paletteIndex = image16bit[i] >> 4;
+            palette32bit.Write(image32bit, i * 2 + 1, paletteIndex);
+         }
+
+         return Reorder(image32bit, width, height);
+      }
+
+      public class Palette {
+         readonly byte[] colors;
+
+         public Palette(byte[] palette) {
+            Debug.Assert(palette.Length == 0x20);
+            var length = palette.Length / 2;
+            colors = new byte[length * 4];
+            for (int i = 0; i < length; i++) {
+               var full = palette.ReadShort(i * 2);
+               byte blue = (byte)((full & 0x7C00) >> 7);
+               byte green = (byte)((full & 0x03E0) >> 2);
+               byte red = (byte)((full & 0x001F) << 3);
+               colors[i * 4 + 0] = blue;
+               colors[i * 4 + 1] = green;
+               colors[i * 4 + 2] = red;
+               colors[i * 4 + 3] = 0xFF;
+            }
+         }
+
+         public Palette(Color[] palette) {
+            colors = new byte[palette.Length * 4];
+            for (int i = 0; i < palette.Length; i++) {
+               byte blue = palette[i].B;
+               byte green = palette[i].G;
+               byte red = palette[i].R;
+               colors[i * 4 + 0] = blue;
+               colors[i * 4 + 1] = green;
+               colors[i * 4 + 2] = red;
+               colors[i * 4 + 3] = 0xFF;
+            }
+         }
+
+         public void Write(byte[] image, int pixel, int paletteIndex) {
+            image[pixel * 4 + 0] = colors[paletteIndex * 4 + 0];
+            image[pixel * 4 + 1] = colors[paletteIndex * 4 + 1];
+            image[pixel * 4 + 2] = colors[paletteIndex * 4 + 2];
+            image[pixel * 4 + 3] = colors[paletteIndex * 4 + 3];
+         }
+      }
+
+      static ImageSource Reorder(byte[] array, int width, int height) {
+         // reorder data from blocks into single image
+         int blockWrap = width / 8, pixelWrap = 8;
+         var imageOutput = new byte[array.Length];
+         int j = 0;
+         for (int block = 0; block < (width * height / 64); block++) {
+            for (int pixel = 0; pixel < 64; pixel++) {
+               for (int channel = 0; channel < 4; channel++) {
+                  int blockX = block % blockWrap, blockY = block / blockWrap;
+                  int pixelX = pixel % pixelWrap, pixelY = pixel / pixelWrap;
+                  var outIndex = ((blockY * 8 + pixelY) * width + (blockX * 8 + pixelX)) * 4 + channel;
+                  imageOutput[outIndex] = array[j++];
+               }
+            }
+         }
+
+         var source = BitmapSource.Create(width, height, Dpi, Dpi, PixelFormats.Bgra32, null, imageOutput, 4 * width);
+         return source;
       }
    }
 }

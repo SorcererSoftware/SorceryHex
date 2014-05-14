@@ -27,6 +27,10 @@ namespace SorceryHex {
          return (memory[offset + 2] << 16) | (memory[offset + 1] << 8) | memory[offset + 0];
       }
 
+      public static int ReadShort(this byte[] memory, int offset) {
+         return (memory[offset + 1] << 8) | memory[offset + 0];
+      }
+
       public static Geometry ToGeometry(this string text) {
          return
             new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Font, 15.0, Brushes.Black)
@@ -333,6 +337,7 @@ namespace SorceryHex {
                case Key.Up:    ShiftRows(-1); break;
                case Key.G:     GotoClick(null, null); break;
                case Key.I:     InterpretItem.IsChecked = !InterpretItem.IsChecked; InterpretClick(InterpretItem, null); break;
+               case Key.B:     break; // only for testing
             }
 
             if (arrowKeys.Contains(e.Key)) {
@@ -416,11 +421,18 @@ namespace SorceryHex {
          _interpretations[element] = visual;
          if (!_interpretationReferenceCounts.ContainsKey(visual)) _interpretationReferenceCounts[visual] = 0;
          _interpretationReferenceCounts[visual]++;
+         if (_interpretationReferenceCounts[visual] == 1) {
+            InterpretationPane.Children.Add(visual);
+         }
       }
-      public void UnlinkFromInterpretation(FrameworkElement element, FrameworkElement visual) {
+      public void UnlinkFromInterpretation(FrameworkElement element) {
+         var visual = _interpretations[element];
          _interpretations.Remove(element);
          _interpretationReferenceCounts[visual]--;
-         if (_interpretationReferenceCounts[visual] == 0) _interpretationReferenceCounts.Remove(visual);
+         if (_interpretationReferenceCounts[visual] == 0) {
+            InterpretationPane.Children.Remove(visual);
+            _interpretationReferenceCounts.Remove(visual);
+         }
       }
 
       #endregion

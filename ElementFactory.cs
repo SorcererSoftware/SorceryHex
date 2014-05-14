@@ -12,7 +12,7 @@ namespace SorceryHex {
       void CreateJumpCommand(FrameworkElement element, params int[] jumpLocation);
       void RemoveJumpCommand(FrameworkElement element);
       void LinkToInterpretation(FrameworkElement element, FrameworkElement visual);
-      void UnlinkToInterpretation(FrameworkElement element, FrameworkElement visual);
+      void UnlinkFromInterpretation(FrameworkElement element);
    }
 
    // TODO allow an element factory to warn its owner about data block boundaries
@@ -393,7 +393,6 @@ namespace SorceryHex {
          return _base.IsWithinDataBlock(location);
       }
 
-
       FrameworkElement UseTemplate(Geometry data, double leftBorder, double rightBorder, string tip) {
          if (_recycles.Count > 0) {
             var element = _recycles.Dequeue();
@@ -429,6 +428,7 @@ namespace SorceryHex {
       readonly IList<int> _imageLocations = new List<int>();
       readonly IList<int> _imageLengths = new List<int>();
       readonly Queue<Path> _recycles = new Queue<Path>();
+      readonly IDictionary<int, Image> _interpretations = new Dictionary<int, Image>();
 
       public int Length { get { return _data.Length; } }
 
@@ -451,20 +451,31 @@ namespace SorceryHex {
 
          for (int i = 0; i < length; ) {
             int loc = start + i;
+            int dataIndex = _imageLocations[startIndex];
             if (startIndex >= _imageLocations.Count) {
                list.AddRange(_base.CreateElements(commander, loc, length - i));
                i = length;
-            } else if (_imageLocations[startIndex] > loc) {
-               var sectionLength = Math.Min(length - i, _imageLocations[startIndex] - loc);
+            } else if (dataIndex > loc) {
+               var sectionLength = Math.Min(length - i, dataIndex - loc);
                list.AddRange(_base.CreateElements(commander, loc, sectionLength));
                i += sectionLength;
-            } else if (_imageLocations[startIndex] + _imageLengths[startIndex] < loc) {
+            } else if (dataIndex + _imageLengths[startIndex] < loc) {
                startIndex++;
             } else {
-               int imageEnd = _imageLocations[startIndex] + _imageLengths[startIndex];
+               int imageEnd = dataIndex + _imageLengths[startIndex];
                imageEnd = Math.Min(imageEnd, start + length);
                int lengthInView = imageEnd - loc;
-               list.AddRange(Enumerable.Range(0, lengthInView).Select(j => UsePath(loc + j)));
+               if (!_interpretations.ContainsKey(dataIndex)) {
+                  var imageBytes = GbaImages.UncompressLZ(_data, dataIndex);
+                  int width, height; GbaImages.GuessWidthHeight(imageBytes.Length, out width, out height);
+                  var source = GbaImages.Expand16bitImage(imageBytes, GbaImages.DefaultPalette, width, height);
+                  _interpretations[dataIndex] = new Image { Source = source, Width = width, Height = height };
+               }
+               for (int j = 0; j < lengthInView; j++) {
+                  var element = UsePath(loc + j);
+                  commander.LinkToInterpretation(element, _interpretations[dataIndex]);
+                  list.Add(element);
+               }
                startIndex++;
                i += lengthInView;
             }
@@ -474,8 +485,9 @@ namespace SorceryHex {
       }
 
       public void Recycle(ICommandFactory commander, FrameworkElement element) {
-         if (element.Tag == this) _recycles.Enqueue((Path)element);
-         else _base.Recycle(commander, element);
+         if (element.Tag != this) { _base.Recycle(commander, element); return; }
+         _recycles.Enqueue((Path)element);
+         commander.UnlinkFromInterpretation(element);
       }
 
       public bool IsWithinDataBlock(int location) {
