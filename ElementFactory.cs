@@ -11,6 +11,8 @@ namespace SorceryHex {
    public interface ICommandFactory {
       void CreateJumpCommand(FrameworkElement element, params int[] jumpLocation);
       void RemoveJumpCommand(FrameworkElement element);
+      void LinkToInterpretation(FrameworkElement element, FrameworkElement visual);
+      void UnlinkToInterpretation(FrameworkElement element, FrameworkElement visual);
    }
 
    // TODO allow an element factory to warn its owner about data block boundaries
@@ -33,7 +35,7 @@ namespace SorceryHex {
          var list = new List<FrameworkElement>();
 
          int pre = 0, post = 0;
-         if (start < 0) { pre = -start; start = 0; }
+         if (start < 0) { pre = -start; start = 0; length -= pre; }
          if (start + length >= Length) { post = start + length - Length; length = Length - start; }
 
          if (pre > 0) list.AddRange(Enumerable.Range(0, pre).Select(UseElement));

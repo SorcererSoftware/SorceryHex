@@ -143,6 +143,7 @@ namespace SorceryHex {
       void Add(int start, int length) {
          int rows = Body.RowDefinitions.Count, cols = Body.ColumnDefinitions.Count;
          var elements = _holder.CreateElements(this, _offset + start, length).ToArray();
+         Debug.Assert(elements.Length == length);
          for (var i = 0; i < elements.Length; i++) {
             SplitLocation(elements[i], cols, start + i);
             Body.Children.Add(elements[i]);
@@ -407,6 +408,19 @@ namespace SorceryHex {
       }
       public void RemoveJumpCommand(FrameworkElement element) {
          _jumpers.Remove(element);
+      }
+
+      readonly Dictionary<FrameworkElement, FrameworkElement> _interpretations = new Dictionary<FrameworkElement, FrameworkElement>();
+      readonly Dictionary<FrameworkElement, int> _interpretationReferenceCounts = new Dictionary<FrameworkElement, int>();
+      public void LinkToInterpretation(FrameworkElement element, FrameworkElement visual) {
+         _interpretations[element] = visual;
+         if (!_interpretationReferenceCounts.ContainsKey(visual)) _interpretationReferenceCounts[visual] = 0;
+         _interpretationReferenceCounts[visual]++;
+      }
+      public void UnlinkFromInterpretation(FrameworkElement element, FrameworkElement visual) {
+         _interpretations.Remove(element);
+         _interpretationReferenceCounts[visual]--;
+         if (_interpretationReferenceCounts[visual] == 0) _interpretationReferenceCounts.Remove(visual);
       }
 
       #endregion
