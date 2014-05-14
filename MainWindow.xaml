@@ -6,6 +6,9 @@
         Title="SorceryHex" Height="400" Width="525"
         MouseWheel="ScrollWheel" KeyDown="HandleKey">
     <DockPanel>
+        <DockPanel.ContextMenu>
+            <ContextMenu Name="BodyContextMenu"/>
+        </DockPanel.ContextMenu>
         <Grid DockPanel.Dock="Top">
             <Menu>
                 <MenuItem Header="_File">

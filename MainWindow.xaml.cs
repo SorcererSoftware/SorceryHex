@@ -324,7 +324,20 @@ namespace SorceryHex {
          if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) {
             // check for jump
             var element = _jumpers.Keys.FirstOrDefault(jumper => jumper.IsMouseOver);
-            if (element != null) JumpTo(_jumpers[element]);
+            if (element != null) {
+               var list = _jumpers[element];
+               if (list.Length > 1) {
+                  BodyContextMenu.Items.Clear();
+                  foreach (var dest in list) {
+                     var header = dest.ToHexString();
+                     while (header.Length < 6) header = "0" + header;
+                     var item = new MenuItem { Header = header };
+                     BodyContextMenu.Items.Add(item);
+                     item.Click += (s, e1) => JumpTo(item.Header.ToString().ParseAsHex());
+                  }
+                  BodyContextMenu.IsOpen = true;
+               } else JumpTo(list[0]);
+            }
          }
       }
 
@@ -407,9 +420,9 @@ namespace SorceryHex {
 
       #region Command Factory
 
-      readonly Dictionary<FrameworkElement, int> _jumpers = new Dictionary<FrameworkElement, int>();
+      readonly Dictionary<FrameworkElement, int[]> _jumpers = new Dictionary<FrameworkElement, int[]>();
       public void CreateJumpCommand(FrameworkElement element, params int[] jumpLocation) {
-         _jumpers[element] = jumpLocation[0]; // TODO support multiple jump locations
+         _jumpers[element] = jumpLocation;
       }
       public void RemoveJumpCommand(FrameworkElement element) {
          _jumpers.Remove(element);
