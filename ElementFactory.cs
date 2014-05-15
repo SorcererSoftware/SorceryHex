@@ -423,20 +423,20 @@ namespace SorceryHex {
 
    }
 
-   class GbaImagesFormatter : IElementFactory {
+   class GbaLzFormatter<T> : IElementFactory where T : FrameworkElement {
       readonly IElementFactory _base;
       readonly byte[] _data;
       readonly IList<int> _imageLocations = new List<int>();
       readonly IList<int> _imageLengths = new List<int>();
       readonly Queue<Path> _recycles = new Queue<Path>();
-      readonly IDictionary<int, Image> _interpretations = new Dictionary<int, Image>();
+      readonly IDictionary<int, T> _interpretations = new Dictionary<int, T>();
 
       public int Length { get { return _data.Length; } }
+      public Func<byte[], T> Interpret { get; set; }
 
-      public GbaImagesFormatter(IElementFactory fallback, byte[] data) {
+      public GbaLzFormatter(IElementFactory fallback, byte[] data, IList<int> suspectLocations) {
          _base = fallback;
          _data = data;
-         var suspectLocations = GbaImages.FindLZImages(_data);
          foreach (var loc in suspectLocations) {
             int uncompressed, compressed;
             GbaImages.CalculateLZSizes(_data, loc, out uncompressed, out compressed);
@@ -467,10 +467,9 @@ namespace SorceryHex {
                imageEnd = Math.Min(imageEnd, start + length);
                int lengthInView = imageEnd - loc;
                if (!_interpretations.ContainsKey(dataIndex)) {
-                  var imageBytes = GbaImages.UncompressLZ(_data, dataIndex);
-                  int width, height; GbaImages.GuessWidthHeight(imageBytes.Length, out width, out height);
-                  var source = GbaImages.Expand16bitImage(imageBytes, GbaImages.DefaultPalette, width, height);
-                  _interpretations[dataIndex] = new Image { Source = source, Width = width, Height = height };
+                  var dataBytes = GbaImages.UncompressLZ(_data, dataIndex);
+                  var interpretation = Interpret(dataBytes);
+                  _interpretations[dataIndex] = interpretation;
                }
                for (int j = 0; j < lengthInView; j++) {
                   var element = UsePath(loc + j);
@@ -515,6 +514,26 @@ namespace SorceryHex {
             Fill = Solarized.Brushes.Cyan,
             Data = geometry,
             Tag = this
+         };
+      }
+   }
+
+   class GbaLzFormatterFactory {
+      public static IElementFactory Images(IElementFactory fallback, byte[] data) {
+         return new GbaLzFormatter<Image>(fallback, data, GbaImages.FindLZImages(data)) {
+            Interpret = dataBytes => {
+               int width, height; GbaImages.GuessWidthHeight(dataBytes.Length, out width, out height);
+               var source = GbaImages.Expand16bitImage(dataBytes, GbaImages.DefaultPalette, width, height);
+               return new Image { Source = source, Width = width, Height = height };
+            }
+         };
+      }
+
+      public static IElementFactory Palette(IElementFactory fallback, byte[] data) {
+         return new GbaLzFormatter<Grid>(fallback, data, GbaImages.FindLZPalettes(data)) {
+            Interpret = dataBytes => {
+               throw new NotImplementedException();
+            }
          };
       }
    }

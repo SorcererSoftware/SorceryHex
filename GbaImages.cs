@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows.Media;
@@ -21,7 +22,7 @@ namespace SorceryHex {
       // 00       (first uncompressed byte)     (00)
       // 10 00    (runLength 1+3, runOffset 0+1)   (00 00 00 00 00)
 
-      public static IList<int> FindLZImages(byte[] memory) {
+      public static IList<int> FindLZData(byte[] memory, Func<int, bool> filter) {
          var list = new Dictionary<int, bool>();
          for (int offset = 3; offset < memory.Length; offset++) {
 
@@ -34,11 +35,19 @@ namespace SorceryHex {
             if (memory[pointer] != 0x10) continue;
 
             // images will be a multiple of 16*16*2 bytes when decompressed.
-            if (memory[pointer + 1] % 0x80 != 0) continue;
+            if (!filter(pointer)) continue;
             list[pointer] = true;
          }
 
          return list.Keys.OrderBy(i => i).ToList();
+      }
+
+      public static IList<int> FindLZImages(byte[] memory) {
+         return FindLZData(memory, pointer => memory[pointer + 1] % 0x80 == 0);
+      }
+
+      public static IList<int> FindLZPalettes(byte[] memory) {
+         return FindLZData(memory, pointer => memory[pointer + 1] == 0x20 && memory[pointer + 2] == 0x00 && memory[pointer + 3] == 0x00);
       }
 
       // start offset is changed to be the next place we think there is an LZ image
