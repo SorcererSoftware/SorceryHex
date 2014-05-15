@@ -374,8 +374,10 @@ namespace SorceryHex {
       void HandleMultiBoxKey(object sender, KeyEventArgs e) {
          // sanitize for goto
          int caret = MultiBox.CaretIndex;
+         int selection = MultiBox.SelectionLength;
          MultiBox.Text = new string(MultiBox.Text.ToUpper().Where(Utils.Hex.Contains).ToArray());
          MultiBox.CaretIndex = Math.Min(caret, MultiBox.Text.Length);
+         MultiBox.SelectionLength = selection;
 
          // check for special keys
          if (e.Key == Key.Escape) {
