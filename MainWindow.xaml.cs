@@ -152,6 +152,20 @@ namespace SorceryHex {
             SplitLocation(elements[i], cols, start + i);
             Body.Children.Add(elements[i]);
          }
+
+         if (_sortInterpretations) {
+            var interpretations = _interpretations.Values.Distinct().OrderBy(KeyElementLocation);
+            InterpretationPane.Children.Clear();
+            foreach (var element in interpretations) InterpretationPane.Children.Add(element);
+            _sortInterpretations = false;
+         }
+      }
+
+      int KeyElementLocation(FrameworkElement interpretation) {
+         var keysForInterpretation = _interpretations.Keys.Where(key => _interpretations[key] == interpretation);
+         Debug.Assert(keysForInterpretation.Count() == _interpretationReferenceCounts[interpretation]);
+         // wrapped elements are not directly in the body and don't have a row/column. This is ok if most elements are not wrapped.
+         return keysForInterpretation.Where(key => Body.Children.Contains(key)).Select(key => CombineLocation(key, Body.ColumnDefinitions.Count)).Min();
       }
 
       void UpdateHeaderColumn(int oldRows, int newRows) {
@@ -442,15 +456,15 @@ namespace SorceryHex {
          _jumpers.Remove(element);
       }
 
+      bool _sortInterpretations;
       readonly Dictionary<FrameworkElement, FrameworkElement> _interpretations = new Dictionary<FrameworkElement, FrameworkElement>();
       readonly Dictionary<FrameworkElement, int> _interpretationReferenceCounts = new Dictionary<FrameworkElement, int>();
       public void LinkToInterpretation(FrameworkElement element, FrameworkElement visual) {
          _interpretations[element] = visual;
+         visual.Margin = new Thickness(5);
          if (!_interpretationReferenceCounts.ContainsKey(visual)) _interpretationReferenceCounts[visual] = 0;
          _interpretationReferenceCounts[visual]++;
-         if (_interpretationReferenceCounts[visual] == 1) {
-            InterpretationPane.Children.Add(visual);
-         }
+         if (_interpretationReferenceCounts[visual] == 1) _sortInterpretations = true;
       }
       public void UnlinkFromInterpretation(FrameworkElement element) {
          var visual = _interpretations[element];
