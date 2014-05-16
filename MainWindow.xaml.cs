@@ -164,8 +164,9 @@ namespace SorceryHex {
       int KeyElementLocation(FrameworkElement interpretation) {
          var keysForInterpretation = _interpretations.Keys.Where(key => _interpretations[key] == interpretation);
          Debug.Assert(keysForInterpretation.Count() == _interpretationReferenceCounts[interpretation]);
-         // wrapped elements are not directly in the body and don't have a row/column. This is ok if most elements are not wrapped.
-         return keysForInterpretation.Where(key => Body.Children.Contains(key)).Select(key => CombineLocation(key, Body.ColumnDefinitions.Count)).Min();
+         // wrapped elements are not directly in the body and don't have a row/column. This is ok if elements are only wrapped once.
+         keysForInterpretation = keysForInterpretation.Select(key => Body.Children.Contains(key) ? key : (FrameworkElement)key.Parent);
+         return keysForInterpretation.Select(key => CombineLocation(key, Body.ColumnDefinitions.Count)).Min();
       }
 
       void UpdateHeaderColumn(int oldRows, int newRows) {
@@ -459,12 +460,17 @@ namespace SorceryHex {
       bool _sortInterpretations;
       readonly Dictionary<FrameworkElement, FrameworkElement> _interpretations = new Dictionary<FrameworkElement, FrameworkElement>();
       readonly Dictionary<FrameworkElement, int> _interpretationReferenceCounts = new Dictionary<FrameworkElement, int>();
+
       public void LinkToInterpretation(FrameworkElement element, FrameworkElement visual) {
          _interpretations[element] = visual;
          visual.Margin = new Thickness(5);
          if (!_interpretationReferenceCounts.ContainsKey(visual)) _interpretationReferenceCounts[visual] = 0;
          _interpretationReferenceCounts[visual]++;
-         if (_interpretationReferenceCounts[visual] == 1) _sortInterpretations = true;
+         if (_interpretationReferenceCounts[visual] == 1) {
+            _sortInterpretations = true;
+            visual.MouseEnter += MouseEnterInterpretation;
+            visual.MouseLeave += MouseLeaveInterpretation;
+         }
       }
       public void UnlinkFromInterpretation(FrameworkElement element) {
          var visual = _interpretations[element];
@@ -473,8 +479,39 @@ namespace SorceryHex {
          if (_interpretationReferenceCounts[visual] == 0) {
             InterpretationPane.Children.Remove(visual);
             _interpretationReferenceCounts.Remove(visual);
+            visual.MouseEnter -= MouseEnterInterpretation;
+            visual.MouseLeave -= MouseLeaveInterpretation;
          }
       }
+
+      #region Interpretation Helpers
+
+      readonly Queue<FrameworkElement> _interpretationBackgrounds = new Queue<FrameworkElement>();
+
+      void MouseEnterInterpretation(object sender, EventArgs e) {
+         var visual = (FrameworkElement)sender;
+         int location = KeyElementLocation(visual);
+         int length = _interpretationReferenceCounts[visual];
+         for (int i = 0; i < length; i++) {
+            var rectangle = _interpretationBackgrounds.Count > 0 ? _interpretationBackgrounds.Dequeue() : new Border {
+               Background = Solarized.Theme.Instance.Backlight,
+               Tag = this
+            };
+            SplitLocation(rectangle, Body.ColumnDefinitions.Count, location + i);
+            BackgroundBody.Children.Add(rectangle);
+         }
+      }
+
+      void MouseLeaveInterpretation(object sender, EventArgs e) {
+         var children = new List<FrameworkElement>();
+         foreach (FrameworkElement child in BackgroundBody.Children) children.Add(child);
+         foreach (var child in children.Where(c => c.Tag == this)) {
+            BackgroundBody.Children.Remove(child);
+            _interpretationBackgrounds.Enqueue(child);
+         }
+      }
+
+      #endregion
 
       #endregion
    }

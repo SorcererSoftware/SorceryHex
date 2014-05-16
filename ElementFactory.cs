@@ -531,7 +531,7 @@ namespace SorceryHex {
       public static IElementFactory Palette(IElementFactory fallback, byte[] data) {
          return new GbaLzFormatter<Grid>(fallback, data, GbaImages.FindLZPalettes(data)) {
             Interpret = dataBytes => {
-               var grid = new Grid { Width = 40, Height = 40 };
+               var grid = new Grid { Width = 40, Height = 40, Background = Brushes.Transparent };
                for (int i = 0; i < 4; i++) {
                   grid.RowDefinitions.Add(new RowDefinition());
                   grid.ColumnDefinitions.Add(new ColumnDefinition());
