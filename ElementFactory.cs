@@ -420,7 +420,6 @@ namespace SorceryHex {
             Tag = this
          };
       }
-
    }
 
    class GbaLzFormatter<T> : IElementFactory where T : FrameworkElement {
@@ -532,7 +531,22 @@ namespace SorceryHex {
       public static IElementFactory Palette(IElementFactory fallback, byte[] data) {
          return new GbaLzFormatter<Grid>(fallback, data, GbaImages.FindLZPalettes(data)) {
             Interpret = dataBytes => {
-               throw new NotImplementedException();
+               var grid = new Grid { Width = 40, Height = 40 };
+               for (int i = 0; i < 4; i++) {
+                  grid.RowDefinitions.Add(new RowDefinition());
+                  grid.ColumnDefinitions.Add(new ColumnDefinition());
+               }
+               var palette = new GbaImages.Palette(dataBytes);
+               for (int i = 0; i < 16; i++) {
+                  var rectangle = new Rectangle {
+                     Fill = new SolidColorBrush(palette.Colors[i]),
+                     Margin = new Thickness(1)
+                  };
+                  Grid.SetRow(rectangle, i / 4);
+                  Grid.SetColumn(rectangle, i % 4);
+                  grid.Children.Add(rectangle);
+               }
+               return grid;
             }
          };
       }

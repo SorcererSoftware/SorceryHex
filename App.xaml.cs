@@ -12,6 +12,7 @@ namespace SorceryHex {
          IElementFactory factory = new DataHolder(rom);
          factory = new GbaHeaderFormatter(factory, rom);
          factory = GbaLzFormatterFactory.Images(factory, rom);
+         factory = GbaLzFormatterFactory.Palette(factory, rom);
          factory = new GbaPointerFormatter(factory, rom);
          factory = new RangeChecker(factory);
          var window = new MainWindow(factory);

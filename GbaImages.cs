@@ -218,6 +218,7 @@ namespace SorceryHex {
 
       public class Palette {
          readonly byte[] colors;
+         public readonly Color[] Colors = new Color[0x10];
 
          public Palette(byte[] palette) {
             Debug.Assert(palette.Length == 0x20);
@@ -228,6 +229,7 @@ namespace SorceryHex {
                byte blue = (byte)((full & 0x7C00) >> 7);
                byte green = (byte)((full & 0x03E0) >> 2);
                byte red = (byte)((full & 0x001F) << 3);
+               Colors[i] = Color.FromArgb(0xFF, red, green, blue);
                colors[i * 4 + 0] = blue;
                colors[i * 4 + 1] = green;
                colors[i * 4 + 2] = red;
@@ -238,6 +240,7 @@ namespace SorceryHex {
          public Palette(Color[] palette) {
             colors = new byte[palette.Length * 4];
             for (int i = 0; i < palette.Length; i++) {
+               Colors[i] = palette[i];
                byte blue = palette[i].B;
                byte green = palette[i].G;
                byte red = palette[i].R;
