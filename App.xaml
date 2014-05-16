@@ -13,10 +13,41 @@
             <Setter Property="Foreground" Value="{Binding Source={StaticResource Theme}, Path=Primary}"/>
             <Setter Property="Background" Value="{Binding Source={StaticResource Theme}, Path=Backlight}"/>
         </Style>
-        <Style TargetType="{x:Type ContextMenu}">
+
+        <Style TargetType="ContextMenu">
             <Setter Property="Foreground" Value="{Binding Source={StaticResource Theme}, Path=Primary}"/>
             <Setter Property="Background" Value="{Binding Source={StaticResource Theme}, Path=Backlight}"/>
+            <Setter Property="BorderBrush" Value="{Binding Source={StaticResource Theme}, Path=Secondary}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ContextMenu}">
+                        <Border Uid="Border_93">
+                            <Border.Style>
+                                <Style TargetType="{x:Type Border}">
+                                    <Setter Property="Tag" Value="{DynamicResource {x:Static SystemParameters.DropShadowKey}}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                                            <Setter Property="Padding" Value="0,0,5,5"/>
+                                            <Setter Property="Effect">
+                                                <Setter.Value>
+                                                    <DropShadowEffect BlurRadius="4" Opacity="0.8" ShadowDepth="1"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Uid="Border_50">
+                                <ScrollViewer CanContentScroll="True" Style="{DynamicResource {ComponentResourceKey ResourceId=MenuScrollViewer, TypeInTargetAssembly={x:Type FrameworkElement}}}" Uid="ScrollViewer_9">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" Margin="{TemplateBinding Padding}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" Uid="ItemsPresenter_5"/>
+                                </ScrollViewer>
+                            </Border>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
+
 
         <Style TargetType="{x:Type TextBox}">
             <Setter Property="Foreground" Value="{Binding Source={StaticResource Theme}, Path=Primary}"/>
@@ -191,8 +222,8 @@
 
         <!-- based on Jim Nuzzi's excellent menuitem template: http://www.jimnuzzi.com/2008/06/29/wpf-xaml-menuitem-styles/ -->
         <Style TargetType="{x:Type MenuItem}">
-            <Setter Property="Foreground" Value="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType={x:Type Menu}}}"/>
-            <Setter Property="Background" Value="{Binding Path=Background, RelativeSource={RelativeSource AncestorType={x:Type Menu}}}"/>
+            <Setter Property="Foreground" Value="{Binding Source={StaticResource Theme}, Path=Primary}"/>
+            <Setter Property="Background" Value="{Binding Source={StaticResource Theme}, Path=Backlight}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type MenuItem}">
