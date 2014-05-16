@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using Solarized;
 
 namespace SorceryHex {
 
@@ -427,6 +428,15 @@ namespace SorceryHex {
          InterpretationPane.Visibility = item.IsChecked ? Visibility.Visible : Visibility.Collapsed;
       }
 
+      void ThemeClick(object sender, EventArgs e) {
+         var theme = Theme.Instance;
+         if (theme.CurrentVariant == Theme.Variant.Light) {
+            theme.CurrentVariant = Theme.Variant.Dark;
+         } else {
+            theme.CurrentVariant = Theme.Variant.Light;
+         }
+      }
+
       void GotoClick(object sender, EventArgs e) {
          MultiBoxLabel.Text = "Goto";
          MultiBoxContainer.Visibility = Visibility.Visible;
@@ -440,7 +450,7 @@ namespace SorceryHex {
                Process.Start("http://sorcerersoftware.appspot.com");
                break;
             case "About _Solarized":
-               Process.Start(Solarized.Theme.Info);
+               Process.Start(Theme.Info);
                break;
          }
       }
@@ -494,7 +504,7 @@ namespace SorceryHex {
          int length = _interpretationReferenceCounts[visual];
          for (int i = 0; i < length; i++) {
             var rectangle = _interpretationBackgrounds.Count > 0 ? _interpretationBackgrounds.Dequeue() : new Border {
-               Background = Solarized.Theme.Instance.Backlight,
+               Background = Theme.Instance.Backlight,
                Tag = this
             };
             SplitLocation(rectangle, Body.ColumnDefinitions.Count, location + i);

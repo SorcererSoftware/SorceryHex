@@ -17,6 +17,7 @@
                 </MenuItem>
                 <MenuItem Header="_View">
                     <MenuItem Name="InterpretItem" Header="_Interpreter" IsCheckable="True" InputGestureText="Ctrl+I" Click="InterpretClick"/>
+                    <MenuItem Header="Switch _Themes" Click="ThemeClick"/>
                 </MenuItem>
                 <MenuItem Header="_Search">
                     <MenuItem Header="_Goto" InputGestureText="Ctrl+G" Click="GotoClick"/>
