@@ -127,14 +127,16 @@ namespace SorceryHex {
 
       #endregion
 
+      Func<byte[], IElementFactory> _create;
       IElementFactory _holder;
       int _offset = 0;
 
-      public MainWindow(IElementFactory holder) {
-         _holder = holder;
+      public MainWindow(Func<byte[], IElementFactory> create, byte[] data) {
+         _create = create;
+         _holder = _create(data);
          InitializeComponent();
          ScrollBar.Minimum = -MaxColumnCount;
-         ScrollBar.Maximum = holder.Length;
+         ScrollBar.Maximum = _holder.Length;
       }
 
       #region Helper Methods
@@ -364,6 +366,7 @@ namespace SorceryHex {
                case Key.Down:  ShiftRows(1); break;
                case Key.Up:    ShiftRows(-1); break;
                case Key.G:     GotoClick(null, null); break;
+               case Key.O:     OpenClick(null, null); break;
                case Key.I:     InterpretItem.IsChecked = !InterpretItem.IsChecked; InterpretClick(InterpretItem, null); break;
                case Key.B:     break; // only for testing
             }
@@ -415,9 +418,12 @@ namespace SorceryHex {
       #region Menu
 
       void OpenClick(object sender, RoutedEventArgs e) {
-         var rom = Utils.LoadRom();
-         if (rom == null) return;
-         _holder = new DataHolder(rom);
+         var data = Utils.LoadRom();
+         if (data == null) return;
+         _holder = _create(data);
+         ScrollBar.Maximum = _holder.Length;
+         Body.Children.Clear();
+         JumpTo(0);
       }
 
       void ExitClick(object sender, RoutedEventArgs e) { Close(); }

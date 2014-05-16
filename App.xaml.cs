@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 
 namespace SorceryHex {
    /// <summary>
@@ -9,13 +10,16 @@ namespace SorceryHex {
          base.OnStartup(e);
          var rom = Utils.LoadRom(e.Args);
          if (rom == null) { this.Shutdown(); return; }
-         IElementFactory factory = new DataHolder(rom);
-         factory = new GbaHeaderFormatter(factory, rom);
-         factory = GbaLzFormatterFactory.Images(factory, rom);
-         factory = GbaLzFormatterFactory.Palette(factory, rom);
-         factory = new GbaPointerFormatter(factory, rom);
-         factory = new RangeChecker(factory);
-         var window = new MainWindow(factory);
+         Func<byte[], IElementFactory> create = data => {
+            IElementFactory factory = new DataHolder(data);
+            factory = new GbaHeaderFormatter(factory, data);
+            factory = GbaLzFormatterFactory.Images(factory, data);
+            factory = GbaLzFormatterFactory.Palette(factory, data);
+            factory = new GbaPointerFormatter(factory, data);
+            factory = new RangeChecker(factory);
+            return factory;
+         };
+         var window = new MainWindow(create, rom);
          window.Show();
       }
    }

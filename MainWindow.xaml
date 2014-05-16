@@ -12,7 +12,7 @@
         <Grid DockPanel.Dock="Top">
             <Menu>
                 <MenuItem Header="_File">
-                    <MenuItem Header="_Open" Click="OpenClick"/>
+                    <MenuItem Header="_Open" InputGestureText="Ctrl+O" Click="OpenClick"/>
                     <MenuItem Header="E_xit" Click="ExitClick"/>
                 </MenuItem>
                 <MenuItem Header="_View">
