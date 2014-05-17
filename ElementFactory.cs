@@ -16,6 +16,7 @@ namespace SorceryHex {
       int Length { get; }
       IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
+      bool IsStartOfDataBlock(int location);
       bool IsWithinDataBlock(int location);
       FrameworkElement GetInterpretation(int location);
       IList<int> Find(string term);
@@ -49,8 +50,8 @@ namespace SorceryHex {
          else _base.Recycle(commander, element);
       }
 
+      public bool IsStartOfDataBlock(int location) { return _base.IsStartOfDataBlock(location); }
       public bool IsWithinDataBlock(int location) { return _base.IsWithinDataBlock(location); }
-
       public FrameworkElement GetInterpretation(int location) { return null; }
 
       public IList<int> Find(string term) { return _base.Find(term); }
@@ -88,8 +89,8 @@ namespace SorceryHex {
          _recycles.Enqueue((Path)element);
       }
 
+      public bool IsStartOfDataBlock(int location) { return false; }
       public bool IsWithinDataBlock(int location) { return false; }
-
       public FrameworkElement GetInterpretation(int location) { return null; }
 
       public IList<int> Find(string term) {

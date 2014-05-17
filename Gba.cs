@@ -102,8 +102,8 @@ namespace SorceryHex {
          Debug.Fail("How did we get here? We tagged it, but we can't recycle it!");
       }
 
+      public bool IsStartOfDataBlock(int location) { return _base.IsStartOfDataBlock(location); }
       public bool IsWithinDataBlock(int location) { return _base.IsWithinDataBlock(location); }
-
       public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
 
       public IList<int> Find(string term) { return _base.Find(term); }
@@ -118,7 +118,7 @@ namespace SorceryHex {
       /// </summary>
       void LoadPointers() {
          _pointers.Clear();
-         var backPointers = new Dictionary<int, IList<int>>();
+         IDictionary<int, IList<int>> backPointers = new Dictionary<int, IList<int>>();
          var end = Length - 3;
          for (int i = 0; i < end; i++) {
             if (_data[i + 3] != 0x08) continue;
@@ -130,13 +130,82 @@ namespace SorceryHex {
             _pointers.Add(i);
             if (!backPointers.ContainsKey(value)) backPointers[value] = new List<int>();
             backPointers[value].Add(i);
-
-            i += 3;
          }
+
+         backPointers = GainConfidence(backPointers);
 
          _backpointers.Clear();
          foreach (var back in backPointers.Keys.OrderBy(i => i)) {
             _backpointers.Add(new BackPointer { Destination = back, Sources = backPointers[back].ToArray() });
+         }
+      }
+
+      IDictionary<int,IList<int>> GainConfidence(IDictionary<int, IList<int>> backPointers) {
+         var tempArray = _pointers.ToArray();
+         var tempDest = backPointers.Keys.OrderBy(i => i).ToArray();
+
+         // build confidence in the guesses
+         var confidence = new List<int>();
+         for (int i = 0; i < tempArray.Length; i++) {
+            int pointerConfidence = 0;
+
+            // gain confidence for multiple pointers leading to the same location
+            var dest = _data.ReadPointer(_pointers[i]);
+            pointerConfidence += backPointers[dest].Count;
+
+            // gain confidence for pointers leading to known data
+            if (_base.IsStartOfDataBlock(dest)) pointerConfidence += int.MaxValue / 2;
+
+            Debug.Assert(pointerConfidence > 0);
+
+            // lose confidence in pointers that point to within another pointer
+            if (ContainsAny(tempArray, dest - 1, dest - 2, dest - 3)) pointerConfidence--;
+
+            // lose confidence in pointers that point to just 1 byte
+            if (ContainsAny(tempDest, dest + 1)) pointerConfidence--;
+
+            confidence.Add(pointerConfidence);
+         }
+
+         RemoveSharedSpacePointerConfidence(confidence);
+
+         // remove pointers with no confidence
+         var pointers2 = new List<int>();
+         pointers2.AddRange(_pointers);
+         _pointers.Clear();
+         var backPointers2 = new Dictionary<int, IList<int>>();
+         for (int i = 0; i < pointers2.Count; i++) {
+            if (confidence[i] <= 0) continue;
+            var value = _data.ReadPointer(pointers2[i]);
+            if (!backPointers2.ContainsKey(value)) backPointers2[value] = new List<int>();
+            backPointers2[value].Add(pointers2[i]);
+            _pointers.Add(pointers2[i]);
+         }
+
+         return backPointers2;
+      }
+
+      static bool ContainsAny(int[]masterList, params int[] pointers) {
+         return pointers.Any(pointer => {
+            int index = Array.BinarySearch(masterList, pointer);
+            return index >= 0 && index < masterList.Length;
+         });
+      }
+
+      void RemoveSharedSpacePointerConfidence(IList<int> confidence) {
+         for (int i = 0; i < _pointers.Count - 1; i++) {
+            if (_pointers[i] + 4 <= _pointers[i + 1]) continue;
+            if (confidence[i] < confidence[i + 1]) {
+               confidence[i] = 0;
+            } else if (confidence[i] > confidence[i + 1]) {
+               confidence[i + 1] = 0;
+            }
+            if (i >= _pointers.Count - 2 || _pointers[i] + 4 <= _pointers[i + 2]) continue;
+            if (confidence[i] < confidence[i + 2]) {
+               confidence[i] = 0;
+            } else if (confidence[i] > confidence[i + 2]) {
+               confidence[i + 2] = 0;
+            }
          }
       }
 
@@ -303,11 +372,11 @@ namespace SorceryHex {
          else _base.Recycle(commander, element);
       }
 
+      public bool IsStartOfDataBlock(int location) { return location == 0 || _base.IsStartOfDataBlock(location); }
       public bool IsWithinDataBlock(int location) {
          if (location < 0xC0) return true;
          return _base.IsWithinDataBlock(location);
       }
-
       public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
 
       public IList<int> Find(string term) { return _base.Find(term); }
@@ -403,6 +472,11 @@ namespace SorceryHex {
          commander.UnlinkFromInterpretation(element);
       }
 
+      public bool IsStartOfDataBlock(int location) {
+         int startIndex = Utils.SearchForStartPoint(location, _imageLocations, i => i, Utils.FindOptions.StartOrBefore);
+         bool isStart = _imageLocations[startIndex] == location;
+         return isStart || _base.IsStartOfDataBlock(location);
+      }
       public bool IsWithinDataBlock(int location) {
          var startIndex = Utils.SearchForStartPoint(location, _imageLocations, i => i, Utils.FindOptions.StartOrBefore);
          bool inMyDataBlock =
@@ -411,7 +485,6 @@ namespace SorceryHex {
             location < _imageLocations[startIndex] + _imageLengths[startIndex];
          return inMyDataBlock || _base.IsWithinDataBlock(location);
       }
-
       public FrameworkElement GetInterpretation(int location) {
          if (!_imageLocations.Contains(location)) return _base.GetInterpretation(location);
          InterpretData(location);
