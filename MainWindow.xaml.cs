@@ -305,6 +305,7 @@ namespace SorceryHex {
                case Key.Down:  ShiftRows(1); break;
                case Key.Up:    ShiftRows(-1); break;
                case Key.G:     GotoClick(null, null); break;
+               case Key.F:     FindClick(null, null); break;
                case Key.O:     OpenClick(null, null); break;
                case Key.I:     InterpretItem.IsChecked = !InterpretItem.IsChecked; InterpretClick(InterpretItem, null); break;
                case Key.B:     break; // only for testing
@@ -313,6 +314,13 @@ namespace SorceryHex {
             if (arrowKeys.Contains(e.Key)) {
                ScrollBar.Value = _offset;
                UpdateHeaderText();
+            }
+         } else {
+            switch (e.Key) {
+               case Key.F3:
+                  if (Keyboard.Modifiers == ModifierKeys.Shift) FindPrevious(null, null);
+                  else FindNext(null, null);
+                  break;
             }
          }
 
@@ -329,28 +337,52 @@ namespace SorceryHex {
          Key.A, Key.B, Key.C, Key.D, Key.E, Key.F
       };
       void HandleMultiBoxKey(object sender, KeyEventArgs e) {
-         // sanitize for goto
-         int caret = MultiBox.CaretIndex;
-         int selection = MultiBox.SelectionLength;
-         MultiBox.Text = new string(MultiBox.Text.ToUpper().Where(Utils.Hex.Contains).ToArray());
-         MultiBox.CaretIndex = Math.Min(caret, MultiBox.Text.Length);
-         MultiBox.SelectionLength = selection;
+         if (MultiBoxLabel.Text == "Goto") {
+            // sanitize for goto
+            int caret = MultiBox.CaretIndex;
+            int selection = MultiBox.SelectionLength;
+            MultiBox.Text = new string(MultiBox.Text.ToUpper().Where(Utils.Hex.Contains).ToArray());
+            MultiBox.CaretIndex = Math.Min(caret, MultiBox.Text.Length);
+            MultiBox.SelectionLength = selection;
 
-         // check for special keys
-         if (e.Key == Key.Escape) {
-            MultiBoxContainer.Visibility = Visibility.Hidden;
-            MainFocus();
-         }
-         if (e.Key == Key.Enter) {
-            int hex = MultiBox.Text.ParseAsHex();
-            JumpTo(hex);
-            MultiBoxContainer.Visibility = Visibility.Hidden;
-            MainFocus();
-         }
+            // check for special keys
+            if (e.Key == Key.Escape) {
+               MultiBoxContainer.Visibility = Visibility.Hidden;
+               MainFocus();
+            }
+            if (e.Key == Key.Enter) {
+               int hex = MultiBox.Text.ParseAsHex();
+               JumpTo(hex);
+               MultiBoxContainer.Visibility = Visibility.Hidden;
+               MainFocus();
+            }
 
-         // only allow hex keys
-         if (!HexKeys.Contains(e.Key)) e.Handled = true;
+            // only allow hex keys
+            if (!HexKeys.Contains(e.Key)) e.Handled = true;
+         } else if (MultiBoxLabel.Text == "Find") {
+            // dumb find: make it smarter later
+
+            // check for special keys
+            if (e.Key == Key.Escape) {
+               MultiBoxContainer.Visibility = Visibility.Hidden;
+               MainFocus();
+            }
+            if (e.Key == Key.Enter) {
+               _findPositions = _holder.Find(MultiBox.Text);
+               if (_findPositions.Count == 0) {
+                  MessageBox.Show("No matches found for: " + MultiBox.Text);
+                  return;
+               }
+               _findIndex = 0;
+               JumpTo(_findPositions[_findIndex]);
+               MultiBoxContainer.Visibility = Visibility.Hidden;
+               MainFocus();
+            }
+         }
       }
+
+      IList<int> _findPositions;
+      int _findIndex;
 
       #endregion
 
@@ -379,6 +411,27 @@ namespace SorceryHex {
          } else {
             theme.CurrentVariant = Solarized.Theme.Variant.Light;
          }
+      }
+
+      void FindClick(object sender, EventArgs e) {
+         MultiBoxLabel.Text = "Find";
+         MultiBoxContainer.Visibility = Visibility.Visible;
+         Keyboard.Focus(MultiBox);
+         MultiBox.SelectAll();
+      }
+
+      void FindPrevious(object sender, EventArgs e) {
+         if (_findPositions == null || _findPositions.Count == 0) return;
+         _findIndex--;
+         if (_findIndex < 0) _findIndex = _findPositions.Count - 1;
+         JumpTo(_findPositions[_findIndex]);
+      }
+
+      void FindNext(object sender, EventArgs e) {
+         if (_findPositions == null || _findPositions.Count == 0) return;
+         _findIndex++;
+         if (_findIndex >= _findPositions.Count) _findIndex = 0;
+         JumpTo(_findPositions[_findIndex]);
       }
 
       void GotoClick(object sender, EventArgs e) {

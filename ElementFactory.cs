@@ -18,6 +18,7 @@ namespace SorceryHex {
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsWithinDataBlock(int location);
       FrameworkElement GetInterpretation(int location);
+      IList<int> Find(string term);
    }
 
    class RangeChecker : IElementFactory {
@@ -51,6 +52,8 @@ namespace SorceryHex {
       public bool IsWithinDataBlock(int location) { return _base.IsWithinDataBlock(location); }
 
       public FrameworkElement GetInterpretation(int location) { return null; }
+
+      public IList<int> Find(string term) { return _base.Find(term); }
 
       FrameworkElement UseElement(int i) {
          if (_recycles.Count > 0) return _recycles.Dequeue();
@@ -88,6 +91,24 @@ namespace SorceryHex {
       public bool IsWithinDataBlock(int location) { return false; }
 
       public FrameworkElement GetInterpretation(int location) { return null; }
+
+      public IList<int> Find(string term) {
+         var sanitized = term.ToUpper().Replace(" ", "");
+         if (sanitized.Length % 2 != 0 || !sanitized.All(Utils.Hex.Contains)) return new int[0];
+         var list = new List<int>();
+         byte[] searchTerm =
+            Enumerable.Range(0, sanitized.Length / 2)
+            .Select(i => (byte)sanitized.Substring(i * 2, 2).ParseAsHex())
+            .ToArray();
+
+         for (int i = 0, j = 0; i < _data.Length; i++) {
+            j = _data[i] == searchTerm[j] ? j + 1 : 0;
+            if (j < searchTerm.Length) continue;
+            list.Add(i - j + 1);
+            j = 0;
+         }
+         return list;
+      }
 
       Path UsePath() {
          if (_recycles.Count > 0) return _recycles.Dequeue();

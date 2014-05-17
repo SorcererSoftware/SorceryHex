@@ -20,6 +20,9 @@
                     <MenuItem Header="Switch _Themes" Click="ThemeClick"/>
                 </MenuItem>
                 <MenuItem Header="_Search">
+                    <MenuItem Header="_Find" InputGestureText="Ctrl+F" Click="FindClick"/>
+                    <MenuItem Header="Find _Next" InputGestureText="F3" Click="FindNext"/>
+                    <MenuItem Header="Find _Previous" InputGestureText="Shift+F3" Click="FindPrevious"/>
                     <MenuItem Header="_Goto" InputGestureText="Ctrl+G" Click="GotoClick"/>
                 </MenuItem>
                 <MenuItem Header="_Help">

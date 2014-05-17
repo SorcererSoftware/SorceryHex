@@ -106,6 +106,8 @@ namespace SorceryHex {
 
       public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
 
+      public IList<int> Find(string term) { return _base.Find(term); }
+
       #endregion
 
       #region Helpers
@@ -308,6 +310,8 @@ namespace SorceryHex {
 
       public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
 
+      public IList<int> Find(string term) { return _base.Find(term); }
+
       FrameworkElement UseTemplate(Geometry data, double leftBorder, double rightBorder, string tip) {
          if (_recycles.Count > 0) {
             var element = _recycles.Dequeue();
@@ -413,6 +417,8 @@ namespace SorceryHex {
          InterpretData(location);
          return _interpretations[location];
       }
+
+      public IList<int> Find(string term) { return _base.Find(term); }
 
       void InterpretData(int dataIndex) {
          if (!_interpretations.ContainsKey(dataIndex)) {
