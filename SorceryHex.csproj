@@ -55,8 +55,10 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="ElementFactory.cs" />
+    <Compile Include="Gba.cs" />
     <Compile Include="GbaImages.cs" />
     <Compile Include="Solarized.cs" />
+    <Compile Include="Utils.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
