@@ -20,6 +20,7 @@ namespace SorceryHex {
          Enumerable.Range(0, 0x100).Select(i => (byte)i)
          .Select(b => Utils.Hex.Substring(b / 0x10, 1) + Utils.Hex.Substring(b % 0x10, 1))
          .Select(str => str.ToGeometry())
+         .Select(geometry => { geometry.Freeze(); return geometry; })
          .ToArray();
 
       public static int ReadPointer(this byte[] memory, int offset) {
@@ -228,6 +229,19 @@ namespace SorceryHex {
             }
          }
 
+         children.Clear();
+         foreach (FrameworkElement child in BackgroundBody.Children) children.Add(child);
+         foreach (var element in children) {
+            int row = Grid.GetRow(element);
+            row += rows;
+            if (row < 0 || row >= BackgroundBody.RowDefinitions.Count) {
+               BackgroundBody.Children.Remove(element);
+               _interpretationBackgrounds.Enqueue(element);
+            } else {
+               Grid.SetRow(element, row);
+            }
+         }
+
          _offset -= add;
          if (rows > 0) Add(0, add);
          else Add(all + add, -add);
@@ -247,6 +261,19 @@ namespace SorceryHex {
                Recycle(element);
             } else {
                SplitLocation(element, Body.ColumnDefinitions.Count, loc);
+            }
+         }
+
+         children.Clear();
+         foreach (FrameworkElement child in BackgroundBody.Children) children.Add(child);
+         foreach (var element in children) {
+            int loc = CombineLocation(element, BackgroundBody.ColumnDefinitions.Count);
+            loc += shift;
+            if (loc < 0 || loc >= all) {
+               Body.Children.Remove(element);
+               _interpretationBackgrounds.Enqueue(element);
+            } else {
+               SplitLocation(element, BackgroundBody.ColumnDefinitions.Count, loc);
             }
          }
 
