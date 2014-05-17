@@ -166,8 +166,8 @@ namespace SorceryHex {
       int KeyElementLocation(FrameworkElement interpretation) {
          var keysForInterpretation = _interpretations.Keys.Where(key => _interpretations[key] == interpretation);
          Debug.Assert(keysForInterpretation.Count() == _interpretationReferenceCounts[interpretation]);
-         // wrapped elements are not directly in the body and don't have a row/column. This is ok if elements are only wrapped once.
-         keysForInterpretation = keysForInterpretation.Select(key => Body.Children.Contains(key) ? key : (FrameworkElement)key.Parent);
+         // wrapped elements are not directly in the body and don't have a row/column.
+         keysForInterpretation = keysForInterpretation.Select(FindElementInBody);
          return keysForInterpretation.Select(key => CombineLocation(key, Body.ColumnDefinitions.Count)).Min();
       }
 
@@ -505,16 +505,21 @@ namespace SorceryHex {
 
       void MouseEnterInterpretation(object sender, EventArgs e) {
          var visual = (FrameworkElement)sender;
-         int location = KeyElementLocation(visual);
-         int length = _interpretationReferenceCounts[visual];
-         for (int i = 0; i < length; i++) {
+
+         foreach (var element in _interpretations.Keys.Where(key => _interpretations[key] == visual).Select(FindElementInBody)) {
             var rectangle = _interpretationBackgrounds.Count > 0 ? _interpretationBackgrounds.Dequeue() : new Border {
                Background = Solarized.Theme.Instance.Backlight,
                Tag = this
             };
-            SplitLocation(rectangle, Body.ColumnDefinitions.Count, location + i);
+            Grid.SetColumn(rectangle, Grid.GetColumn(element));
+            Grid.SetRow(rectangle, Grid.GetRow(element));
             BackgroundBody.Children.Add(rectangle);
          }
+      }
+
+      FrameworkElement FindElementInBody(FrameworkElement element) {
+         while (!Body.Children.Contains(element)) element = (FrameworkElement)element.Parent;
+         return element;
       }
 
       void MouseLeaveInterpretation(object sender, EventArgs e) {
