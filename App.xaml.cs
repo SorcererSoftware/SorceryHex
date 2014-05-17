@@ -12,10 +12,10 @@ namespace SorceryHex {
          if (rom == null) { this.Shutdown(); return; }
          Func<byte[], IElementFactory> create = data => {
             IElementFactory factory = new DataHolder(data);
-            factory = new GbaHeaderFormatter(factory, data);
-            factory = GbaLzFormatterFactory.Images(factory, data);
-            factory = GbaLzFormatterFactory.Palette(factory, data);
-            factory = new GbaPointerFormatter(factory, data);
+            factory = new Gba.HeaderFormatter(factory, data);
+            factory = Gba.LzFormatterFactory.Images(factory, data);
+            factory = Gba.LzFormatterFactory.Palette(factory, data);
+            factory = new Gba.PointerFormatter(factory, data);
             factory = new RangeChecker(factory);
             return factory;
          };
