@@ -34,7 +34,6 @@ namespace SorceryHex {
             // check for the 0x10 sentinel at the start of all LZ Compressed data
             if (memory[pointer] != 0x10) continue;
 
-            // images will be a multiple of 16*16*2 bytes when decompressed.
             if (!filter(pointer)) continue;
             list[pointer] = true;
          }
@@ -43,7 +42,8 @@ namespace SorceryHex {
       }
 
       public static IList<int> FindLZImages(byte[] memory) {
-         return FindLZData(memory, pointer => memory[pointer + 1] % 0x80 == 0);
+         // images will be a multiple of 8*8/2 bytes (0x20) when decompressed.
+         return FindLZData(memory, pointer => memory[pointer + 1] % 0x20 == 0);
       }
 
       public static IList<int> FindLZPalettes(byte[] memory) {
