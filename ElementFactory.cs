@@ -21,6 +21,7 @@ namespace SorceryHex {
       IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsWithinDataBlock(int location);
+      FrameworkElement GetInterpretation(int location);
    }
 
    class RangeChecker : IElementFactory {
@@ -52,6 +53,8 @@ namespace SorceryHex {
       }
 
       public bool IsWithinDataBlock(int location) { return _base.IsWithinDataBlock(location); }
+
+      public FrameworkElement GetInterpretation(int location) { return null; }
 
       FrameworkElement UseElement(int i) {
          if (_recycles.Count > 0) return _recycles.Dequeue();
@@ -88,6 +91,8 @@ namespace SorceryHex {
 
       public bool IsWithinDataBlock(int location) { return false; }
 
+      public FrameworkElement GetInterpretation(int location) { return null; }
+
       Path UsePath() {
          if (_recycles.Count > 0) return _recycles.Dequeue();
 
@@ -111,6 +116,7 @@ namespace SorceryHex {
 
       readonly IElementFactory _base;
       readonly byte[] _data;
+      readonly IList<Border> _hasInterpretation = new List<Border>();
       readonly IList<int> _pointers = new List<int>();
       readonly IList<BackPointer> _backpointers = new List<BackPointer>();
       readonly Queue<Border> _recycles = new Queue<Border>();
@@ -170,6 +176,10 @@ namespace SorceryHex {
          if (border != null) {
             _recycles.Enqueue(border);
             commander.RemoveJumpCommand(border);
+            if (_hasInterpretation.Contains(border)) {
+               commander.UnlinkFromInterpretation(border);
+               _hasInterpretation.Remove(border);
+            }
             return;
          }
 
@@ -190,6 +200,8 @@ namespace SorceryHex {
       }
 
       public bool IsWithinDataBlock(int location) { return _base.IsWithinDataBlock(location); }
+
+      public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
 
       #endregion
 
@@ -239,48 +251,45 @@ namespace SorceryHex {
       IEnumerable<FrameworkElement> CreatePointerElements(ICommandFactory commander, int start, int length) {
          int pointerStart = start + length - 4;
          int value = _data.ReadPointer(pointerStart);
-         var str = value.ToHexString();
-         while (str.Length < 6) str = "0" + str;
+         var interpretation = GetInterpretation(value);
 
-         var leftEdge = UseTemplate(Utils.ByteFlyweights[_data[pointerStart]], 2, 0);
-         commander.CreateJumpCommand(leftEdge, value);
-
-         var data1 = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 1]], 0, 0);
-         commander.CreateJumpCommand(data1, value);
-
-         var data2 = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 2]], 0, 0);
-         commander.CreateJumpCommand(data2, value);
-
-         var rightEdge = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 3]], 0, 2);
-         commander.CreateJumpCommand(rightEdge, value);
+         var leftEdge  = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 0]], 2, 0, commander, value, interpretation);
+         var data1     = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 1]], 0, 0, commander, value, interpretation);
+         var data2     = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 2]], 0, 0, commander, value, interpretation);
+         var rightEdge = UseTemplate(Utils.ByteFlyweights[_data[pointerStart + 3]], 0, 2, commander, value, interpretation);
 
          var set = new[] { leftEdge, data1, data2, rightEdge };
          foreach (var element in set.Take(4 - length)) Recycle(commander, element);
          return set.Skip(4 - length);
       }
 
-      FrameworkElement UseTemplate(Geometry data, double leftBorder, double rightBorder) {
+      FrameworkElement UseTemplate(Geometry data, double leftBorder, double rightBorder, ICommandFactory commander, int location, FrameworkElement interpretation) {
+         Border element;
          if (_recycles.Count > 0) {
-            var element = _recycles.Dequeue();
-            ((Path)element.Child).Data = data;
-            element.Margin = new Thickness(leftBorder, 0, rightBorder, 1);
-            return element;
+            element = _recycles.Dequeue();
+         } else {
+            element = new Border {
+               Child = new Path {
+                  HorizontalAlignment = HorizontalAlignment.Center,
+                  VerticalAlignment = VerticalAlignment.Center,
+                  Fill = Brush,
+                  Margin = new Thickness(4, 3, 4, 1),
+               },
+               BorderThickness = new Thickness(0, 0, 0, 1),
+               BorderBrush = Brush,
+               Background = Brushes.Transparent,
+               Tag = this
+            };
          }
 
-         return new Border {
-            Child = new Path {
-               HorizontalAlignment = HorizontalAlignment.Center,
-               VerticalAlignment = VerticalAlignment.Center,
-               Fill = Brush,
-               Data = data,
-               Margin = new Thickness(4, 3, 4, 1),
-            },
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            BorderBrush = Brush,
-            Background = Brushes.Transparent,
-            Margin = new Thickness(leftBorder, 0, rightBorder, 1),
-            Tag = this
-         };
+         ((Path)element.Child).Data = data;
+         element.Margin = new Thickness(leftBorder, 0, rightBorder, 1);
+         commander.CreateJumpCommand(element, location);
+         if (interpretation != null) {
+            commander.LinkToInterpretation(element, interpretation);
+            _hasInterpretation.Add(element);
+         }
+         return element;
       }
 
       FrameworkElement WrapForList(ICommandFactory commander, FrameworkElement element, params int[] jumpLocations) {
@@ -394,6 +403,8 @@ namespace SorceryHex {
          return _base.IsWithinDataBlock(location);
       }
 
+      public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
+
       FrameworkElement UseTemplate(Geometry data, double leftBorder, double rightBorder, string tip) {
          if (_recycles.Count > 0) {
             var element = _recycles.Dequeue();
@@ -465,11 +476,7 @@ namespace SorceryHex {
                int imageEnd = dataIndex + _imageLengths[startIndex];
                imageEnd = Math.Min(imageEnd, start + length);
                int lengthInView = imageEnd - loc;
-               if (!_interpretations.ContainsKey(dataIndex)) {
-                  var dataBytes = GbaImages.UncompressLZ(_data, dataIndex);
-                  var interpretation = Interpret(dataBytes);
-                  _interpretations[dataIndex] = interpretation;
-               }
+               InterpretData(dataIndex);
                for (int j = 0; j < lengthInView; j++) {
                   var element = UsePath(loc + j);
                   commander.LinkToInterpretation(element, _interpretations[dataIndex]);
@@ -496,6 +503,20 @@ namespace SorceryHex {
             location > _imageLocations[startIndex] &&
             location < _imageLocations[startIndex] + _imageLengths[startIndex];
          return inMyDataBlock || _base.IsWithinDataBlock(location);
+      }
+
+      public FrameworkElement GetInterpretation(int location) {
+         if (!_imageLocations.Contains(location)) return _base.GetInterpretation(location);
+         InterpretData(location);
+         return _interpretations[location];
+      }
+
+      void InterpretData(int dataIndex) {
+         if (!_interpretations.ContainsKey(dataIndex)) {
+            var dataBytes = GbaImages.UncompressLZ(_data, dataIndex);
+            var interpretation = Interpret(dataBytes);
+            _interpretations[dataIndex] = interpretation;
+         }
       }
 
       Path UsePath(int source) {
