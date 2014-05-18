@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
@@ -41,11 +42,10 @@ namespace SorceryHex.Gba {
                currentLength++;
                continue;
             }
-            if (currentLength >= 3) {
-               if (_data[i] == 0x00) { // accept 0x00 if we've already got a word
-                  currentLength++;
-                  continue;
-               }
+            if (_data[i] == 0x00 && currentLength > 1) { // accept 0x00 if we've already started
+               currentLength++;
+               continue;
+            } else if (_data[i] == 0xFF && currentLength >= 3) {
                _startPoints.Add(i - currentLength);
                _lengths.Add(currentLength);
             }
@@ -104,6 +104,15 @@ namespace SorceryHex.Gba {
       }
 
       public FrameworkElement GetInterpretation(int location) {
+         if (_startPoints.Contains(location)) {
+            string result = string.Empty;
+            while (_data[location] != 0xFF) {
+               if (_data[location] == 0x00) result += " ";
+               else result += _pcs[_data[location]];
+               location++;
+            }
+            return new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
+         }
          return _next.GetInterpretation(location);
       }
 
