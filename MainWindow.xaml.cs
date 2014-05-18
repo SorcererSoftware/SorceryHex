@@ -14,7 +14,7 @@ namespace SorceryHex {
    partial class MainWindow : Window, ICommandFactory {
       #region Utils
 
-      const int MaxColumnCount = 0x20;
+      const int MaxColumnCount = 0x30;
 
       static readonly int ElementWidth = 26, ElementHeight = 20;
       static readonly IEnumerable<Key> arrowKeys = new[] { Key.Left, Key.Right, Key.Up, Key.Down };
@@ -402,6 +402,11 @@ namespace SorceryHex {
       void InterpretClick(object sender, EventArgs e) {
          var item = sender as MenuItem;
          InterpretationPane.Visibility = item.IsChecked ? Visibility.Visible : Visibility.Collapsed;
+         if (item.IsChecked) {
+            this.Width += InterpretationPane.Width;
+         } else {
+            this.Width -= InterpretationPane.Width;
+         }
       }
 
       void ThemeClick(object sender, EventArgs e) {
