@@ -57,6 +57,7 @@
     <Compile Include="ElementFactory.cs" />
     <Compile Include="Gba.cs" />
     <Compile Include="Gba.Pointers.cs" />
+    <Compile Include="Gba.Pokemon.cs" />
     <Compile Include="GbaImages.cs" />
     <Compile Include="Solarized.cs" />
     <Compile Include="Utils.cs" />
@@ -81,6 +82,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="PCS3-W.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

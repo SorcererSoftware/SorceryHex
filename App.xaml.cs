@@ -13,6 +13,7 @@ namespace SorceryHex {
          Func<byte[], IElementFactory> create = data => {
             IElementFactory factory = new DataHolder(data);
             factory = new Gba.HeaderFormatter(factory, data);
+            factory = new Gba.PCS(factory, data);
             factory = Gba.LzFormatterFactory.Images(factory, data);
             factory = Gba.LzFormatterFactory.Palette(factory, data);
             factory = new Gba.PointerFormatter(factory, data);
