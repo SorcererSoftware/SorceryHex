@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -51,6 +52,7 @@ namespace SorceryHex {
          ScrollBar.Minimum = -MaxColumnCount;
          ScrollBar.Maximum = _holder.Length;
          Title = fileName.Split('\\').Last();
+         Task.Factory.StartNew(_holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(_offset)));
       }
 
       #region Helper Methods
@@ -398,6 +400,7 @@ namespace SorceryHex {
          Body.Children.Clear();
          JumpTo(0);
          Title = fileName.Split('\\').Last();
+         Task.Factory.StartNew(_holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(_offset)));
       }
 
       void ExitClick(object sender, RoutedEventArgs e) { Close(); }

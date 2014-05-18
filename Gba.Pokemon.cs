@@ -9,6 +9,8 @@ using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
    class PCS : IElementFactory {
+      static readonly Geometry Escape = "\\x".ToGeometry();
+
       readonly byte[] _data;
       readonly IElementFactory _next;
       readonly IDictionary<byte, string> _pcs = new Dictionary<byte, string>();
@@ -16,12 +18,17 @@ namespace SorceryHex.Gba {
       readonly IList<int> _lengths = new List<int>();
       readonly Queue<Path> _recycles = new Queue<Path>();
       readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();
+      bool _loaded = false;
 
       public int Length { get { return _data.Length; } }
 
       public PCS(IElementFactory next, byte[] data) {
          _data = data;
          _next = next;
+      }
+
+      public void Load() {
+         _loaded = false;
          foreach (var line in System.IO.File.ReadAllLines("PCS3-W.ini")) {
             var sanitized = line.Trim();
             if (sanitized.StartsWith("#") || sanitized.Length == 0) continue;
@@ -31,36 +38,13 @@ namespace SorceryHex.Gba {
             value = value.Substring(0, value.Length - 1);
             _pcs[key] = value;
          }
-
          FindStrings();
-      }
-
-      void FindStrings() {
-         _startPoints.Clear();
-         _lengths.Clear();
-
-         int currentLength = 0;
-         for (int i = 0x200; i < _data.Length; i++) {
-            if (_pcs.ContainsKey(_data[i])) {
-               currentLength++;
-               continue;
-            }
-            if (_data[i] == 0x00 && currentLength > 0) { // accept 0x00 if we've already started
-               currentLength++;
-               continue;
-            } else if (_data[i] == 0xFD) { // accept 0xFD as the escape character
-               i++;
-               currentLength += 2;
-               continue;
-            } else if (_data[i] == 0xFF && currentLength >= 3) {
-               _startPoints.Add(i - currentLength);
-               _lengths.Add(currentLength);
-            }
-            currentLength = 0;
-         }
+         _next.Load();
+         _loaded = true;
       }
 
       public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+         if (!_loaded) return _next.CreateElements(commander, start, length);
          var startIndex = Utils.SearchForStartPoint(start, _startPoints, i => i, Utils.FindOptions.StartOrBefore);
          var list = new List<FrameworkElement>();
 
@@ -159,7 +143,30 @@ namespace SorceryHex.Gba {
          return list;
       }
 
-      static readonly Geometry Escape = "\\x".ToGeometry();
+      void FindStrings() {
+         _startPoints.Clear();
+         _lengths.Clear();
+
+         int currentLength = 0;
+         for (int i = 0x200; i < _data.Length; i++) {
+            if (_pcs.ContainsKey(_data[i])) {
+               currentLength++;
+               continue;
+            }
+            if (_data[i] == 0x00 && currentLength > 0) { // accept 0x00 if we've already started
+               currentLength++;
+               continue;
+            } else if (_data[i] == 0xFD) { // accept 0xFD as the escape character
+               i++;
+               currentLength += 2;
+               continue;
+            } else if (_data[i] == 0xFF && currentLength >= 3) {
+               _startPoints.Add(i - currentLength);
+               _lengths.Add(currentLength);
+            }
+            currentLength = 0;
+         }
+      }
 
       Path CreatePath(byte value) {
          bool translate = _pcs.ContainsKey(value);

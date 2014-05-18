@@ -25,6 +25,7 @@ namespace SorceryHex.Gba {
       readonly Queue<Border> _recycles = new Queue<Border>();
       readonly Queue<Grid> _spareContainers = new Queue<Grid>();
       readonly Queue<Path> _spareHats = new Queue<Path>();
+      bool _loaded = false;
 
       #endregion
 
@@ -35,10 +36,12 @@ namespace SorceryHex.Gba {
       public PointerFormatter(IElementFactory fallback, byte[] data) {
          _data = data;
          _base = fallback;
-         LoadPointers();
       }
 
+      public void Load() { _loaded = false; _base.Load(); LoadPointers(); _loaded = true; }
+
       public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+         if (!_loaded) return _base.CreateElements(commander, start, length);
          var pointerIndex = FindPointersInRange(start, length);
 
          var list = new List<FrameworkElement>();

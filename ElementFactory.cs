@@ -14,6 +14,7 @@ namespace SorceryHex {
 
    public interface IElementFactory {
       int Length { get; }
+      void Load();
       IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsStartOfDataBlock(int location);
@@ -29,6 +30,8 @@ namespace SorceryHex {
       public int Length { get { return _base.Length; } }
 
       public RangeChecker(IElementFactory next) { _base = next; }
+
+      public void Load() { _base.Load(); }
 
       public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var list = new List<FrameworkElement>();
@@ -69,6 +72,8 @@ namespace SorceryHex {
 
       public DataHolder(byte[] data) { _data = data; }
       public int Length { get { return _data.Length; } }
+
+      public void Load() { }
 
       public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          Debug.Assert(length < 0x20 * 0x40);

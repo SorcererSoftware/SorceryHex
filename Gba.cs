@@ -51,6 +51,8 @@ namespace SorceryHex.Gba {
          _headerLength = _format.Sum(f => f.Length);
       }
 
+      public void Load() { _base.Load(); }
+
       public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          if (start >= _headerLength) return _base.CreateElements(commander, start, length);
          var list = new List<FrameworkElement>();
@@ -133,6 +135,8 @@ namespace SorceryHex.Gba {
       readonly IList<int> _imageLengths = new List<int>();
       readonly Queue<Path> _recycles = new Queue<Path>();
       readonly IDictionary<int, T> _interpretations = new Dictionary<int, T>();
+      readonly IList<int> _suspectLocations;
+      bool _loaded = false;
 
       public int Length { get { return _data.Length; } }
       public Func<byte[], T> Interpret { get; set; }
@@ -140,16 +144,24 @@ namespace SorceryHex.Gba {
       public LzFormatter(IElementFactory fallback, byte[] data, IList<int> suspectLocations) {
          _base = fallback;
          _data = data;
-         foreach (var loc in suspectLocations) {
+         _suspectLocations = suspectLocations;
+      }
+
+      public void Load() {
+         _loaded = false;
+         foreach (var loc in _suspectLocations) {
             int uncompressed, compressed;
             GbaImages.CalculateLZSizes(_data, loc, out uncompressed, out compressed);
             if (uncompressed == -1 || compressed == -1) continue;
             _imageLocations.Add(loc);
             _imageLengths.Add(compressed);
          }
+         _base.Load();
+         _loaded = true;
       }
 
       public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+         if (!_loaded) return _base.CreateElements(commander, start, length);
          var startIndex = Utils.SearchForStartPoint(start, _imageLocations, i => i, Utils.FindOptions.StartOrBefore);
          var list = new List<FrameworkElement>();
 
