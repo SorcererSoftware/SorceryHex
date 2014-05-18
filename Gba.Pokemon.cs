@@ -13,6 +13,7 @@ namespace SorceryHex.Gba {
       readonly IList<int> _startPoints = new List<int>();
       readonly IList<int> _lengths = new List<int>();
       readonly Queue<Path> _recycles = new Queue<Path>();
+      readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();
 
       public int Length { get { return _data.Length; } }
 
@@ -42,7 +43,7 @@ namespace SorceryHex.Gba {
                currentLength++;
                continue;
             }
-            if (_data[i] == 0x00 && currentLength > 1) { // accept 0x00 if we've already started
+            if (_data[i] == 0x00 && currentLength > 0) { // accept 0x00 if we've already started
                currentLength++;
                continue;
             } else if (_data[i] == 0xFF && currentLength >= 3) {
@@ -104,16 +105,18 @@ namespace SorceryHex.Gba {
       }
 
       public FrameworkElement GetInterpretation(int location) {
-         if (_startPoints.Contains(location)) {
-            string result = string.Empty;
-            while (_data[location] != 0xFF) {
-               if (_data[location] == 0x00) result += " ";
-               else result += _pcs[_data[location]];
-               location++;
-            }
-            return new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
+         int index = _startPoints.IndexOf(location);
+         if (index == -1) return _next.GetInterpretation(location);
+         if (_interpretations.ContainsKey(location)) return _interpretations[location];
+
+         string result = string.Empty;
+         for (int j = 0; j < _lengths[index]; j++) {
+            if (_data[_startPoints[index] + j] == 0x00) result += " ";
+            else result += _pcs[_data[_startPoints[index] + j]];
          }
-         return _next.GetInterpretation(location);
+         _interpretations[location] = new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
+
+         return _interpretations[location];
       }
 
       public IList<int> Find(string term) {
