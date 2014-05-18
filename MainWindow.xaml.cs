@@ -44,12 +44,13 @@ namespace SorceryHex {
       IElementFactory _holder;
       int _offset = 0;
 
-      public MainWindow(Func<byte[], IElementFactory> create, byte[] data) {
+      public MainWindow(Func<byte[], IElementFactory> create, string fileName, byte[] data) {
          _create = create;
          _holder = _create(data);
          InitializeComponent();
          ScrollBar.Minimum = -MaxColumnCount;
          ScrollBar.Maximum = _holder.Length;
+         Title = fileName.Split('\\').Last();
       }
 
       #region Helper Methods
@@ -389,12 +390,14 @@ namespace SorceryHex {
       #region Menu
 
       void OpenClick(object sender, RoutedEventArgs e) {
-         var data = Utils.LoadRom();
+         string fileName;
+         var data = Utils.LoadRom(out fileName);
          if (data == null) return;
          _holder = _create(data);
          ScrollBar.Maximum = _holder.Length;
          Body.Children.Clear();
          JumpTo(0);
+         Title = fileName.Split('\\').Last();
       }
 
       void ExitClick(object sender, RoutedEventArgs e) { Close(); }

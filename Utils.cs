@@ -65,8 +65,8 @@ namespace SorceryHex {
          return dialog.FileName;
       }
 
-      public static byte[] LoadRom(string[] args = null) {
-         var file = args != null && args.Length == 1 ? args[0] : GetFile();
+      public static byte[] LoadRom(out string file, string[] args = null) {
+         file = args != null && args.Length == 1 ? args[0] : GetFile();
          if (file == null) return null;
          if (!File.Exists(file)) return null;
 

@@ -8,7 +8,8 @@ namespace SorceryHex {
    public partial class App : Application {
       protected override void OnStartup(StartupEventArgs e) {
          base.OnStartup(e);
-         var rom = Utils.LoadRom(e.Args);
+         string fileName;
+         var rom = Utils.LoadRom(out fileName, e.Args);
          if (rom == null) { this.Shutdown(); return; }
          Func<byte[], IElementFactory> create = data => {
             IElementFactory factory = new DataHolder(data);
@@ -20,7 +21,7 @@ namespace SorceryHex {
             factory = new RangeChecker(factory);
             return factory;
          };
-         var window = new MainWindow(create, rom);
+         var window = new MainWindow(create, fileName, rom);
          window.Show();
       }
    }
