@@ -132,18 +132,26 @@ namespace SorceryHex.Gba {
       }
 
       public IList<int> Find(string term) {
-
          if (!term.Select(c => new string(c, 1)).All(s => _pcs.Values.Contains(s) || s == " ")) return _next.Find(term);
 
+         var lower = term.ToLower();
+         var upper = term.ToUpper();
+
+         // two searchTerms, one with caps and one with lowercase
          var list = new List<int>();
-         byte[] searchTerm =
+         byte[] searchTerm1 =
             Enumerable.Range(0, term.Length)
-            .Select(i => term[i] == ' ' ? (byte)0x00 : _pcs.Keys.First(key => _pcs[key] == term.Substring(i, 1)))
+            .Select(i => term[i] == ' ' ? (byte)0x00 : _pcs.Keys.First(key => _pcs[key] == lower.Substring(i, 1)))
+            .ToArray();
+
+         byte[] searchTerm2 =
+            Enumerable.Range(0, term.Length)
+            .Select(i => term[i] == ' ' ? (byte)0x00 : _pcs.Keys.First(key => _pcs[key] == upper.Substring(i, 1)))
             .ToArray();
 
          for (int i = 0, j = 0; i < _data.Length; i++) {
-            j = _data[i] == searchTerm[j] ? j + 1 : 0;
-            if (j < searchTerm.Length) continue;
+            j = _data[i] == searchTerm1[j] || _data[i] == searchTerm2[j] ? j + 1 : 0;
+            if (j < searchTerm1.Length) continue;
             list.Add(i - j + 1);
             j = 0;
          }
