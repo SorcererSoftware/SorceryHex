@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
@@ -45,6 +47,10 @@ namespace SorceryHex.Gba {
             }
             if (_data[i] == 0x00 && currentLength > 0) { // accept 0x00 if we've already started
                currentLength++;
+               continue;
+            } else if (_data[i] == 0xFD) { // accept 0xFD as the escape character
+               i++;
+               currentLength += 2;
                continue;
             } else if (_data[i] == 0xFF && currentLength >= 3) {
                _startPoints.Add(i - currentLength);
@@ -111,8 +117,14 @@ namespace SorceryHex.Gba {
 
          string result = string.Empty;
          for (int j = 0; j < _lengths[index]; j++) {
-            if (_data[_startPoints[index] + j] == 0x00) result += " ";
-            else result += _pcs[_data[_startPoints[index] + j]];
+            if (_data[_startPoints[index] + j] == 0x00) {
+               result += " ";
+            } else if (_data[_startPoints[index] + j] == 0xFD) {
+               result += "\\x" + Utils.ToHexString(_data[_startPoints[index] + j + 1]);
+               j++;
+            } else {
+               result += _pcs[_data[_startPoints[index] + j]];
+            }
          }
          _interpretations[location] = new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
 
@@ -120,26 +132,48 @@ namespace SorceryHex.Gba {
       }
 
       public IList<int> Find(string term) {
-         // TODO
-         return _next.Find(term);
+
+         if (!term.Select(c => new string(c, 1)).All(s => _pcs.Values.Contains(s) || s == " ")) return _next.Find(term);
+
+         var list = new List<int>();
+         byte[] searchTerm =
+            Enumerable.Range(0, term.Length)
+            .Select(i => term[i] == ' ' ? (byte)0x00 : _pcs.Keys.First(key => _pcs[key] == term.Substring(i, 1)))
+            .ToArray();
+
+         for (int i = 0, j = 0; i < _data.Length; i++) {
+            j = _data[i] == searchTerm[j] ? j + 1 : 0;
+            if (j < searchTerm.Length) continue;
+            list.Add(i - j + 1);
+            j = 0;
+         }
+         list.AddRange(_next.Find(term));
+         return list;
       }
 
+      static readonly Geometry Escape = "\\x".ToGeometry();
+
       Path CreatePath(byte value) {
-         var geometry = value == 0x00 ? null : _pcs[value].ToGeometry();
+         bool translate = _pcs.ContainsKey(value);
+         var geometry = translate ? _pcs[value].ToGeometry() :
+            value == 0x00 ? null :
+            value == 0xFD ? Escape :
+            Utils.ByteFlyweights[value];
 
          if (_recycles.Count > 0) {
             var element = _recycles.Dequeue();
             element.Data = geometry;
+            element.Fill = translate ? Solarized.Brushes.Violet : Solarized.Theme.Instance.Secondary;
             return element;
          }
 
          return new Path {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            Fill = Solarized.Brushes.Violet,
+            Fill = translate ? Solarized.Brushes.Violet : Solarized.Theme.Instance.Secondary,
             Data = geometry,
             ClipToBounds = false,
-            Margin = new Thickness(4, 3, 4, 3),
+            Margin = new Thickness(4, 2, 4, 2),
             Tag = this
          };
       }
