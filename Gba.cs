@@ -8,7 +8,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
-   class HeaderFormatter : IElementFactory {
+   class Header : IPartialElementFactory {
       static readonly Brush Brush = Solarized.Brushes.Violet;
       static readonly Func<byte, Geometry> ToAscii = b => new string((char)b, 1).ToGeometry();
       class Entry {
@@ -23,16 +23,12 @@ namespace SorceryHex.Gba {
          public Entry(int len, string name) : this(len, name, b => Utils.ByteFlyweights[b]) { }
       }
 
-      readonly IElementFactory _base;
       readonly byte[] _data;
       readonly Queue<Border> _recycles = new Queue<Border>();
       readonly Entry[] _format;
       readonly int _headerLength;
 
-      public int Length { get { return _data.Length; } }
-
-      public HeaderFormatter(IElementFactory fallback, byte[] data) {
-         _base = fallback;
+      public Header(byte[] data) {
          _data = data;
          _format = new[] {
             new Entry(4, "Entry Point"),
@@ -51,10 +47,10 @@ namespace SorceryHex.Gba {
          _headerLength = _format.Sum(f => f.Length);
       }
 
-      public void Load() { _base.Load(); }
+      public void Load() { }
 
-      public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
-         if (start >= _headerLength) return _base.CreateElements(commander, start, length);
+      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+         if (start >= _headerLength) return new FrameworkElement[length];
          var list = new List<FrameworkElement>();
          int currentFormat = 0;
          int currentOffset = 0;
@@ -82,23 +78,15 @@ namespace SorceryHex.Gba {
             currentFormat++;
          }
 
-         list.AddRange(_base.CreateElements(commander, _headerLength, remainder));
+         list.AddRange(new FrameworkElement[remainder]);
          return list;
       }
 
-      public void Recycle(ICommandFactory commander, FrameworkElement element) {
-         if (element.Tag == this) _recycles.Enqueue((Border)element);
-         else _base.Recycle(commander, element);
-      }
-
-      public bool IsStartOfDataBlock(int location) { return location == 0 || _base.IsStartOfDataBlock(location); }
-      public bool IsWithinDataBlock(int location) {
-         if (location < 0xC0) return true;
-         return _base.IsWithinDataBlock(location);
-      }
-      public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
-
-      public IList<int> Find(string term) { return _base.Find(term); }
+      public void Recycle(ICommandFactory commander, FrameworkElement element) { _recycles.Enqueue((Border)element); }
+      public bool IsStartOfDataBlock(int location) { return location == 0; }
+      public bool IsWithinDataBlock(int location) { return location < 0xC0; }
+      public FrameworkElement GetInterpretation(int location) { return null; }
+      public IList<int> Find(string term) { return null; }
 
       FrameworkElement UseTemplate(Geometry data, double leftBorder, double rightBorder, string tip) {
          if (_recycles.Count > 0) {
@@ -128,27 +116,22 @@ namespace SorceryHex.Gba {
       }
    }
 
-   class LzFormatter<T> : IElementFactory where T : FrameworkElement {
-      readonly IElementFactory _base;
+   class Lz<T> : IPartialElementFactory where T : FrameworkElement {
       readonly byte[] _data;
       readonly IList<int> _imageLocations = new List<int>();
       readonly IList<int> _imageLengths = new List<int>();
       readonly Queue<Path> _recycles = new Queue<Path>();
       readonly IDictionary<int, T> _interpretations = new Dictionary<int, T>();
       readonly IList<int> _suspectLocations;
-      bool _loaded = false;
 
-      public int Length { get { return _data.Length; } }
       public Func<byte[], T> Interpret { get; set; }
 
-      public LzFormatter(IElementFactory fallback, byte[] data, IList<int> suspectLocations) {
-         _base = fallback;
+      public Lz(byte[] data, IList<int> suspectLocations) {
          _data = data;
          _suspectLocations = suspectLocations;
       }
 
       public void Load() {
-         _loaded = false;
          foreach (var loc in _suspectLocations) {
             int uncompressed, compressed;
             GbaImages.CalculateLZSizes(_data, loc, out uncompressed, out compressed);
@@ -156,12 +139,9 @@ namespace SorceryHex.Gba {
             _imageLocations.Add(loc);
             _imageLengths.Add(compressed);
          }
-         _base.Load();
-         _loaded = true;
       }
 
-      public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
-         if (!_loaded) return _base.CreateElements(commander, start, length);
+      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var startIndex = Utils.SearchForStartPoint(start, _imageLocations, i => i, Utils.FindOptions.StartOrBefore);
          var list = new List<FrameworkElement>();
 
@@ -169,11 +149,11 @@ namespace SorceryHex.Gba {
             int loc = start + i;
             int dataIndex = _imageLocations[startIndex];
             if (startIndex >= _imageLocations.Count) {
-               list.AddRange(_base.CreateElements(commander, loc, length - i));
+               list.AddRange(new FrameworkElement[length - i]);
                i = length;
             } else if (dataIndex > loc) {
                var sectionLength = Math.Min(length - i, dataIndex - loc);
-               list.AddRange(_base.CreateElements(commander, loc, sectionLength));
+               list.AddRange(new FrameworkElement[sectionLength]);
                i += sectionLength;
             } else if (dataIndex + _imageLengths[startIndex] < loc) {
                startIndex++;
@@ -196,31 +176,28 @@ namespace SorceryHex.Gba {
       }
 
       public void Recycle(ICommandFactory commander, FrameworkElement element) {
-         if (element.Tag != this) { _base.Recycle(commander, element); return; }
          _recycles.Enqueue((Path)element);
          commander.UnlinkFromInterpretation(element);
       }
 
       public bool IsStartOfDataBlock(int location) {
          int startIndex = Utils.SearchForStartPoint(location, _imageLocations, i => i, Utils.FindOptions.StartOrBefore);
-         bool isStart = _imageLocations[startIndex] == location;
-         return isStart || _base.IsStartOfDataBlock(location);
+         return _imageLocations[startIndex] == location;
       }
       public bool IsWithinDataBlock(int location) {
          var startIndex = Utils.SearchForStartPoint(location, _imageLocations, i => i, Utils.FindOptions.StartOrBefore);
-         bool inMyDataBlock =
+         return
             startIndex < _imageLocations.Count &&
             location > _imageLocations[startIndex] &&
             location < _imageLocations[startIndex] + _imageLengths[startIndex];
-         return inMyDataBlock || _base.IsWithinDataBlock(location);
       }
       public FrameworkElement GetInterpretation(int location) {
-         if (!_imageLocations.Contains(location)) return _base.GetInterpretation(location);
+         if (!_imageLocations.Contains(location)) return null;
          InterpretData(location);
          return _interpretations[location];
       }
 
-      public IList<int> Find(string term) { return _base.Find(term); }
+      public IList<int> Find(string term) { return null; }
 
       void InterpretData(int dataIndex) {
          if (!_interpretations.ContainsKey(dataIndex)) {
@@ -249,9 +226,9 @@ namespace SorceryHex.Gba {
       }
    }
 
-   class LzFormatterFactory {
-      public static IElementFactory Images(IElementFactory fallback, byte[] data) {
-         return new LzFormatter<Image>(fallback, data, GbaImages.FindLZImages(data)) {
+   class LzFactory {
+      public static IPartialElementFactory Images(byte[] data) {
+         return new Lz<Image>(data, GbaImages.FindLZImages(data)) {
             Interpret = dataBytes => {
                int width, height; GbaImages.GuessWidthHeight(dataBytes.Length, out width, out height);
                var source = GbaImages.Expand16bitImage(dataBytes, GbaImages.DefaultPalette, width, height);
@@ -260,8 +237,8 @@ namespace SorceryHex.Gba {
          };
       }
 
-      public static IElementFactory Palette(IElementFactory fallback, byte[] data) {
-         return new LzFormatter<Grid>(fallback, data, GbaImages.FindLZPalettes(data)) {
+      public static IPartialElementFactory Palette(byte[] data) {
+         return new Lz<Grid>(data, GbaImages.FindLZPalettes(data)) {
             Interpret = dataBytes => {
                var grid = new Grid { Width = 40, Height = 40, Background = Brushes.Transparent };
                for (int i = 0; i < 4; i++) {

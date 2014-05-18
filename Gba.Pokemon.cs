@@ -8,27 +8,19 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
-   class PCS : IElementFactory {
+   class PCS : IPartialElementFactory {
       static readonly Geometry Escape = "\\x".ToGeometry();
 
       readonly byte[] _data;
-      readonly IElementFactory _next;
       readonly IDictionary<byte, string> _pcs = new Dictionary<byte, string>();
       readonly IList<int> _startPoints = new List<int>();
       readonly IList<int> _lengths = new List<int>();
       readonly Queue<Path> _recycles = new Queue<Path>();
       readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();
-      bool _loaded = false;
 
-      public int Length { get { return _data.Length; } }
-
-      public PCS(IElementFactory next, byte[] data) {
-         _data = data;
-         _next = next;
-      }
+      public PCS(byte[] data) { _data = data; }
 
       public void Load() {
-         _loaded = false;
          foreach (var line in System.IO.File.ReadAllLines("PCS3-W.ini")) {
             var sanitized = line.Trim();
             if (sanitized.StartsWith("#") || sanitized.Length == 0) continue;
@@ -39,12 +31,9 @@ namespace SorceryHex.Gba {
             _pcs[key] = value;
          }
          FindStrings();
-         _next.Load();
-         _loaded = true;
       }
 
-      public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
-         if (!_loaded) return _next.CreateElements(commander, start, length);
+      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var startIndex = Utils.SearchForStartPoint(start, _startPoints, i => i, Utils.FindOptions.StartOrBefore);
          var list = new List<FrameworkElement>();
 
@@ -53,11 +42,11 @@ namespace SorceryHex.Gba {
             int loc = start + i;
             int dataIndex = _startPoints[startIndex];
             if (startIndex >= _startPoints.Count) {
-               list.AddRange(_next.CreateElements(commander, loc, length - i));
+               list.AddRange(new FrameworkElement[length - i]);
                i = length;
             } else if (dataIndex > loc) {
                var sectionLength = Math.Min(length - i, dataIndex - loc);
-               list.AddRange(_next.CreateElements(commander, loc, sectionLength));
+               list.AddRange(new FrameworkElement[sectionLength]);
                i += sectionLength;
             } else if (dataIndex + _lengths[startIndex] < loc) {
                startIndex++;
@@ -79,24 +68,15 @@ namespace SorceryHex.Gba {
          return list;
       }
 
-      public void Recycle(ICommandFactory commander, FrameworkElement element) {
-         if (element.Tag == this) _recycles.Enqueue((Path)element);
-         else _next.Recycle(commander, element);
-      }
+      public void Recycle(ICommandFactory commander, FrameworkElement element) { _recycles.Enqueue((Path)element); }
 
-      public bool IsStartOfDataBlock(int location) {
-         // not enough confidence in strings to claim
-         return /*_startPoints.Contains(location) ||*/ _next.IsStartOfDataBlock(location);
-      }
-
-      public bool IsWithinDataBlock(int location) {
-         // not enough confidence in strings to claim
-         return _next.IsWithinDataBlock(location);
-      }
+      // not enough confidence in strings to claim /*_startPoints.Contains(location) */
+      public bool IsStartOfDataBlock(int location) { return  false; }
+      public bool IsWithinDataBlock(int location) { return false; }
 
       public FrameworkElement GetInterpretation(int location) {
          int index = _startPoints.IndexOf(location);
-         if (index == -1) return _next.GetInterpretation(location);
+         if (index == -1) return null;
          if (_interpretations.ContainsKey(location)) return _interpretations[location];
 
          string result = string.Empty;
@@ -116,7 +96,7 @@ namespace SorceryHex.Gba {
       }
 
       public IList<int> Find(string term) {
-         if (!term.Select(c => new string(c, 1)).All(s => _pcs.Values.Contains(s) || s == " ")) return _next.Find(term);
+         if (!term.Select(c => new string(c, 1)).All(s => _pcs.Values.Contains(s) || s == " ")) return null;
 
          var lower = term.ToLower();
          var upper = term.ToUpper();
@@ -139,7 +119,6 @@ namespace SorceryHex.Gba {
             list.Add(i - j + 1);
             j = 0;
          }
-         list.AddRange(_next.Find(term));
          return list;
       }
 

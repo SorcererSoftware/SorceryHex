@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Windows;
 
 namespace SorceryHex {
@@ -12,14 +13,12 @@ namespace SorceryHex {
          var rom = Utils.LoadRom(out fileName, e.Args);
          if (rom == null) { this.Shutdown(); return; }
          Func<byte[], IElementFactory> create = data => {
-            IElementFactory factory = new DataHolder(data);
-            factory = new Gba.HeaderFormatter(factory, data);
-            factory = new Gba.PCS(factory, data);
-            factory = Gba.LzFormatterFactory.Images(factory, data);
-            factory = Gba.LzFormatterFactory.Palette(factory, data);
-            factory = new Gba.PointerFormatter(factory, data);
-            factory = new RangeChecker(factory);
-            return factory;
+            IElementFactory factory = new CompositeElementFactory(data,
+               Gba.LzFactory.Palette(data),
+               Gba.LzFactory.Images(data),
+               new Gba.PCS(data),
+               new Gba.Header(data));
+            return new Gba.PointerFormatter(factory, data);
          };
          var window = new MainWindow(create, fileName, rom);
          window.Show();
