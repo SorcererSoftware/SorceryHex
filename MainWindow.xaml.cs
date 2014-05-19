@@ -80,11 +80,10 @@ namespace SorceryHex {
       }
 
       int KeyElementLocation(FrameworkElement interpretation) {
-         var keysForInterpretation = _interpretations.Keys.Where(key => _interpretations[key] == interpretation);
+         var keysForInterpretation = _interpretations.Keys.Where(key => _interpretations[key] == interpretation).ToList();
          Debug.Assert(keysForInterpretation.Count() == _interpretationReferenceCounts[interpretation]);
          // wrapped elements are not directly in the body and don't have a row/column.
-         keysForInterpretation = keysForInterpretation.Select(FindElementInBody);
-         return keysForInterpretation.Select(key => CombineLocation(key, Body.ColumnDefinitions.Count)).Min();
+         return keysForInterpretation.Select(FindElementInBody).Select(key => CombineLocation(key, Body.ColumnDefinitions.Count)).Min();
       }
 
       void UpdateHeaderColumn(int oldRows, int newRows) {

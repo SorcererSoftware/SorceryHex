@@ -172,4 +172,49 @@ namespace SorceryHex.Gba {
          };
       }
    }
+
+   class Thumbnails : IPartialElementFactory {
+
+      readonly byte[] _data;
+      readonly IList<int> _iconStartPoints = new List<int>();
+      readonly IList<int> _paletteIndex = new List<int>();
+
+
+      public Thumbnails(byte[] data) {
+         _data = data;
+      }
+
+      public void Load() {
+         int icons = _data.ReadPointer(0x0138);
+         int palettePointers = _data.ReadPointer(0x13C);
+         int paletteIndex = _data.ReadPointer(0x140);
+         while (_data[icons + 3] == 0x08) {
+            _iconStartPoints.Add(_data.ReadPointer(icons));
+            _paletteIndex.Add(_data[paletteIndex]);
+            icons += 4;
+            paletteIndex++;
+         }
+      }
+
+      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+         return new FrameworkElement[length];
+      }
+
+      public void Recycle(ICommandFactory commander, FrameworkElement element) {
+         throw new NotImplementedException();
+      }
+
+      public bool IsStartOfDataBlock(int location) { return _iconStartPoints.Contains(location); }
+
+      public bool IsWithinDataBlock(int location) {
+         return false; // TODO
+      }
+
+      public FrameworkElement GetInterpretation(int location) {
+         return null; // TODO
+      }
+
+      public IList<int> Find(string term) { return null; }
+
+   }
 }

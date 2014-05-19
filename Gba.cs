@@ -143,15 +143,19 @@ namespace SorceryHex.Gba {
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var startIndex = Utils.SearchForStartPoint(start, _imageLocations, i => i, Utils.FindOptions.StartOrBefore);
+         if (startIndex == _imageLocations.Count) return new FrameworkElement[length];
          var list = new List<FrameworkElement>();
 
          for (int i = 0; i < length; ) {
             int loc = start + i;
-            int dataIndex = _imageLocations[startIndex];
             if (startIndex >= _imageLocations.Count) {
                list.AddRange(new FrameworkElement[length - i]);
                i = length;
-            } else if (dataIndex > loc) {
+               continue;
+            }
+
+            int dataIndex = _imageLocations[startIndex];
+            if (dataIndex > loc) {
                var sectionLength = Math.Min(length - i, dataIndex - loc);
                list.AddRange(new FrameworkElement[sectionLength]);
                i += sectionLength;
