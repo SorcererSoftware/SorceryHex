@@ -20,8 +20,13 @@ namespace SorceryHex {
       static readonly int ElementWidth = 26, ElementHeight = 20;
       static readonly IEnumerable<Key> arrowKeys = new[] { Key.Left, Key.Right, Key.Up, Key.Down };
 
-      static int CombineLocation(UIElement ui, int columns) { return Grid.GetColumn(ui) + Grid.GetRow(ui) * columns; }
+      static int CombineLocation(UIElement ui, int columns) {
+         // return (int)(Canvas.GetLeft(ui) / ElementWidth) + (int)(Canvas.GetTop(ui) / ElementHeight) * columns;
+         return Grid.GetColumn(ui) + Grid.GetRow(ui) * columns;
+      }
       static void SplitLocation(UIElement ui, int columns, int location) {
+         // Canvas.SetTop(ui, location / columns * ElementHeight);
+         // Canvas.SetLeft(ui, (location % columns) * ElementWidth);
          Grid.SetRow(ui, location / columns);
          Grid.SetColumn(ui, location % columns);
       }
@@ -30,8 +35,8 @@ namespace SorceryHex {
          for (int i = 0; i < delta; i++) definitions.Add(elementFactory());
          for (int i = 0; i > delta; i--) definitions.RemoveAt(definitions.Count - 1);
       }
-      static void UpdateRows(Grid grid, int delta) { UpdateDefinitions(() => new RowDefinition(), grid.RowDefinitions, delta); }
-      static void UpdateColumns(Grid grid, int delta) { UpdateDefinitions(() => new ColumnDefinition(), grid.ColumnDefinitions, delta); }
+      static void UpdateRows(Grid grid, int delta) { UpdateDefinitions(() => new RowDefinition { Height = new GridLength(ElementHeight) }, grid.RowDefinitions, delta); }
+      static void UpdateColumns(Grid grid, int delta) { UpdateDefinitions(() => new ColumnDefinition { Width = new GridLength(ElementWidth) }, grid.ColumnDefinitions, delta); }
       static void UpdateColumnsRows(Grid grid, int cdelta, int rdelta) { UpdateColumns(grid, cdelta); UpdateRows(grid, rdelta); }
 
       static void UpdateWidthHeight(FrameworkElement element, int x, int y) { element.Width = x * ElementWidth; element.Height = y * ElementHeight; }
@@ -44,6 +49,7 @@ namespace SorceryHex {
       Func<byte[], IElementFactory> _create;
       IElementFactory _holder;
       int _offset = 0;
+      int currentColumnCount, currentRowCount;
 
       public MainWindow(Func<byte[], IElementFactory> create, string fileName, byte[] data) {
          _create = create;
@@ -57,13 +63,31 @@ namespace SorceryHex {
 
       #region Helper Methods
 
+      void UpdateRows(Panel panel, int rows, Action<FrameworkElement> updateAction) {
+         IList<FrameworkElement> children = new List<FrameworkElement>();
+         foreach (FrameworkElement child in panel.Children) children.Add(child);
+         IList<FrameworkElement> toRemove = new List<FrameworkElement>();
+         foreach (var element in children) {
+            int row = Grid.GetRow(element);
+            // int row = (int)(Canvas.GetTop(element) / ElementHeight);
+            row += rows;
+            if (row < 0 || row >= currentRowCount) {
+               panel.Children.Remove(element);
+               updateAction(element);
+            } else {
+               Grid.SetRow(element, row);
+               // Canvas.SetTop(element, row * ElementHeight);
+            }
+         }
+      }
+
       void MainFocus() {
          DependencyObject scope = FocusManager.GetFocusScope(MultiBox);
          FocusManager.SetFocusedElement(scope, this as IInputElement);
       }
 
       void Add(int start, int length) {
-         int rows = Body.RowDefinitions.Count, cols = Body.ColumnDefinitions.Count;
+         int rows = currentRowCount, cols = currentColumnCount;
          var elements = _holder.CreateElements(this, _offset + start, length).ToArray();
          Debug.Assert(elements.Length == length);
          for (var i = 0; i < elements.Length; i++) {
@@ -83,15 +107,15 @@ namespace SorceryHex {
          var keysForInterpretation = _interpretations.Keys.Where(key => _interpretations[key] == interpretation).ToList();
          Debug.Assert(keysForInterpretation.Count() == _interpretationReferenceCounts[interpretation]);
          // wrapped elements are not directly in the body and don't have a row/column.
-         return keysForInterpretation.Select(FindElementInBody).Select(key => CombineLocation(key, Body.ColumnDefinitions.Count)).Min();
+         return keysForInterpretation.Select(FindElementInBody).Select(key => CombineLocation(key, currentColumnCount)).Min();
       }
 
-      void UpdateHeaderColumn(int oldRows, int newRows) {
+      void UpdateHeaderRows(int oldRows, int newRows) {
          if (newRows == oldRows) return;
 
          // add new header rows
          for (int i = oldRows; i < newRows; i++) {
-            var headerText = (_offset + i * Body.ColumnDefinitions.Count).ToHexString();
+            var headerText = (_offset + i * currentColumnCount).ToHexString();
             var block = new TextBlock { Text = headerText, HorizontalAlignment = HorizontalAlignment.Right };
             Grid.SetRow(block, i);
             Headers.Children.Add(block);
@@ -106,7 +130,7 @@ namespace SorceryHex {
       }
 
       void UpdateHeaderText() {
-         int cols = Body.ColumnDefinitions.Count;
+         int cols = currentColumnCount;
          foreach (TextBlock block in Headers.Children) {
             int location = Grid.GetRow(block) * cols + _offset;
             block.Text = location.ToHexString();
@@ -120,41 +144,18 @@ namespace SorceryHex {
          Body.Children.Clear();
 
          _offset = location;
-         Add(0, Body.RowDefinitions.Count * Body.ColumnDefinitions.Count);
+         Add(0, currentColumnCount * currentRowCount);
          ScrollBar.Value = _offset;
          UpdateHeaderText();
       }
 
       void ShiftRows(int rows) {
-         int all = Body.RowDefinitions.Count * Body.ColumnDefinitions.Count;
-         int add = Body.ColumnDefinitions.Count * rows;
+         int all = currentColumnCount * currentRowCount;
+         int add = currentColumnCount * rows;
          if (_offset - add < -MaxColumnCount || _offset - add > _holder.Length) return;
 
-         IList<FrameworkElement> children = new List<FrameworkElement>();
-         foreach (FrameworkElement child in Body.Children) children.Add(child);
-         foreach (var element in children) {
-            int row = Grid.GetRow(element);
-            row += rows;
-            if (row < 0 || row >= Body.RowDefinitions.Count) {
-               Body.Children.Remove(element);
-               Recycle(element);
-            } else {
-               Grid.SetRow(element, row);
-            }
-         }
-
-         children.Clear();
-         foreach (FrameworkElement child in BackgroundBody.Children) children.Add(child);
-         foreach (var element in children) {
-            int row = Grid.GetRow(element);
-            row += rows;
-            if (row < 0 || row >= BackgroundBody.RowDefinitions.Count) {
-               BackgroundBody.Children.Remove(element);
-               _interpretationBackgrounds.Enqueue(element);
-            } else {
-               Grid.SetRow(element, row);
-            }
-         }
+         UpdateRows(Body, rows, Recycle);
+         UpdateRows(BackgroundBody, rows, _interpretationBackgrounds.Enqueue);
 
          _offset -= add;
          if (rows > 0) Add(0, add);
@@ -162,32 +163,32 @@ namespace SorceryHex {
       }
 
       void ShiftColumns(int shift) {
-         int all = Body.RowDefinitions.Count * Body.ColumnDefinitions.Count;
+         int all = currentRowCount * currentColumnCount;
          if (_offset - shift < -MaxColumnCount || _offset - shift > _holder.Length) return;
 
          IList<FrameworkElement> children = new List<FrameworkElement>();
          foreach (FrameworkElement child in Body.Children) children.Add(child);
          foreach (var element in children) {
-            int loc = CombineLocation(element, Body.ColumnDefinitions.Count);
+            int loc = CombineLocation(element, currentColumnCount);
             loc += shift;
             if (loc < 0 || loc >= all) {
                Body.Children.Remove(element);
                Recycle(element);
             } else {
-               SplitLocation(element, Body.ColumnDefinitions.Count, loc);
+               SplitLocation(element, currentColumnCount, loc);
             }
          }
 
          children.Clear();
          foreach (FrameworkElement child in BackgroundBody.Children) children.Add(child);
          foreach (var element in children) {
-            int loc = CombineLocation(element, BackgroundBody.ColumnDefinitions.Count);
+            int loc = CombineLocation(element, currentColumnCount);
             loc += shift;
             if (loc < 0 || loc >= all) {
                Body.Children.Remove(element);
                _interpretationBackgrounds.Enqueue(element);
             } else {
-               SplitLocation(element, BackgroundBody.ColumnDefinitions.Count, loc);
+               SplitLocation(element, currentColumnCount, loc);
             }
          }
 
@@ -200,11 +201,11 @@ namespace SorceryHex {
          if (dif == 0) return;
          var sign = Math.Sign(dif);
          var magn = Math.Abs(dif);
-         magn -= magn % Body.ColumnDefinitions.Count; // discard the column portion
-         int all = Body.RowDefinitions.Count * Body.ColumnDefinitions.Count;
+         magn -= magn % currentColumnCount; // discard the column portion
+         int all = currentColumnCount * currentRowCount;
          if (magn > all) { JumpTo(_offset - (magn * sign)); return; }
 
-         int rowPart = magn / Body.ColumnDefinitions.Count;
+         int rowPart = magn / currentColumnCount;
          ShiftRows(rowPart * sign);
          UpdateHeaderText();
          ScrollBar.Value = _offset;
@@ -231,7 +232,7 @@ namespace SorceryHex {
       #region Events
 
       void Resize(object sender, EventArgs e) {
-         int oldRows = Body.RowDefinitions.Count, oldCols = Body.ColumnDefinitions.Count;
+         int oldRows = currentRowCount, oldCols = currentColumnCount;
          var newSize = DesiredWorkArea(ResizeGrid);
          int newCols = (int)newSize.Width, newRows = (int)newSize.Height;
          newCols = Math.Min(newCols, MaxColumnCount);
@@ -247,6 +248,7 @@ namespace SorceryHex {
          };
 
          // update container sizes
+         currentColumnCount = newCols; currentRowCount = newRows;
          updateSize(Body);
          updateSize(BackgroundBody);
          UpdateRows(Headers, newRows - oldRows);
@@ -266,7 +268,7 @@ namespace SorceryHex {
          }
 
          // update header column
-         UpdateHeaderColumn(oldRows, newRows);
+         UpdateHeaderRows(oldRows, newRows);
 
          if (oldCols != newCols) UpdateHeaderText();
 
@@ -551,8 +553,8 @@ namespace SorceryHex {
                Background = Solarized.Theme.Instance.Backlight,
                Tag = this
             };
-            Grid.SetColumn(rectangle, Grid.GetColumn(element));
-            Grid.SetRow(rectangle, Grid.GetRow(element));
+            int loc = CombineLocation(element, currentColumnCount);
+            SplitLocation(rectangle, currentColumnCount, loc);
             BackgroundBody.Children.Add(rectangle);
          }
       }
