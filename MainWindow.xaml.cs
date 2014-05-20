@@ -214,6 +214,18 @@ namespace SorceryHex {
          _holder.Recycle(this, element);
       }
 
+      void AddLocationToBreadCrumb() {
+         if (BreadCrumbBar.Children.Count >= 5) {
+            ((Button)BreadCrumbBar.Children[0]).Click -= NavigateBackClick;
+            BreadCrumbBar.Children.RemoveAt(0);
+         }
+         var hex = _offset.ToHexString();
+         while (hex.Length < 6) hex = "0" + hex;
+         var button = new Button { Content = hex };
+         button.Click += NavigateBackClick;
+         BreadCrumbBar.Children.Add(button);
+      }
+
       #endregion
 
       #region Events
@@ -291,10 +303,16 @@ namespace SorceryHex {
                      while (header.Length < 6) header = "0" + header;
                      var item = new MenuItem { Header = header };
                      BodyContextMenu.Items.Add(item);
-                     item.Click += (s, e1) => JumpTo(item.Header.ToString().ParseAsHex());
+                     item.Click += (s, e1) => {
+                        AddLocationToBreadCrumb();
+                        JumpTo(item.Header.ToString().ParseAsHex());
+                     };
                   }
                   BodyContextMenu.IsOpen = true;
-               } else JumpTo(list[0]);
+               } else {
+                  AddLocationToBreadCrumb();
+                  JumpTo(list[0]);
+               }
             }
          }
       }
@@ -302,6 +320,7 @@ namespace SorceryHex {
       void HandleKey(object sender, KeyEventArgs e) {
          if (Keyboard.Modifiers == ModifierKeys.Control) {
             switch (e.Key) {
+               case Key.Subtract: case Key.OemMinus: NavigateBackClick(null, null); break;
                case Key.Left:  ShiftColumns(-1); break;
                case Key.Right: ShiftColumns(1); break;
                case Key.Down:  ShiftRows(1); break;
@@ -350,12 +369,15 @@ namespace SorceryHex {
             // check for special keys
             if (e.Key == Key.Escape) {
                MultiBoxContainer.Visibility = Visibility.Hidden;
+               BreadCrumbBar.Visibility = Visibility.Visible;
                MainFocus();
             }
             if (e.Key == Key.Enter) {
                int hex = MultiBox.Text.ParseAsHex();
+               AddLocationToBreadCrumb();
                JumpTo(hex);
                MultiBoxContainer.Visibility = Visibility.Hidden;
+               BreadCrumbBar.Visibility = Visibility.Visible;
                MainFocus();
             }
 
@@ -367,6 +389,7 @@ namespace SorceryHex {
             // check for special keys
             if (e.Key == Key.Escape) {
                MultiBoxContainer.Visibility = Visibility.Hidden;
+               BreadCrumbBar.Visibility = Visibility.Visible;
                MainFocus();
             }
             if (e.Key == Key.Enter) {
@@ -378,6 +401,7 @@ namespace SorceryHex {
                _findIndex = 0;
                JumpTo(_findPositions[_findIndex]);
                MultiBoxContainer.Visibility = Visibility.Hidden;
+               BreadCrumbBar.Visibility = Visibility.Visible;
                MainFocus();
             }
          }
@@ -426,6 +450,7 @@ namespace SorceryHex {
       void FindClick(object sender, EventArgs e) {
          MultiBoxLabel.Text = "Find";
          MultiBoxContainer.Visibility = Visibility.Visible;
+         BreadCrumbBar.Visibility = Visibility.Hidden;
          Keyboard.Focus(MultiBox);
          MultiBox.SelectAll();
       }
@@ -447,8 +472,21 @@ namespace SorceryHex {
       void GotoClick(object sender, EventArgs e) {
          MultiBoxLabel.Text = "Goto";
          MultiBoxContainer.Visibility = Visibility.Visible;
+         BreadCrumbBar.Visibility = Visibility.Hidden;
          Keyboard.Focus(MultiBox);
          MultiBox.SelectAll();
+      }
+
+      void NavigateBackClick(object sender, EventArgs e) {
+         if (sender == null || sender is MenuItem) {
+            sender = BreadCrumbBar.Children[BreadCrumbBar.Children.Count - 1];
+         }
+         var button = sender as Button;
+         Debug.Assert(BreadCrumbBar.Children.Contains(button));
+         int address = button.Content.ToString().ParseAsHex();
+         JumpTo(address);
+         BreadCrumbBar.Children.Remove(button);
+         button.Click -= NavigateBackClick;
       }
 
       void AboutClick(object sender, RoutedEventArgs e) {

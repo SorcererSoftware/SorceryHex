@@ -5,7 +5,7 @@
         x:Class="SorceryHex.MainWindow"
         Title="SorceryHex" Height="400" Width="525"
         MouseWheel="ScrollWheel" KeyDown="HandleKey">
-    <DockPanel>
+    <DockPanel Background="{Binding Backlight, Source={StaticResource Theme}}">
         <DockPanel.ContextMenu>
             <ContextMenu Name="BodyContextMenu"/>
         </DockPanel.ContextMenu>
@@ -24,12 +24,40 @@
                     <MenuItem Header="Find _Next" InputGestureText="F3" Click="FindNext"/>
                     <MenuItem Header="Find _Previous" InputGestureText="Shift+F3" Click="FindPrevious"/>
                     <MenuItem Header="_Goto" InputGestureText="Ctrl+G" Click="GotoClick"/>
+                    <MenuItem Header="Go _Back" InputGestureText="Ctrl+-" Click="NavigateBackClick"/>
                 </MenuItem>
                 <MenuItem Header="_Help">
                     <MenuItem Header="_About" Click="AboutClick"/>
                     <MenuItem Header="About _Solarized" Click="AboutClick"/>
                 </MenuItem>
             </Menu>
+            <StackPanel Margin="170,0,0,0" HorizontalAlignment="Right" DockPanel.Dock="Top" VerticalAlignment="Center" Orientation="Horizontal" Name="BreadCrumbBar">
+                <StackPanel.Resources>
+                    <Style TargetType="Button">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="buttonBorder" Padding="1" Background="Transparent" VerticalAlignment="Center" BorderBrush="{Binding Secondary, Source={StaticResource Theme}}">
+                                        <ContentPresenter TextBlock.Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Margin" Value="4,1"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="true">
+                                                        <Setter Property="BorderThickness" Value="1"/>
+                                                        <Setter Property="Margin" Value="3,0"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </StackPanel.Resources>
+            </StackPanel>
             <StackPanel x:Name="MultiBoxContainer" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Hidden">
                 <TextBlock x:Name="MultiBoxLabel" Text="Goto" VerticalAlignment="Center" Padding="2" Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
                 <TextBox x:Name="MultiBox" Width="100" Margin="2" HorizontalAlignment="Right" KeyDown="HandleMultiBoxKey"/>
