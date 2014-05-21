@@ -173,6 +173,116 @@ namespace SorceryHex.Gba {
       }
    }
 
+   class Maps : IPartialElementFactory {
+
+      #region Setup
+
+      class DataType { public readonly int Length; public DataType(int length) { Length = length; } }
+
+      static readonly DataType @byte = new DataType(1);
+      static readonly DataType @short = new DataType(2);
+      static readonly DataType @word = new DataType(4);
+      static readonly DataType @pointer = new DataType(4);
+
+      class Entry {
+         public readonly string Name;
+         public readonly DataType DataType;
+         public readonly Entry[] Children;
+
+         public Entry(string name, params Entry[] children) {
+            Name = name; DataType = @pointer; Children = children;
+         }
+
+         public Entry(string name, DataType type) {
+            Name = name; DataType = type; Children = null;
+         }
+      }
+
+      #endregion
+
+      static readonly Entry DataLayout = new Entry("map",
+         new Entry("mapTileData",
+            new Entry("width", @word), new Entry("height", @word),
+            new Entry("borderTile", @pointer),
+            new Entry("tiles", @pointer),
+            new Entry("tileset", @pointer),
+            new Entry("tileset", @pointer),
+            new Entry("borderWidth", @byte), new Entry("borderHeight", @byte), new Entry("_", @byte), new Entry("_", @byte)
+         ),
+         new Entry("mapEventData",
+            new Entry("personCount", @byte), new Entry("warpCount", @byte), new Entry("scriptCount", @byte), new Entry("signpostCount", @byte),
+            new Entry("persons", @pointer), // TODO expand
+            new Entry("warps", @pointer),   // TODO expand
+            new Entry("scripts", @pointer), // TODO expand
+            new Entry("signposts", @pointer)// TODO expand
+         ),
+         new Entry("script", @pointer),
+         new Entry("connections",
+            new Entry("count", @word),
+            new Entry("data", @pointer)
+         ),
+         new Entry("song", @short), new Entry("map", @short),
+         new Entry("label_id", @byte), new Entry("flash", @byte), new Entry("weather", @byte), new Entry("type", @byte),
+         new Entry("_", @short), new Entry("labelToggle", @byte), new Entry("_", @byte)
+      );
+
+      /*
+         map:
+         *mapTileData
+            width height
+            *borderTile // 8 bytes, no pointers
+            *tile[width*height] // 2 bytes: logical for 6 bits, visual for 10
+            *tileset
+            *tileset
+            .borderWidth .borderHeight ._ ._
+         *mapEventData
+            .personCount .warpCount .scriptCount .signpostCount
+            *persons[personCount]
+               .? .picture .? .?
+               -x -y
+               .? .movementType .movement .?
+               .isTrainer .? -viewRadius
+               *script
+               -id .? .?
+            *warps[warpCount] { -x -y .? .warp .map .bank }
+            *scripts[scriptCount] { -x -y -? -scriptVaribale -scriptVariableValue -? *script }
+            *signposts[signpostCount]
+               -x -y
+               .talkingLevel .signpostType -?
+               ?
+               *script // || -itemID .hiddenID .amount
+         *script
+         *connections
+            count
+            *data[count] { type offset .bank .map -_ }
+         -song -map
+         .label_id .flash .weather .type
+         -_ .labelToggle ._
+       */
+
+      readonly byte[] _data;
+
+      public Maps(byte[] data) { _data = data; }
+
+      public void Load() {
+         // TODO find maps based on the nested DataLayout
+      }
+
+      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+         var list = new FrameworkElement[length];
+         return list;
+      }
+
+      public void Recycle(ICommandFactory commander, FrameworkElement element) {
+         // TODO
+      }
+
+      public bool IsStartOfDataBlock(int location) { return false; }
+      public bool IsWithinDataBlock(int location) { return false; }
+      public FrameworkElement GetInterpretation(int location) { return null; }
+      public IList<int> Find(string term) { return null; }
+   }
+
    class Thumbnails : IPartialElementFactory {
 
       readonly byte[] _data;
