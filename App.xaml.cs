@@ -10,9 +10,14 @@ namespace SorceryHex {
       protected override void OnStartup(StartupEventArgs e) {
          base.OnStartup(e);
          string fileName;
-         var rom = Utils.LoadRom(out fileName, e.Args);
-         if (rom == null) { this.Shutdown(); return; }
-         Func<byte[], IElementFactory> create = data => {
+         var contents = Utils.LoadFile(out fileName, e.Args);
+         if (contents == null) { this.Shutdown(); return; }
+         Func<string, byte[], IElementFactory> create = (name, data) => {
+            // TODO move gba/pokemon stuff to a separate assembly
+            if (!name.EndsWith(".gba")) {
+               return new CompositeElementFactory(data);
+            }
+
             IElementFactory factory = new CompositeElementFactory(data,
                Gba.LzFactory.Palette(data),
                Gba.LzFactory.Images(data),
@@ -20,7 +25,7 @@ namespace SorceryHex {
                new Gba.Header(data));
             return new Gba.PointerFormatter(factory, data);
          };
-         var window = new MainWindow(create, fileName, rom);
+         var window = new MainWindow(create, fileName, contents);
          window.Show();
       }
    }

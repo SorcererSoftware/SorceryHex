@@ -21,12 +21,9 @@ namespace SorceryHex {
       static readonly IEnumerable<Key> arrowKeys = new[] { Key.Left, Key.Right, Key.Up, Key.Down };
 
       static int CombineLocation(UIElement ui, int columns) {
-         // return (int)(Canvas.GetLeft(ui) / ElementWidth) + (int)(Canvas.GetTop(ui) / ElementHeight) * columns;
          return Grid.GetColumn(ui) + Grid.GetRow(ui) * columns;
       }
       static void SplitLocation(UIElement ui, int columns, int location) {
-         // Canvas.SetTop(ui, location / columns * ElementHeight);
-         // Canvas.SetLeft(ui, (location % columns) * ElementWidth);
          Grid.SetRow(ui, location / columns);
          Grid.SetColumn(ui, location % columns);
       }
@@ -46,14 +43,14 @@ namespace SorceryHex {
 
       #endregion
 
-      Func<byte[], IElementFactory> _create;
+      Func<string, byte[], IElementFactory> _create;
       IElementFactory _holder;
       int _offset = 0;
       int currentColumnCount, currentRowCount;
 
-      public MainWindow(Func<byte[], IElementFactory> create, string fileName, byte[] data) {
+      public MainWindow(Func<string, byte[], IElementFactory> create, string fileName, byte[] data) {
          _create = create;
-         _holder = _create(data);
+         _holder = _create(fileName, data);
          InitializeComponent();
          ScrollBar.Minimum = -MaxColumnCount;
          ScrollBar.Maximum = _holder.Length;
@@ -69,14 +66,12 @@ namespace SorceryHex {
          IList<FrameworkElement> toRemove = new List<FrameworkElement>();
          foreach (var element in children) {
             int row = Grid.GetRow(element);
-            // int row = (int)(Canvas.GetTop(element) / ElementHeight);
             row += rows;
             if (row < 0 || row >= currentRowCount) {
                panel.Children.Remove(element);
                updateAction(element);
             } else {
                Grid.SetRow(element, row);
-               // Canvas.SetTop(element, row * ElementHeight);
             }
          }
       }
@@ -418,9 +413,9 @@ namespace SorceryHex {
 
       void OpenClick(object sender, RoutedEventArgs e) {
          string fileName;
-         var data = Utils.LoadRom(out fileName);
+         var data = Utils.LoadFile(out fileName);
          if (data == null) return;
-         _holder = _create(data);
+         _holder = _create(fileName, data);
          ScrollBar.Maximum = _holder.Length;
          Body.Children.Clear();
          JumpTo(0);

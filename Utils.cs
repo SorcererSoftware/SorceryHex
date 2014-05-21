@@ -60,20 +60,20 @@ namespace SorceryHex {
       }
 
       static string GetFile() {
-         var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "Roms (.GBA)|*GBA", Title = "Choose a Rom to open." };
+         var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Choose a File to open." };
          dialog.ShowDialog(null);
          return dialog.FileName;
       }
 
-      public static byte[] LoadRom(out string file, string[] args = null) {
+      public static byte[] LoadFile(out string file, string[] args = null) {
          file = args != null && args.Length == 1 ? args[0] : GetFile();
          if (file == null) return null;
          if (!File.Exists(file)) return null;
 
          using (var stream = new FileStream(file, FileMode.Open)) {
-            var rom = new byte[stream.Length];
-            stream.Read(rom, 0, (int)stream.Length);
-            return rom;
+            var data = new byte[stream.Length];
+            stream.Read(data, 0, (int)stream.Length);
+            return data;
          }
       }
 
