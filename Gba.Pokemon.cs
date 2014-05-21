@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -199,23 +200,38 @@ namespace SorceryHex.Gba {
          }
       }
 
-      #endregion
-
       static readonly Entry DataLayout = new Entry("map",
-         new Entry("mapTileData",
-            new Entry("width", @word), new Entry("height", @word),
-            new Entry("borderTile", @pointer),
-            new Entry("tiles", @pointer),
-            new Entry("tileset", @pointer),
-            new Entry("tileset", @pointer),
-            new Entry("borderWidth", @byte), new Entry("borderHeight", @byte), new Entry("_", @byte), new Entry("_", @byte)
-         ),
+         new Entry("mapTileData", @pointer),
          new Entry("mapEventData",
             new Entry("personCount", @byte), new Entry("warpCount", @byte), new Entry("scriptCount", @byte), new Entry("signpostCount", @byte),
-            new Entry("persons", @nullablepointer), // TODO expand
-            new Entry("warps", @nullablepointer),   // TODO expand
-            new Entry("scripts", @nullablepointer), // TODO expand
-            new Entry("signposts", @nullablepointer)// TODO expand
+            new Entry("persons", @nullablepointer /* makes me lose a bunch: why?
+               ,
+               new Entry("?", @byte), new Entry("picture", @byte), new Entry("?", @byte), new Entry("?", @byte),
+               new Entry("x", @short), new Entry("y", @short),
+               new Entry("?", @byte), new Entry("movementType", @byte), new Entry("movement", @byte), new Entry("?", @byte),
+               new Entry("isTrainer", @byte), new Entry("?", @byte), new Entry("viewRadius", @short),
+               new Entry("script", @pointer),
+               new Entry("id", @short), new Entry("?", @byte), new Entry("?", @byte)//*/
+            ),
+            new Entry("warps", @nullablepointer /* makes me lose one map: why?
+               ,
+               new Entry("x", @short), new Entry("y", @short),
+               new Entry("?", @byte), new Entry("warp", @byte), new Entry("map", @byte), new Entry("bank", @byte)//*/
+            ),
+            new Entry("scripts", @nullablepointer /* makes me lose one map: why?
+               ,
+               new Entry("x", @short), new Entry("y", @short),
+               new Entry("?", @short), new Entry("scriptVariable", @short),
+               new Entry("scriptVariableValue", @short), new Entry("?", @short),
+               new Entry("script", @pointer)//*/
+            ),
+            new Entry("signposts", @nullablepointer /* makes me lose a bunch: why?
+               ,
+               new Entry("x", @short), new Entry("y", @short),
+               new Entry("talkingLevel", @byte), new Entry("signpostType", @byte), new Entry("?", @short),
+               new Entry("?", @word),
+               new Entry("dynamic", new DataType(4)) // *script || -itemID .hiddenID .amount //*/
+            )
          ),
          new Entry("script", @nullablepointer),
          new Entry("connections", @nullablepointer,
@@ -227,68 +243,65 @@ namespace SorceryHex.Gba {
          new Entry("_", @short), new Entry("labelToggle", @byte), new Entry("_", @byte)
       );
 
-      /*
-         map:
-         *mapTileData
-            width height
-            *borderTile // 8 bytes, no pointers
-            *tile[width*height] // 2 bytes: logical for 6 bits, visual for 10
-            *tileset
-            *tileset
-            .borderWidth .borderHeight ._ ._
-         *mapEventData
-            .personCount .warpCount .scriptCount .signpostCount
-            *persons[personCount]
-               .? .picture .? .?
-               -x -y
-               .? .movementType .movement .?
-               .isTrainer .? -viewRadius
-               *script
-               -id .? .?
-            *warps[warpCount] { -x -y .? .warp .map .bank }
-            *scripts[scriptCount] { -x -y -? -scriptVaribale -scriptVariableValue -? *script }
-            *signposts[signpostCount]
-               -x -y
-               .talkingLevel .signpostType -?
-               ?
-               *script // || -itemID .hiddenID .amount
-         *script
-         *connections
-            count
-            *data[count] { type offset .bank .map -_ }
-         -song -map
-         .label_id .flash .weather .type
-         -_ .labelToggle ._
-       */
+      #endregion
 
       readonly byte[] _data;
 
       public Maps(byte[] data) { _data = data; }
 
+      public string GameCode {
+         get {
+            var chars = Enumerable.Range(0, 4).Select(i => (char)_data[0xAC + i]).ToArray();
+            return new string(chars);
+         }
+      }
+
       public void Load() {
-         // TODO find maps based on the nested DataLayout
-         
-         // first pass for pointers and addresses
-         var addresses = new List<int>();
+         var code = GameCode;
+
+         //           ruby            sapphire          emerald
+         if (code == "AXVE" || code == "AXPE" || code == "BPEE") {
+            DataLayout.Children[0] = new Entry("mapTileData",
+               new Entry("width", @word), new Entry("height", @word),
+               new Entry("borderTile", @pointer),
+               new Entry("tiles", @pointer),
+               new Entry("tileset", @pointer),
+               new Entry("tileset", @pointer)
+            );
+         } else { // FR / LG
+            DataLayout.Children[0] = new Entry("mapTileData",
+               new Entry("width", @word), new Entry("height", @word),
+               new Entry("borderTile", @pointer),
+               new Entry("tiles", @pointer),
+               new Entry("tileset", @pointer),
+               new Entry("tileset", @pointer),
+               new Entry("borderWidth", @byte), new Entry("borderHeight", @byte), new Entry("_", @byte), new Entry("_", @byte)
+            );
+         }
+
+         // first pass for addresses. This step is slow. Would a different collection be faster?
+         var addressesSet = new HashSet<int>();
          for (int i = 3; i < _data.Length; i += 4) {
             if (_data[i] != 0x08) continue;
             var address = _data.ReadPointer(i - 3);
             if (address % 4 != 0) continue;
-            if (addresses.Contains(address)) continue;
-            addresses.Add(address);
+            if (addressesSet.Contains(address)) continue;
+            addressesSet.Add(address);
          }
-         addresses.Sort();
+         var addressesList = addressesSet.ToList();
+         addressesList.Sort();
 
          // second pass for matching the nested layout
          var matchingLayouts = new List<int>();
-         for (int i = 0; i < addresses.Count; i++) {
-            if (!CouldBe(DataLayout, addresses[i], addresses)) continue;
-            matchingLayouts.Add(addresses[i]);
+         foreach (var address in addressesList) {
+            if (!CouldBe(DataLayout, address, addressesList)) continue;
+            matchingLayouts.Add(address);
          }
       }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var list = new FrameworkElement[length];
+         // TODO
          return list;
       }
 
@@ -326,14 +339,13 @@ namespace SorceryHex.Gba {
             }
             if (child.DataType == @word) {
                // words never use the 4th byte - they're just not big enough
-               if (_data[address + currentOffset + 3] != 0x00) return false;
+               if (_data[address + currentOffset + 3] != 0x00) return false; // makes me lose 1: why?
             }
             currentOffset += child.DataType.Length;
          }
 
          return true;
       }
-
    }
 
    class Thumbnails : IPartialElementFactory {
