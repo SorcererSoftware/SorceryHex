@@ -6,13 +6,6 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex {
-   public interface ICommandFactory {
-      void CreateJumpCommand(FrameworkElement element, params int[] jumpLocation);
-      void RemoveJumpCommand(FrameworkElement element);
-      void LinkToInterpretation(FrameworkElement element, FrameworkElement visual);
-      void UnlinkFromInterpretation(FrameworkElement element);
-   }
-
    public interface IElementFactory {
       int Length { get; }
       void Load();
