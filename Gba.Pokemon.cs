@@ -183,6 +183,7 @@ namespace SorceryHex.Gba {
       static readonly DataType @short = new DataType(2);
       static readonly DataType @word = new DataType(4);
       static readonly DataType @pointer = new DataType(4);
+      static readonly DataType @nullablepointer = new DataType(4);
 
       class Entry {
          public readonly string Name;
@@ -193,8 +194,8 @@ namespace SorceryHex.Gba {
             Name = name; DataType = @pointer; Children = children;
          }
 
-         public Entry(string name, DataType type) {
-            Name = name; DataType = type; Children = null;
+         public Entry(string name, DataType type, params Entry[] children) {
+            Name = name; DataType = type; Children = children;
          }
       }
 
@@ -211,13 +212,13 @@ namespace SorceryHex.Gba {
          ),
          new Entry("mapEventData",
             new Entry("personCount", @byte), new Entry("warpCount", @byte), new Entry("scriptCount", @byte), new Entry("signpostCount", @byte),
-            new Entry("persons", @pointer), // TODO expand
-            new Entry("warps", @pointer),   // TODO expand
-            new Entry("scripts", @pointer), // TODO expand
-            new Entry("signposts", @pointer)// TODO expand
+            new Entry("persons", @nullablepointer), // TODO expand
+            new Entry("warps", @nullablepointer),   // TODO expand
+            new Entry("scripts", @nullablepointer), // TODO expand
+            new Entry("signposts", @nullablepointer)// TODO expand
          ),
-         new Entry("script", @pointer),
-         new Entry("connections",
+         new Entry("script", @nullablepointer),
+         new Entry("connections", @nullablepointer,
             new Entry("count", @word),
             new Entry("data", @pointer)
          ),
@@ -266,6 +267,24 @@ namespace SorceryHex.Gba {
 
       public void Load() {
          // TODO find maps based on the nested DataLayout
+         
+         // first pass for pointers and addresses
+         var addresses = new List<int>();
+         for (int i = 3; i < _data.Length; i += 4) {
+            if (_data[i] != 0x08) continue;
+            var address = _data.ReadPointer(i - 3);
+            if (address % 4 != 0) continue;
+            if (addresses.Contains(address)) continue;
+            addresses.Add(address);
+         }
+         addresses.Sort();
+
+         // second pass for matching the nested layout
+         var matchingLayouts = new List<int>();
+         for (int i = 0; i < addresses.Count; i++) {
+            if (!CouldBe(DataLayout, addresses[i], addresses)) continue;
+            matchingLayouts.Add(addresses[i]);
+         }
       }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
@@ -281,6 +300,40 @@ namespace SorceryHex.Gba {
       public bool IsWithinDataBlock(int location) { return false; }
       public FrameworkElement GetInterpretation(int location) { return null; }
       public IList<int> Find(string term) { return null; }
+
+      bool CouldBe(Entry entry, int address, IList<int> addresses) {
+         int length = entry.Children.Sum(child => child.DataType.Length);
+         int index = addresses.IndexOf(address);
+         var nextAddress = index < addresses.Count - 1 ? addresses[index + 1] : 0x1000000;
+         int availableLength = nextAddress - address;
+         if (availableLength < length) return false;
+
+         int currentOffset = 0;
+         foreach (var child in entry.Children) {
+            if (child.DataType == @pointer || child.DataType == @nullablepointer) {
+               if (child.DataType == @nullablepointer && _data[address + currentOffset + 3] == 0x00) {
+                  // if it's nullable and null, make sure it's all null
+                  if ((_data[address + currentOffset] | _data[address + currentOffset + 1] | _data[address + currentOffset + 2]) != 0x00) return false;
+               } else  {
+                  // it's a pointer and it's not null (or nullable)
+                  if (_data[address + currentOffset + 3] != 0x08) return false;
+                  if (child.Children != null && child.Children.Length > 0) {
+                     var childAddress = _data.ReadPointer(address + currentOffset);
+                     if (childAddress % 4 != 0) return false;
+                     if (!CouldBe(child, childAddress, addresses)) return false;
+                  }
+               }
+            }
+            if (child.DataType == @word) {
+               // words never use the 4th byte - they're just not big enough
+               if (_data[address + currentOffset + 3] != 0x00) return false;
+            }
+            currentOffset += child.DataType.Length;
+         }
+
+         return true;
+      }
+
    }
 
    class Thumbnails : IPartialElementFactory {

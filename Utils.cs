@@ -69,6 +69,7 @@ namespace SorceryHex {
          file = args != null && args.Length == 1 ? args[0] : GetFile();
          if (file == null) return null;
          if (!File.Exists(file)) return null;
+         file = file.ToLower();
 
          using (var stream = new FileStream(file, FileMode.Open)) {
             var data = new byte[stream.Length];

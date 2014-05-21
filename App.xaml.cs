@@ -22,6 +22,7 @@ namespace SorceryHex {
                Gba.LzFactory.Palette(data),
                Gba.LzFactory.Images(data),
                new Gba.PCS(data),
+               new Gba.Maps(data),
                new Gba.Header(data));
             return new Gba.PointerFormatter(factory, data);
          };
