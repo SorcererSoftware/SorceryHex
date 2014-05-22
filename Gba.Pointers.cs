@@ -164,6 +164,10 @@ namespace SorceryHex.Gba {
             // lose confidence in pointers that point to within another pointer
             if (ContainsAny(tempArray, dest - 1, dest - 2, dest - 3)) pointerConfidence--;
 
+            // lose confidence in pointers that don't point to a multiple of 4 or start on a multiple of 4
+            if (_pointers[i] % 4 != 0) pointerConfidence--;
+            if (dest % 4 != 0) pointerConfidence--;
+
             // lose confidence in pointers that point to just 1 byte
             if (ContainsAny(tempDest, dest + 1)) pointerConfidence--;
 

@@ -248,6 +248,9 @@ namespace SorceryHex.Gba {
 
       readonly byte[] _data;
       SortedSet<int> _mapLocations;
+      SortedSet<int> _mapBankAddress;
+      SortedSet<int> _allSubsetAddresses;
+      int _masterMapAddress;
 
       public Maps(byte[] data) { _data = data; }
 
@@ -281,26 +284,44 @@ namespace SorceryHex.Gba {
             );
          }
 
-         // first pass for addresses. This step is slow. Would a different collection be faster?
+         // first pass for addresses.
+         var pointerSet = new SortedList<int, int>();
          var addressesSet = new HashSet<int>();
          for (int i = 3; i < _data.Length; i += 4) {
             if (_data[i] != 0x08) continue;
             var address = _data.ReadPointer(i - 3);
             if (address % 4 != 0) continue;
             if (addressesSet.Contains(address)) continue;
+            pointerSet.Add(address, i - 3);
             addressesSet.Add(address);
          }
          var addressesList = addressesSet.ToList();
          addressesList.Sort();
 
          // second pass for matching the nested layout
+         _allSubsetAddresses = new SortedSet<int>();
          var matchingLayouts = new List<int>();
+         var matchingPointers = new List<int>();
          foreach (var address in addressesList) {
             if (!CouldBe(DataLayout, address, addressesList)) continue;
+            matchingPointers.Add(pointerSet[address]);
             matchingLayouts.Add(address);
+            SeekChildren(DataLayout, address);
          }
 
+         // third pass: find which of the pointers in matchingPointers have references to them (those are the heads of the lists)
+         _mapBankAddress = new SortedSet<int>();
+         var mapBankPointers = new List<int>();
+         foreach (var mapPointer in matchingPointers) {
+            if (!pointerSet.ContainsKey(mapPointer)) continue;
+            _mapBankAddress.Add(mapPointer);
+            mapBankPointers.Add(pointerSet[mapPointer]);
+         }
+
+         _masterMapAddress = pointerSet.Keys.First(mapBankPointers.Contains);
          _mapLocations = new SortedSet<int>(matchingLayouts);
+         foreach (var location in matchingLayouts) _allSubsetAddresses.Add(location);
+         foreach (var location in _mapBankAddress) _allSubsetAddresses.Add(location);
       }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
@@ -313,11 +334,16 @@ namespace SorceryHex.Gba {
          // TODO
       }
 
-      public bool IsStartOfDataBlock(int location) { return _mapLocations.Contains(location); }
+      public bool IsStartOfDataBlock(int location) { return _allSubsetAddresses.Contains(location); }
       public bool IsWithinDataBlock(int location) { return false; }
 
       Dictionary<int, FrameworkElement> _interpretations = new Dictionary<int,FrameworkElement>();
       public FrameworkElement GetInterpretation(int location) {
+         if (_mapBankAddress.Contains(location)) {
+            if (!_interpretations.ContainsKey(location)) _interpretations[location] = new TextBlock { Text = "MapBank", Foreground = Solarized.Theme.Instance.Emphasis };
+            return _interpretations[location];
+         }
+
          if (!_mapLocations.Contains(location)) return null;
          if (!_interpretations.ContainsKey(location)) _interpretations[location] = new TextBlock { Text = "Map", Foreground = Solarized.Theme.Instance.Emphasis };
          return _interpretations[location];
@@ -352,6 +378,23 @@ namespace SorceryHex.Gba {
          }
 
          return true;
+      }
+
+      void SeekChildren(Entry entry, int address) {
+         int currentOffset = 0;
+         foreach (var child in entry.Children) {
+            if (child.DataType == @pointer || child.DataType == @nullablepointer) {
+               if (child.DataType == @nullablepointer && _data[address + currentOffset + 3] == 0x00) {
+                  currentOffset+=child.DataType.Length;
+                  continue;
+               } else {
+                  var next = _data.ReadPointer(address + currentOffset);
+                  if (child.Children != null && child.Children.Length > 0) SeekChildren(child, next);
+                  _allSubsetAddresses.Add(next);
+               }
+            }
+            currentOffset += child.DataType.Length;
+         }
       }
    }
 
