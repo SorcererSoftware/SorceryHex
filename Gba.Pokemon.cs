@@ -183,6 +183,7 @@ namespace SorceryHex.Gba {
       static readonly DataType @byte = new DataType(1);
       static readonly DataType @short = new DataType(2);
       static readonly DataType @word = new DataType(4);
+      static readonly DataType @unknown4 = new DataType(4);
       static readonly DataType @pointer = new DataType(4);
       static readonly DataType @nullablepointer = new DataType(4);
 
@@ -204,32 +205,32 @@ namespace SorceryHex.Gba {
          new Entry("mapTileData", @pointer),
          new Entry("mapEventData",
             new Entry("personCount", @byte), new Entry("warpCount", @byte), new Entry("scriptCount", @byte), new Entry("signpostCount", @byte),
-            new Entry("persons", @nullablepointer /* makes me lose a bunch: why?
+            new Entry("persons", @nullablepointer
                ,
                new Entry("?", @byte), new Entry("picture", @byte), new Entry("?", @byte), new Entry("?", @byte),
                new Entry("x", @short), new Entry("y", @short),
                new Entry("?", @byte), new Entry("movementType", @byte), new Entry("movement", @byte), new Entry("?", @byte),
                new Entry("isTrainer", @byte), new Entry("?", @byte), new Entry("viewRadius", @short),
-               new Entry("script", @pointer),
-               new Entry("id", @short), new Entry("?", @byte), new Entry("?", @byte)//*/
+               new Entry("script", @nullablepointer),
+               new Entry("id", @short), new Entry("?", @byte), new Entry("?", @byte)
             ),
-            new Entry("warps", @nullablepointer /* makes me lose one map: why?
+            new Entry("warps", @nullablepointer
                ,
                new Entry("x", @short), new Entry("y", @short),
-               new Entry("?", @byte), new Entry("warp", @byte), new Entry("map", @byte), new Entry("bank", @byte)//*/
+               new Entry("?", @byte), new Entry("warp", @byte), new Entry("map", @byte), new Entry("bank", @byte)
             ),
-            new Entry("scripts", @nullablepointer /* makes me lose one map: why?
+            new Entry("scripts", @nullablepointer
                ,
                new Entry("x", @short), new Entry("y", @short),
                new Entry("?", @short), new Entry("scriptVariable", @short),
                new Entry("scriptVariableValue", @short), new Entry("?", @short),
-               new Entry("script", @pointer)//*/
+               new Entry("script", @nullablepointer)
             ),
-            new Entry("signposts", @nullablepointer /* makes me lose a bunch: why?
+            new Entry("signposts", @nullablepointer
                ,
                new Entry("x", @short), new Entry("y", @short),
                new Entry("talkingLevel", @byte), new Entry("signpostType", @byte), new Entry("?", @short),
-               new Entry("?", @word),
+               new Entry("?", @unknown4),
                new Entry("dynamic", new DataType(4)) // *script || -itemID .hiddenID .amount //*/
             )
          ),
@@ -246,6 +247,7 @@ namespace SorceryHex.Gba {
       #endregion
 
       readonly byte[] _data;
+      SortedSet<int> _mapLocations;
 
       public Maps(byte[] data) { _data = data; }
 
@@ -297,6 +299,8 @@ namespace SorceryHex.Gba {
             if (!CouldBe(DataLayout, address, addressesList)) continue;
             matchingLayouts.Add(address);
          }
+
+         _mapLocations = new SortedSet<int>(matchingLayouts);
       }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
@@ -309,18 +313,21 @@ namespace SorceryHex.Gba {
          // TODO
       }
 
-      public bool IsStartOfDataBlock(int location) { return false; }
+      public bool IsStartOfDataBlock(int location) { return _mapLocations.Contains(location); }
       public bool IsWithinDataBlock(int location) { return false; }
-      public FrameworkElement GetInterpretation(int location) { return null; }
-      public IList<int> Find(string term) { return null; }
+
+      Dictionary<int, FrameworkElement> _interpretations = new Dictionary<int,FrameworkElement>();
+      public FrameworkElement GetInterpretation(int location) {
+         if (!_mapLocations.Contains(location)) return null;
+         if (!_interpretations.ContainsKey(location)) _interpretations[location] = new TextBlock { Text = "Map", Foreground = Solarized.Theme.Instance.Emphasis };
+         return _interpretations[location];
+      }
+      public IList<int> Find(string term) {
+         if (term == "magic") return _mapLocations.ToList();
+         return null;
+      }
 
       bool CouldBe(Entry entry, int address, IList<int> addresses) {
-         int length = entry.Children.Sum(child => child.DataType.Length);
-         int index = addresses.IndexOf(address);
-         var nextAddress = index < addresses.Count - 1 ? addresses[index + 1] : 0x1000000;
-         int availableLength = nextAddress - address;
-         if (availableLength < length) return false;
-
          int currentOffset = 0;
          foreach (var child in entry.Children) {
             if (child.DataType == @pointer || child.DataType == @nullablepointer) {
@@ -339,7 +346,7 @@ namespace SorceryHex.Gba {
             }
             if (child.DataType == @word) {
                // words never use the 4th byte - they're just not big enough
-               if (_data[address + currentOffset + 3] != 0x00) return false; // makes me lose 1: why?
+               if (_data[address + currentOffset + 3] != 0x00) return false;
             }
             currentOffset += child.DataType.Length;
          }
