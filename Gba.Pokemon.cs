@@ -9,7 +9,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
-   class PCS : IPartialElementFactory {
+   class PCS : IPartialParser {
       static readonly Geometry Escape = "\\x".ToGeometry();
 
       readonly byte[] _data;
@@ -174,7 +174,7 @@ namespace SorceryHex.Gba {
       }
    }
 
-   class Maps : IPartialElementFactory {
+   class Maps : IPartialParser {
 
       #region Setup
 
@@ -398,7 +398,7 @@ namespace SorceryHex.Gba {
       }
    }
 
-   class Thumbnails : IPartialElementFactory {
+   class Thumbnails : IPartialParser {
 
       readonly byte[] _data;
       readonly IList<int> _iconStartPoints = new List<int>();

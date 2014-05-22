@@ -12,13 +12,13 @@ namespace SorceryHex {
          string fileName;
          var contents = Utils.LoadFile(out fileName, e.Args);
          if (contents == null) { this.Shutdown(); return; }
-         Func<string, byte[], IElementFactory> create = (name, data) => {
+         Func<string, byte[], IParser> create = (name, data) => {
             // TODO move gba/pokemon stuff to a separate assembly
             if (!name.EndsWith(".gba")) {
-               return new CompositeElementFactory(data);
+               return new CompositeParser(data);
             }
 
-            IElementFactory factory = new CompositeElementFactory(data,
+            IParser factory = new CompositeParser(data,
                Gba.LzFactory.Palette(data),
                Gba.LzFactory.Images(data),
                new Gba.PCS(data),

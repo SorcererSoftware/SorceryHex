@@ -8,7 +8,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
-   class PointerFormatter : IElementFactory {
+   class PointerFormatter : IParser {
       #region Fields
 
       static readonly Geometry LeftArrow = Geometry.Parse("m0,0 l0,2 -1,-1 z");
@@ -17,7 +17,7 @@ namespace SorceryHex.Gba {
       static readonly Brush Brush = Solarized.Brushes.Orange;
       class BackPointer { public int Destination; public int[] Sources; }
 
-      readonly IElementFactory _base;
+      readonly IParser _base;
       readonly byte[] _data;
       readonly IList<Border> _hasInterpretation = new List<Border>();
       readonly IList<int> _pointers = new List<int>();
@@ -33,7 +33,7 @@ namespace SorceryHex.Gba {
 
       public int Length { get { return _data.Length; } }
 
-      public PointerFormatter(IElementFactory fallback, byte[] data) {
+      public PointerFormatter(IParser fallback, byte[] data) {
          _data = data;
          _base = fallback;
       }

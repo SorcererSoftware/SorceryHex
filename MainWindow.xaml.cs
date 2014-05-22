@@ -43,15 +43,15 @@ namespace SorceryHex {
 
       #endregion
 
-      Func<string, byte[], IElementFactory> _create;
-      IElementFactory _holder;
+      Func<string, byte[], IParser> _create;
+      IParser _holder;
       MainCommandFactory _commandFactory;
       int _offset = 0;
 
       public int CurrentColumnCount{get;private set;}
       public int CurrentRowCount{get;private set;}
 
-      public MainWindow(Func<string, byte[], IElementFactory> create, string fileName, byte[] data) {
+      public MainWindow(Func<string, byte[], IParser> create, string fileName, byte[] data) {
          _create = create;
          _holder = _create(fileName, data);
          _commandFactory = new MainCommandFactory(this);

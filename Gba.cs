@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,7 +7,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
-   class Header : IPartialElementFactory {
+   class Header : IPartialParser {
       static readonly Brush Brush = Solarized.Brushes.Violet;
       static readonly Func<byte, Geometry> ToAscii = b => new string((char)b, 1).ToGeometry();
       class Entry {
@@ -116,7 +115,7 @@ namespace SorceryHex.Gba {
       }
    }
 
-   class Lz<T> : IPartialElementFactory where T : FrameworkElement {
+   class Lz<T> : IPartialParser where T : FrameworkElement {
       readonly byte[] _data;
       readonly IList<int> _imageLocations = new List<int>();
       readonly IList<int> _imageLengths = new List<int>();
@@ -231,7 +230,7 @@ namespace SorceryHex.Gba {
    }
 
    class LzFactory {
-      public static IPartialElementFactory Images(byte[] data) {
+      public static IPartialParser Images(byte[] data) {
          return new Lz<Image>(data, GbaImages.FindLZImages(data)) {
             Interpret = dataBytes => {
                int width, height; GbaImages.GuessWidthHeight(dataBytes.Length, out width, out height);
@@ -241,7 +240,7 @@ namespace SorceryHex.Gba {
          };
       }
 
-      public static IPartialElementFactory Palette(byte[] data) {
+      public static IPartialParser Palette(byte[] data) {
          return new Lz<Grid>(data, GbaImages.FindLZPalettes(data)) {
             Interpret = dataBytes => {
                var grid = new Grid { Width = 40, Height = 40, Background = Brushes.Transparent };

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
@@ -6,7 +7,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex {
-   public interface IElementFactory {
+   public interface IParser {
       int Length { get; }
       void Load();
       IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
@@ -17,7 +18,7 @@ namespace SorceryHex {
       IList<int> Find(string term);
    }
 
-   public interface IPartialElementFactory {
+   public interface IPartialParser {
       void Load();
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
@@ -27,15 +28,15 @@ namespace SorceryHex {
       IList<int> Find(string term);
    }
 
-   class CompositeElementFactory : IElementFactory {
-      readonly IList<IPartialElementFactory> _children;
+   class CompositeParser : IParser {
+      readonly IList<IPartialParser> _children;
       readonly byte[] _data;
       readonly Queue<Path> _recycles = new Queue<Path>();
       bool _loaded;
 
       public int Length { get { return _data.Length; } }
 
-      public CompositeElementFactory(byte[] data, params IPartialElementFactory[] children) {
+      public CompositeParser(byte[] data, params IPartialParser[] children) {
          _data = data;
          _children = children;
       }
@@ -66,7 +67,7 @@ namespace SorceryHex {
          if (element.Tag == this) {
             _recycles.Enqueue((Path)element);
          } else {
-            var child = (IPartialElementFactory)element.Tag;
+            var child = (IPartialParser)element.Tag;
             child.Recycle(commander, element);
          }
       }
@@ -164,5 +165,105 @@ namespace SorceryHex {
       }
 
       bool IsLightweight(byte value) { return value == 0x00 || value == 0xFF; }
+   }
+
+
+   class RunStorage : IPartialParser {
+      readonly byte[] _data;
+      readonly SortedList<int, DataRun> _runs = new SortedList<int, DataRun>();
+      readonly Queue<Path> _recycles = new Queue<Path>();
+
+      List<int> _keys = new List<int>();
+      bool _listNeedsUpdate;
+
+      public RunStorage(byte[] data) { _data = data; }
+
+      public void Load() { }
+
+      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+         UpdateList();
+         var elements = new FrameworkElement[length];
+         var startIndex = _keys.BinarySearch(start);
+
+         if (startIndex == _keys.Count) return elements;
+
+         for (int i = 0; i < length; ) {
+            int loc = start + i;
+            if (startIndex >= _keys.Count) {
+               i = length;
+               continue;
+            }
+
+            int dataIndex = _keys[startIndex];
+            if (dataIndex > loc) {
+               var sectionLength = Math.Min(length - i, dataIndex - loc);
+               i += sectionLength;
+            } else if (dataIndex + _runs[_keys[startIndex]].Length < loc) {
+               startIndex++;
+            } else {
+               int runEnd = dataIndex + _runs[_keys[startIndex]].Length;
+               runEnd = Math.Min(runEnd, start + length);
+               int lengthInView = runEnd - loc;
+               // InterpretData(dataIndex);
+               for (int j = 0; j < lengthInView; j++) {
+                  var element = UsePath(_runs[_keys[startIndex]], loc + j);
+                  // commander.LinkToInterpretation(element, _interpretations[dataIndex]);
+                  elements[i + j] = element;
+               }
+               startIndex++;
+               i += lengthInView;
+            }
+         }
+
+         return elements;
+      }
+
+      public void Recycle(ICommandFactory commander, FrameworkElement element) {
+         _recycles.Enqueue((Path)element);
+      }
+
+      public bool IsStartOfDataBlock(int location) {
+         return _runs.ContainsKey(location);
+      }
+
+      public bool IsWithinDataBlock(int location) {
+         UpdateList();
+         var insertionPoint = _keys.BinarySearch(location);
+         if (insertionPoint < 1) return false;
+         int startAddress = _keys[insertionPoint - 1];
+         return startAddress + _runs[startAddress].Length > location;
+      }
+
+      public FrameworkElement GetInterpretation(int location) { return null; }
+
+      public IList<int> Find(string term) { return null; }
+
+      Path UsePath(DataRun run, int location) {
+         var geometry = run.Parser[_data[location]];
+
+         var element = _recycles.Count > 0 ? _recycles.Dequeue() : new Path {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4.0, 3.0, 4.0, 3.0),
+         };
+         element.Data = geometry;
+         element.Fill = run.Color;
+         return element;
+      }
+
+      void UpdateList() {
+         if (!_listNeedsUpdate) return;
+         _listNeedsUpdate = false;
+         _keys = _runs.Keys.ToList();
+      }
+   }
+
+   class DataRun {
+      public readonly int Length;
+      public readonly Brush Color;
+      public readonly IDictionary<byte, Geometry> Parser;
+      public DataRun(int length, Brush color, IDictionary<byte, Geometry> parser) {
+         Length = length; Color = color; Parser = parser;
+      }
    }
 }
