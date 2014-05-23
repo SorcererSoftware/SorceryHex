@@ -8,7 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
-namespace SorceryHex.Gba {
+namespace SorceryHex {
    class PCS : IPartialParser {
       static readonly Geometry Escape = "\\x".ToGeometry();
 

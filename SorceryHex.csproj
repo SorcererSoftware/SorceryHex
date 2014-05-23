@@ -54,7 +54,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="ElementFactory.cs" />
+    <Compile Include="Parser.cs" />
     <Compile Include="Gba.cs" />
     <Compile Include="Gba.Pointers.cs" />
     <Compile Include="Gba.Pokemon.cs" />

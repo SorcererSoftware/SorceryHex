@@ -18,13 +18,19 @@ namespace SorceryHex {
                return new CompositeParser(data);
             }
 
-            IParser factory = new CompositeParser(data,
-               Gba.LzFactory.Palette(data),
-               Gba.LzFactory.Images(data),
-               new Gba.PCS(data),
-               new Gba.Maps(data),
-               new Gba.Header(data));
-            return new Gba.PointerFormatter(factory, data);
+            var storage = new RunStorage(data);
+            var pointers = data.FindPossiblePointers();
+            storage.AddLzImage(pointers);
+            IParser factory = new CompositeParser(data
+               , storage
+               // Gba.LzFactory.Palette(data),
+               // Gba.LzFactory.Images(data),
+               // new Gba.PCS(data),
+               // new Gba.Maps(data),
+               // new Gba.Header(data)
+               );
+            return factory;
+            // return new Gba.PointerFormatter(factory, data);
          };
          var window = new MainWindow(create, fileName, contents);
          window.Show();

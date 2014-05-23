@@ -6,7 +6,80 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
-namespace SorceryHex.Gba {
+namespace SorceryHex {
+
+
+   static class Gba {
+      static DataRun HeaderRun(int len, string text, Geometry[] converter) { return new DataRun(len, Solarized.Brushes.Violet, Utils.ByteFlyweights) { HoverText = text, Underlined = true }; }
+      static DataRun HeaderRun(int len, string text) { return HeaderRun(len, text, Utils.ByteFlyweights); }
+      static DataRun LzRun(int len) { return new DataRun(len, Solarized.Brushes.Cyan, Utils.ByteFlyweights); }
+      static DataRun PointerRun = new DataRun(4, Solarized.Brushes.Orange, Utils.ByteFlyweights);
+
+      static readonly DataRun[] _headerRuns = new[] {
+         HeaderRun(4, "HeaderRun Point"),
+         HeaderRun(156, "Compressed Nintendo Logo"),
+         HeaderRun(12, "Game Title", Utils.AsciiFlyweights),
+         HeaderRun(4, "Game Code", Utils.AsciiFlyweights),
+         HeaderRun(2, "Maker Code", Utils.AsciiFlyweights),
+         HeaderRun(1, "Fixed Value"),
+         HeaderRun(1, "Main Unit Code"),
+         HeaderRun(1, "Device Type"),
+         HeaderRun(7, "Reserved Area"),
+         HeaderRun(1, "Software Version"),
+         HeaderRun(1, "Complement Check"),
+         HeaderRun(2, "Reserved Area")
+      };
+
+      static void AddHeaderRuns(this RunStorage runs) {
+         int offset = 0;
+         foreach (var run in _headerRuns) {
+            runs.AddRun(offset, run);
+            offset += run.Length;
+         }
+      }
+
+      public static SortedList<int, int> FindPossiblePointers(this byte[] data) {
+         var pointerSet = new SortedList<int, int>();
+         for (int i = 3; i < data.Length; i += 4) {
+            if (data[i] != 0x08) continue;
+            var address = data.ReadPointer(i - 3);
+            if (address % 4 != 0) continue;
+            pointerSet.Add(i - 3, address);
+         }
+         return pointerSet;
+      }
+
+      public static void AddLzImage(this RunStorage runs, SortedList<int, int> pointerSet) {
+         foreach (var loc in pointerSet.Values.Distinct().ToArray()) {
+            if (runs.Data[loc + 0] != 0x10) continue;
+            if (runs.Data[loc + 1] != 0x20) continue;
+            if ((runs.Data[loc + 2] | runs.Data[loc + 2]) != 0x00) continue;
+            int uncompressed, compressed;
+            GbaImages.CalculateLZSizes(runs.Data, loc, out uncompressed, out compressed);
+            if (uncompressed == -1 || compressed == -1) continue;
+            foreach(var key in pointerSet.Keys.Where(key=>pointerSet[key]==loc).ToArray()){
+               runs.AddRun(key, PointerRun);
+               pointerSet.Remove(key);
+            }
+            runs.AddRun(loc, LzRun(compressed));
+         }
+
+         foreach (var loc in pointerSet.Values.Distinct().ToArray()) {
+            if (runs.Data[loc + 0] != 0x10) continue;
+            if (runs.Data[loc + 1] % 0x20 == 0) continue;
+            int uncompressed, compressed;
+            GbaImages.CalculateLZSizes(runs.Data, loc, out uncompressed, out compressed);
+            if (uncompressed == -1 || compressed == -1) continue;
+            foreach (var key in pointerSet.Keys.Where(key => pointerSet[key] == loc).ToArray()) {
+               runs.AddRun(key, PointerRun);
+               pointerSet.Remove(key);
+            }
+            runs.AddRun(loc, LzRun(compressed));
+         }
+      }
+
+   }
+
    class Header : IPartialParser {
       static readonly Brush Brush = Solarized.Brushes.Violet;
       static readonly Func<byte, Geometry> ToAscii = b => new string((char)b, 1).ToGeometry();

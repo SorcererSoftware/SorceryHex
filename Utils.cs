@@ -14,11 +14,18 @@ namespace SorceryHex {
       public static Func<A, C> Compose<A, B, C>(this Func<A, B> x, Func<B, C> y) { return a => y(x(a)); }
       public static readonly Typeface Font = new Typeface("Consolas");
       public static readonly Geometry[] ByteFlyweights =
-         Enumerable.Range(0, 0x100).Select(i => (byte)i)
-         .Select(b => Utils.Hex.Substring(b / 0x10, 1) + Utils.Hex.Substring(b % 0x10, 1))
-         .Select(str => str.ToGeometry())
-         .Select(geometry => { geometry.Freeze(); return geometry; })
-         .ToArray();
+         Enumerable.Range(0, 0x100).Select(i => {
+            var str = Utils.Hex.Substring(i / 0x10, 1) + Utils.Hex.Substring(i % 0x10, 1);
+            var geo = str.ToGeometry();
+            geo.Freeze();
+            return geo;
+         }).ToArray();
+      public static readonly Geometry[] AsciiFlyweights =
+         Enumerable.Range(0, 0x100).Select(i => {
+            var geo = new string((char)i, 1).ToGeometry();
+            geo.Freeze();
+            return geo;
+         }).ToArray();
 
       public static int ReadPointer(this byte[] memory, int offset) {
          if (memory[offset + 3] != 0x08) return -1;

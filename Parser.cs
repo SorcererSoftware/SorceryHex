@@ -167,23 +167,29 @@ namespace SorceryHex {
       bool IsLightweight(byte value) { return value == 0x00 || value == 0xFF; }
    }
 
-
    class RunStorage : IPartialParser {
-      readonly byte[] _data;
+      public readonly byte[] Data;
       readonly SortedList<int, DataRun> _runs = new SortedList<int, DataRun>();
       readonly Queue<Path> _recycles = new Queue<Path>();
 
       List<int> _keys = new List<int>();
       bool _listNeedsUpdate;
 
-      public RunStorage(byte[] data) { _data = data; }
+      public RunStorage(byte[] data) { Data = data; }
 
-      public void Load() { }
+      public void AddRun(int location, DataRun run) {
+         _runs.Add(location, run);
+      }
+
+      public void Load() {
+         _keys = _runs.Keys.ToList();
+      }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          UpdateList();
          var elements = new FrameworkElement[length];
          var startIndex = _keys.BinarySearch(start);
+         if (startIndex < 0) startIndex = ~startIndex; // not in list: give me the insertion point
 
          if (startIndex == _keys.Count) return elements;
 
@@ -239,7 +245,7 @@ namespace SorceryHex {
       public IList<int> Find(string term) { return null; }
 
       Path UsePath(DataRun run, int location) {
-         var geometry = run.Parser[_data[location]];
+         var geometry = run.Parser[Data[location]];
 
          var element = _recycles.Count > 0 ? _recycles.Dequeue() : new Path {
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -261,8 +267,12 @@ namespace SorceryHex {
    class DataRun {
       public readonly int Length;
       public readonly Brush Color;
-      public readonly IDictionary<byte, Geometry> Parser;
-      public DataRun(int length, Brush color, IDictionary<byte, Geometry> parser) {
+      public readonly Geometry[] Parser;
+
+      public string HoverText;
+      public bool Underlined;
+
+      public DataRun(int length, Brush color, Geometry[] parser) {
          Length = length; Color = color; Parser = parser;
       }
    }

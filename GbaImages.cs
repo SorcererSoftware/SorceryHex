@@ -50,17 +50,6 @@ namespace SorceryHex {
          return FindLZData(memory, pointer => memory[pointer + 1] == 0x20 && memory[pointer + 2] == 0x00 && memory[pointer + 3] == 0x00);
       }
 
-      // start offset is changed to be the next place we think there is an LZ image
-      public static void SearchForLZImage(byte[] memory, ref int startOffset) {
-         while (true) {
-            while (startOffset < memory.Length && memory[startOffset] != 0x10) startOffset++;
-            if (startOffset == memory.Length) { startOffset = -1; return; }
-            int length = (memory[startOffset + 3] << 16) | (memory[startOffset + 2] << 8) | (memory[startOffset + 1] << 0);
-            if (length % 32 != 0) { startOffset++; continue; }
-            return;
-         }
-      }
-
       /// <summary>
       /// Similar to UnCompressLZ, except it returns only the length of
       /// the compressed data instead of the full uncompressed data set.
