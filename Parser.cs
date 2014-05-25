@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
@@ -179,7 +180,7 @@ namespace SorceryHex {
    public class RunStorage : IPartialParser {
       public readonly byte[] Data;
       readonly SortedList<int, IDataRun> _runs = new SortedList<int, IDataRun>();
-      readonly Queue<Path> _recycles = new Queue<Path>();
+      readonly Queue<Border> _recycles = new Queue<Border>();
       readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();
       readonly HashSet<FrameworkElement> _interpretationLinks = new HashSet<FrameworkElement>();
       readonly HashSet<FrameworkElement> _jumpLinks = new HashSet<FrameworkElement>();
@@ -195,6 +196,7 @@ namespace SorceryHex {
 
       public void AddRun(int location, IDataRun run) {
          _runs.Add(location, run);
+         _listNeedsUpdate = true;
       }
 
       public void Load() {
@@ -230,7 +232,9 @@ namespace SorceryHex {
                int lengthInView = runEnd - loc;
                InterpretData(currentRun, dataIndex);
                for (int j = 0; j < lengthInView; j++) {
-                  var element = UsePath(currentRun, loc + j);
+                  if (currentRun.Parser[Data[loc + j]] == null) continue; // use the parents parser for this byte
+
+                  var element = UseTemplate(currentRun, dataIndex, loc + j);
                   if (_interpretations.ContainsKey(dataIndex)) {
                      _interpretationLinks.Add(element);
                      commander.LinkToInterpretation(element, _interpretations[dataIndex]);
@@ -260,7 +264,7 @@ namespace SorceryHex {
             commander.RemoveJumpCommand(element);
          }
 
-         _recycles.Enqueue((Path)element);
+         _recycles.Enqueue((Border)element);
       }
 
       public bool IsStartOfDataBlock(int location) {
@@ -284,7 +288,9 @@ namespace SorceryHex {
          return _interpretations[location];
       }
 
-      public IList<int> Find(string term) { return null; }
+      public IList<int> Find(string term) {
+         return _runParsers.Select(parser => parser.Find(term) ?? new int[0]).Aggregate(Enumerable.Concat).ToList();
+      }
 
       void InterpretData(IDataRun run, int dataIndex) {
          if (run.Interpret == null) return;
@@ -295,16 +301,30 @@ namespace SorceryHex {
          }
       }
 
-      Path UsePath(IDataRun run, int location) {
+      FrameworkElement UseTemplate(IDataRun run, int dataIndex, int location) {
          var geometry = run.Parser[Data[location]];
 
-         var element = _recycles.Count > 0 ? _recycles.Dequeue() : new Path {
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(4.0, 3.0, 4.0, 3.0),
+         var element = _recycles.Count > 0 ? _recycles.Dequeue() : new Border {
+            Child = new Path {
+               HorizontalAlignment = HorizontalAlignment.Center,
+               VerticalAlignment = VerticalAlignment.Center,
+               Margin = new Thickness(3, 3, 3, 1),
+            },
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0, 0, 0, 1)
          };
-         element.Data = geometry;
-         element.Fill = run.Color;
+         element.SetCreator(this);
+         ((Path)element.Child).Data = geometry;
+         ((Path)element.Child).Fill = run.Color;
+         element.BorderBrush = run.Color;
+
+         double leftBorder = dataIndex == location ? 2 : 0;
+         double rightBorder = dataIndex + run.GetLength(Data, dataIndex) - 1 == location ? 2 : 0;
+         element.Margin = new Thickness(leftBorder, 0, rightBorder, 1);
+         double bottom = run.Underlined ? 1 : 0;
+         element.BorderThickness = new Thickness(0, 0, 0, bottom);
+         element.ToolTip = run.HoverText;
+
          return element;
       }
 
