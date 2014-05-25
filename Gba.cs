@@ -26,7 +26,9 @@ namespace SorceryHex.Gba {
          HeaderRun(2, "Reserved Area")
       };
 
-      public Header() { }
+      readonly PointerMapper _pointers;
+
+      public Header(PointerMapper mapper) { _pointers = mapper; }
 
       public void Load(RunStorage runs) {
          int offset = 0;
@@ -34,6 +36,7 @@ namespace SorceryHex.Gba {
             runs.AddRun(offset, run);
             offset += run.GetLength(runs.Data, offset);
          }
+         _pointers.FilterPointer(i => i >= offset);
       }
 
       public IEnumerable<int> Find(string term) { return null; }

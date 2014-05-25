@@ -66,6 +66,16 @@ namespace SorceryHex.Gba {
          _reversePointerSet.Clear();
       }
 
+      public void FilterPointer(Func<int, bool> func) {
+         foreach (var pointer in _pointerSet.Keys.ToArray()) {
+            int dest = _pointerSet[pointer];
+            if (func(dest)) continue;
+            _pointerSet.Remove(pointer);
+            _reversePointerSet[dest].Remove(pointer);
+            if (_reversePointerSet[dest].Count == 0) _reversePointerSet.Remove(dest);
+         }
+      }
+
       public int[] PointersFromDestination(int destination) { return _destinations[destination]; }
 
       FrameworkElement InterpretPointer(byte[] data, int index) {
