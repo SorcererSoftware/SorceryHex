@@ -18,18 +18,12 @@ namespace SorceryHex {
                return new CompositeParser(data);
             }
 
-            var pointers = new Gba.Pointer(data);
-            var storage = new RunStorage(data, new Gba.Header(), new Gba.Lz(pointers), new Gba.PCS2());
-            IParser factory = new CompositeParser(data
-               , storage
-               // Gba.LzFactory.Palette(data),
-               // Gba.LzFactory.Images(data),
-               // new Gba.PCS(data),
-               // new Gba.Maps(data),
-               // new Gba.Header(data)
-               );
+            var pointerMapper = new Gba.PointerMapper(data);
+            var storage = new RunStorage(data, new Gba.Header(), new Gba.Lz(pointerMapper), new Gba.PCS());
+            // TODO Gba.Maps
+            IParser factory = new CompositeParser(data, storage);
+            factory = new Gba.PointerParser(factory, data, storage, pointerMapper);
             return factory;
-            // return new Gba.PointerFormatter(factory, data);
          };
          var window = new MainWindow(create, fileName, contents);
          window.Show();

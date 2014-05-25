@@ -9,7 +9,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
-   class PCS2 : IRunParser {
+   class PCS : IRunParser {
 
       readonly string[] _pcs = new string[0x100];
       readonly Geometry[] _pcsVisuals = new Geometry[0x100]; // leaving it null makes it use the default color and visualization
@@ -17,7 +17,7 @@ namespace SorceryHex.Gba {
 
       RunStorage _runs;
 
-      public PCS2() {
+      public PCS() {
          _stringRun = new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcsVisuals) { Interpret = GetInterpretation };
       }
 

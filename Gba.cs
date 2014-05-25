@@ -7,49 +7,6 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
-   class Pointer {
-      readonly SortedList<int, int> _pointerSet = new SortedList<int, int>(); // unclaimed pointers
-      readonly IDictionary<int, List<int>> _reversePointerSet = new Dictionary<int, List<int>>(); // unclaimed pointers helper
-      readonly IDictionary<int, int[]> _destinations = new Dictionary<int, int[]>(); // claimed destinations (with pointers)
-      readonly IDictionary<int, IDataRun> _pointedRuns = new Dictionary<int, IDataRun>();
-      readonly SimpleDataRun _pointerRun;
-
-      public IEnumerable<int> OpenDestinations { get { return _pointerSet.Values.Distinct().ToArray(); } }
-
-      public Pointer(byte[] data) {
-         _pointerRun = new SimpleDataRun(4, Solarized.Brushes.Orange, Utils.ByteFlyweights) { Underlined = true, Interpret = InterpretPointer, Jump = JumpPointer };
-
-         for (int i = 3; i < data.Length; i += 4) {
-            if (data[i] != 0x08) continue;
-            var address = data.ReadPointer(i - 3);
-            if (address % 4 != 0) continue;
-            _pointerSet.Add(i - 3, address);
-            if (!_reversePointerSet.ContainsKey(address)) _reversePointerSet[address] = new List<int>();
-            _reversePointerSet[address].Add(i - 3);
-         }
-      }
-
-      public void Claim(RunStorage storage, IDataRun run, int destination) {
-         var keys = _reversePointerSet[destination].ToArray();
-         foreach (var key in keys) {
-            storage.AddRun(key, _pointerRun);
-            _pointedRuns[key] = run;
-            _pointerSet.Remove(key);
-         }
-         _reversePointerSet.Remove(destination);
-         _destinations[destination] = keys;
-      }
-
-      FrameworkElement InterpretPointer(byte[] data, int index) {
-         if (_pointedRuns[index].Interpret == null) return null;
-         return _pointedRuns[index].Interpret(data, data.ReadPointer(index));
-      }
-
-      int[] JumpPointer(byte[] data, int index) {
-         return new[] { data.ReadPointer(index) };
-      }
-   }
-
    class Header : IRunParser {
       static SimpleDataRun HeaderRun(int len, string text, Geometry[] converter) { return new SimpleDataRun(len, Solarized.Brushes.Violet, converter) { HoverText = text, Underlined = true }; }
       static SimpleDataRun HeaderRun(int len, string text) { return HeaderRun(len, text, Utils.ByteFlyweights); }
@@ -85,10 +42,10 @@ namespace SorceryHex.Gba {
    class Lz : IRunParser {
       static SimpleDataRun LzRun(int len, InterpretationRule interpret) { return new SimpleDataRun(len, Solarized.Brushes.Cyan, Utils.ByteFlyweights) { Interpret = interpret }; }
 
-      readonly Pointer _pointers;
+      readonly PointerMapper _pointers;
       RunStorage _runs;
 
-      public Lz(Pointer pointers) { _pointers = pointers; }
+      public Lz(PointerMapper pointers) { _pointers = pointers; }
 
       public void Load(RunStorage runs) {
          _runs = runs;

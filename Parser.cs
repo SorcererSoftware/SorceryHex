@@ -11,7 +11,7 @@ namespace SorceryHex {
    public interface IParser {
       int Length { get; }
       void Load();
-      IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
+      IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsStartOfDataBlock(int location);
       bool IsWithinDataBlock(int location);
@@ -48,7 +48,7 @@ namespace SorceryHex {
          _loaded = true;
       }
 
-      public IEnumerable<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          Debug.Assert(length < 0x20 * 0x40);
          var list = new List<FrameworkElement>();
 
@@ -330,8 +330,8 @@ namespace SorceryHex {
 
       void UpdateList() {
          if (!_listNeedsUpdate) return;
-         _listNeedsUpdate = false;
          _keys = _runs.Keys.ToList();
+         _listNeedsUpdate = false;
       }
    }
 
