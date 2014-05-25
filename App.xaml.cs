@@ -18,9 +18,8 @@ namespace SorceryHex {
                return new CompositeParser(data);
             }
 
-            var storage = new RunStorage(data);
-            var pointers = data.FindPossiblePointers();
-            storage.AddLzImage(pointers);
+            var pointers = new Gba.Pointer(data);
+            var storage = new RunStorage(data, new Gba.Header(), new Gba.Lz(pointers), new Gba.PCS2());
             IParser factory = new CompositeParser(data
                , storage
                // Gba.LzFactory.Palette(data),

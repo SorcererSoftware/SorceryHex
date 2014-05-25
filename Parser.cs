@@ -55,6 +55,7 @@ namespace SorceryHex {
          if (start < 0) { pre = -start; start = 0; length -= pre; }
          if (length < 0) { pre += length; length = 0; }
          if (start + length >= Length) { post = start + length - Length; length = Length - start; }
+         if (length < 0) { post += length; length = 0; }
 
          if (pre > 0) list.AddRange(Enumerable.Range(0, pre).Select(i => UseElement(null)));
          if (length > 0) list.AddRange(ChildCheck(commander, start, length));
@@ -64,10 +65,10 @@ namespace SorceryHex {
       }
 
       public void Recycle(ICommandFactory commander, FrameworkElement element) {
-         if (element.Tag == this) {
+         if (element.GetCreator() == this) {
             _recycles.Enqueue((Path)element);
          } else {
-            var child = (IPartialParser)element.Tag;
+            var child = (IPartialParser)element.GetCreator();
             child.Recycle(commander, element);
          }
       }
@@ -129,7 +130,7 @@ namespace SorceryHex {
             for (int j = 0; j < _children.Count; j++) {
                var response = responses[j];
                var child = _children[j];
-               if (response[i] != null) response[i].Tag = child;
+               if (response[i] != null) response[i].SetCreator(child);
                if (element != null) {
                   if (response[i] != null) child.Recycle(commander, response[i]);
                } else {
@@ -155,9 +156,9 @@ namespace SorceryHex {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(4.0, 3.0, 4.0, 3.0),
-            Tag = this
          };
 
+         element.SetCreator(this);
          element.Data = data;
          element.Fill = lightweight ? Solarized.Theme.Instance.Secondary : Solarized.Theme.Instance.Primary;
          element.Opacity = lightweight ? .75 : 1;
@@ -167,21 +168,37 @@ namespace SorceryHex {
       bool IsLightweight(byte value) { return value == 0x00 || value == 0xFF; }
    }
 
-   class RunStorage : IPartialParser {
+   public delegate int[] JumpRule(byte[] data, int index);
+   public delegate FrameworkElement InterpretationRule(byte[] data, int index);
+   
+   public interface IRunParser {
+      void Load(RunStorage runs);
+      IEnumerable<int> Find(string term);
+   }
+
+   public class RunStorage : IPartialParser {
       public readonly byte[] Data;
-      readonly SortedList<int, DataRun> _runs = new SortedList<int, DataRun>();
+      readonly SortedList<int, IDataRun> _runs = new SortedList<int, IDataRun>();
       readonly Queue<Path> _recycles = new Queue<Path>();
+      readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();
+      readonly HashSet<FrameworkElement> _interpretationLinks = new HashSet<FrameworkElement>();
+      readonly HashSet<FrameworkElement> _jumpLinks = new HashSet<FrameworkElement>();
+      readonly IRunParser[] _runParsers;
 
       List<int> _keys = new List<int>();
       bool _listNeedsUpdate;
 
-      public RunStorage(byte[] data) { Data = data; }
+      public RunStorage(byte[] data, params IRunParser[] runParsers) {
+         Data = data;
+         _runParsers = runParsers;
+      }
 
-      public void AddRun(int location, DataRun run) {
+      public void AddRun(int location, IDataRun run) {
          _runs.Add(location, run);
       }
 
       public void Load() {
+         foreach (var parser in _runParsers) parser.Load(this);
          _keys = _runs.Keys.ToList();
       }
 
@@ -189,7 +206,7 @@ namespace SorceryHex {
          UpdateList();
          var elements = new FrameworkElement[length];
          var startIndex = _keys.BinarySearch(start);
-         if (startIndex < 0) startIndex = ~startIndex; // not in list: give me the insertion point
+         if (startIndex < 0) startIndex = ~startIndex - 1; // not in list: give me the one that starts just before here
 
          if (startIndex == _keys.Count) return elements;
 
@@ -204,16 +221,24 @@ namespace SorceryHex {
             if (dataIndex > loc) {
                var sectionLength = Math.Min(length - i, dataIndex - loc);
                i += sectionLength;
-            } else if (dataIndex + _runs[_keys[startIndex]].Length < loc) {
+            } else if (dataIndex + _runs[_keys[startIndex]].GetLength(Data, dataIndex) < loc) {
                startIndex++;
             } else {
-               int runEnd = dataIndex + _runs[_keys[startIndex]].Length;
+               var currentRun = _runs[_keys[startIndex]];
+               int runEnd = dataIndex + currentRun.GetLength(Data, dataIndex);
                runEnd = Math.Min(runEnd, start + length);
                int lengthInView = runEnd - loc;
-               // InterpretData(dataIndex);
+               InterpretData(currentRun, dataIndex);
                for (int j = 0; j < lengthInView; j++) {
-                  var element = UsePath(_runs[_keys[startIndex]], loc + j);
-                  // commander.LinkToInterpretation(element, _interpretations[dataIndex]);
+                  var element = UsePath(currentRun, loc + j);
+                  if (_interpretations.ContainsKey(dataIndex)) {
+                     _interpretationLinks.Add(element);
+                     commander.LinkToInterpretation(element, _interpretations[dataIndex]);
+                  }
+                  if (currentRun.Jump != null) {
+                     _jumpLinks.Add(element);
+                     commander.CreateJumpCommand(element, currentRun.Jump(Data, dataIndex));
+                  }
                   elements[i + j] = element;
                }
                startIndex++;
@@ -223,8 +248,18 @@ namespace SorceryHex {
 
          return elements;
       }
-
+      
       public void Recycle(ICommandFactory commander, FrameworkElement element) {
+         if (_interpretationLinks.Contains(element)) {
+            _interpretationLinks.Remove(element);
+            commander.UnlinkFromInterpretation(element);
+         }
+
+         if (_jumpLinks.Contains(element)) {
+            _jumpLinks.Remove(element);
+            commander.RemoveJumpCommand(element);
+         }
+
          _recycles.Enqueue((Path)element);
       }
 
@@ -237,14 +272,30 @@ namespace SorceryHex {
          var insertionPoint = _keys.BinarySearch(location);
          if (insertionPoint < 1) return false;
          int startAddress = _keys[insertionPoint - 1];
-         return startAddress + _runs[startAddress].Length > location;
+         return startAddress + _runs[startAddress].GetLength(Data, startAddress) > location;
       }
 
-      public FrameworkElement GetInterpretation(int location) { return null; }
+      public FrameworkElement GetInterpretation(int location) {
+         var index = _keys.BinarySearch(location);
+         if (index < 0) return null;
+         var run = _runs[_keys[index]];
+         InterpretData(run, location);
+         if (!_interpretations.ContainsKey(location)) return null;
+         return _interpretations[location];
+      }
 
       public IList<int> Find(string term) { return null; }
 
-      Path UsePath(DataRun run, int location) {
+      void InterpretData(IDataRun run, int dataIndex) {
+         if (run.Interpret == null) return;
+         if (!_interpretations.ContainsKey(dataIndex)) {
+            var interpretation = run.Interpret(Data, dataIndex);
+            if (interpretation == null) return;
+            _interpretations[dataIndex] = interpretation;
+         }
+      }
+
+      Path UsePath(IDataRun run, int location) {
          var geometry = run.Parser[Data[location]];
 
          var element = _recycles.Count > 0 ? _recycles.Dequeue() : new Path {
@@ -264,16 +315,57 @@ namespace SorceryHex {
       }
    }
 
-   class DataRun {
-      public readonly int Length;
-      public readonly Brush Color;
-      public readonly Geometry[] Parser;
+   public interface IDataRun {
+      Brush Color { get; }
+      Geometry[] Parser { get; }
 
-      public string HoverText;
-      public bool Underlined;
+      string HoverText { get; }
+      bool Underlined { get; }
+      InterpretationRule Interpret { get; }
+      JumpRule Jump { get; }
 
-      public DataRun(int length, Brush color, Geometry[] parser) {
-         Length = length; Color = color; Parser = parser;
+      int GetLength(byte[] data, int startPoint);
+   }
+
+   public class SimpleDataRun : IDataRun {
+      readonly int _length;
+
+      public Brush Color { get; set; }
+      public Geometry[] Parser { get; set; }
+
+      public string HoverText { get; set; }
+      public bool Underlined { get; set; }
+      public InterpretationRule Interpret { get; set; }
+      public JumpRule Jump { get; set; }
+
+      public SimpleDataRun(int length, Brush color, Geometry[] parser) {
+         _length = length; Color = color; Parser = parser;
+      }
+
+      public int GetLength(byte[] data, int startPoint) { return _length; }
+   }
+
+   public class VariableLengthDataRun : IDataRun {
+      readonly byte _endCharacter;
+      readonly int _stride;
+
+      public Brush Color { get; set; }
+      public Geometry[] Parser { get; set; }
+
+      public string HoverText { get; set; }
+      public bool Underlined { get; set; }
+      public InterpretationRule Interpret { get; set; }
+      public JumpRule Jump { get; set; }
+
+      public VariableLengthDataRun(byte endCharacter, int stride, Brush color, Geometry[] parser) {
+         _endCharacter = endCharacter; _stride = stride;
+         Color = color; Parser = parser;
+      }
+
+      public int GetLength(byte[] data, int startPoint) {
+         int len = 0;
+         while (data[startPoint + len] != _endCharacter) len += _stride;
+         return len;
       }
    }
 }

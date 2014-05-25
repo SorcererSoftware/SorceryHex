@@ -10,6 +10,10 @@ using System.Windows.Media;
 
 namespace SorceryHex {
    static class Utils {
+      public static readonly DependencyProperty CreatorProperty = DependencyProperty.Register("Creator", typeof(object), typeof(FrameworkElement), new PropertyMetadata(null));
+      public static void SetCreator(this FrameworkElement element, object creator) { element.SetValue(CreatorProperty, creator); }
+      public static object GetCreator(this FrameworkElement element) { return (object)element.GetValue(CreatorProperty); }
+
       public static readonly string Hex = "0123456789ABCDEF";
       public static Func<A, C> Compose<A, B, C>(this Func<A, B> x, Func<B, C> y) { return a => y(x(a)); }
       public static readonly Typeface Font = new Typeface("Consolas");
@@ -37,9 +41,10 @@ namespace SorceryHex {
       }
 
       public static Geometry ToGeometry(this string text) {
-         return
-            new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Font, 15.0, Brushes.Black)
-            .BuildGeometry(new Point());
+         var fText = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Font, 15.0, Brushes.Black);
+         var geo = fText.BuildGeometry(new Point());
+         geo.Freeze();
+         return geo;
       }
 
       public static string ToHexString(this int value) {

@@ -112,9 +112,9 @@ namespace SorceryHex {
 
          foreach (var element in _interpretations.Keys.Where(key => _interpretations[key] == visual).Select(FindElementInBody)) {
             var rectangle = _interpretationBackgrounds.Count > 0 ? _interpretationBackgrounds.Dequeue() : new Border {
-               Background = Solarized.Theme.Instance.Backlight,
-               Tag = this
+               Background = Solarized.Theme.Instance.Backlight
             };
+            rectangle.SetCreator(this);
             int loc = MainWindow.CombineLocation(element, _window.CurrentColumnCount);
             MainWindow.SplitLocation(rectangle, _window.CurrentColumnCount, loc);
             _window.BackgroundBody.Children.Add(rectangle);
@@ -124,7 +124,7 @@ namespace SorceryHex {
       void MouseLeaveInterpretation(object sender, EventArgs e) {
          var children = new List<FrameworkElement>();
          foreach (FrameworkElement child in _window.BackgroundBody.Children) children.Add(child);
-         foreach (var child in children.Where(c => c.Tag == this)) {
+         foreach (var child in children.Where(c => c.GetCreator() == this)) {
             _window.BackgroundBody.Children.Remove(child);
             _interpretationBackgrounds.Enqueue(child);
          }

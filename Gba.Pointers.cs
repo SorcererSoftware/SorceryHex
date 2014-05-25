@@ -73,7 +73,7 @@ namespace SorceryHex.Gba {
       }
 
       public void Recycle(ICommandFactory commander, FrameworkElement element) {
-         if (element.Tag != this) {
+         if (element.GetCreator() != this) {
             _base.Recycle(commander, element);
             return;
          }

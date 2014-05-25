@@ -8,7 +8,102 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
-namespace SorceryHex {
+namespace SorceryHex.Gba {
+   class PCS2 : IRunParser {
+
+      readonly string[] _pcs = new string[0x100];
+      readonly Geometry[] _pcsVisuals = new Geometry[0x100]; // leaving it null makes it use the default color and visualization
+      readonly IDataRun _stringRun;
+
+      RunStorage _runs;
+
+      public PCS2() {
+         _stringRun = new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcsVisuals) { Interpret = GetInterpretation };
+      }
+
+      public void Load(RunStorage runs) {
+         _runs = runs;
+         foreach (var line in System.IO.File.ReadAllLines("PCS3-W.ini")) {
+            var sanitized = line.Trim();
+            if (sanitized.StartsWith("#") || sanitized.Length == 0) continue;
+            Debug.Assert(sanitized.StartsWith("0x"));
+            var key = (byte)sanitized.Substring(2, 2).ParseAsHex();
+            var value = sanitized.Substring(sanitized.IndexOf("'") + 1);
+            value = value.Substring(0, value.Length - 1);
+            _pcs[key] = value;
+            _pcsVisuals[key] = value.ToGeometry();
+         }
+         FindStrings();
+      }
+
+      public IEnumerable<int> Find(string term) {
+         if (!term.All(s => s == ' ' || _pcs.Contains(new string(s, 1)))) return null;
+
+         var lower = term.ToLower();
+         var upper = term.ToUpper();
+         var byteRange = Enumerable.Range(0, 0x100).Select(i => (byte)i);
+
+         // two searchTerms, one with caps and one with lowercase
+         var list = new List<int>();
+         byte[] searchTerm1 =
+            Enumerable.Range(0, term.Length)
+            .Select(i => term[i] == ' ' ? (byte)0x00 : byteRange.First(key => _pcs[key] == lower.Substring(i, 1)))
+            .ToArray();
+
+         byte[] searchTerm2 =
+            Enumerable.Range(0, term.Length)
+            .Select(i => term[i] == ' ' ? (byte)0x00 : byteRange.First(key => _pcs[key] == upper.Substring(i, 1)))
+            .ToArray();
+
+         for (int i = 0, j = 0; i < _runs.Data.Length; i++) {
+            j = _runs.Data[i] == searchTerm1[j] || _runs.Data[i] == searchTerm2[j] ? j + 1 : 0;
+            if (j < searchTerm1.Length) continue;
+            list.Add(i - j + 1);
+            j = 0;
+         }
+         return list;
+      }
+
+      void FindStrings() {
+         int currentLength = 0;
+         for (int i = 0x200; i < _runs.Data.Length; i++) {
+            if (_pcs[_runs.Data[i]] != null) {
+               currentLength++;
+               continue;
+            }
+            if (_runs.Data[i] == 0x00 && currentLength > 0) { // accept 0x00 if we've already started
+               currentLength++;
+               continue;
+            } else if (_runs.Data[i] == 0xFD) { // accept 0xFD as the escape character
+               i++;
+               currentLength += 2;
+               continue;
+            } else if (_runs.Data[i] == 0xFF && currentLength >= 3) {
+               // if all the characters are the same, don't add the run.
+               if (!Enumerable.Range(1, currentLength).All(j => _runs.Data[i - currentLength + j] == _runs.Data[i - currentLength])) {
+                  _runs.AddRun(i - currentLength, _stringRun);
+               }
+            }
+            currentLength = 0;
+         }
+      }
+
+      FrameworkElement GetInterpretation(byte[] data, int location) {
+         string result = string.Empty;
+         for (int j = 0; data[location + j] != 0xFF; j++) {
+            if (data[location + j] == 0x00) {
+               result += " ";
+            } else if (data[location + j] == 0xFD) {
+               result += "\\x" + Utils.ToHexString(data[location + j + 1]);
+               j++;
+            } else {
+               result += _pcs[data[location + j]];
+            }
+         }
+         return new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
+      }
+   }
+
    class PCS : IPartialParser {
       static readonly Geometry Escape = "\\x".ToGeometry();
 
@@ -162,15 +257,17 @@ namespace SorceryHex {
             return element;
          }
 
-         return new Path {
+         var path = new Path {
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Fill = translate ? Solarized.Brushes.Violet : Solarized.Theme.Instance.Secondary,
             Data = geometry,
             ClipToBounds = false,
-            Margin = new Thickness(4, 2, 4, 2),
-            Tag = this
+            Margin = new Thickness(4, 2, 4, 2)
          };
+
+         path.SetCreator(this);
+         return path;
       }
    }
 
