@@ -18,7 +18,7 @@ namespace SorceryHex.Gba {
 
       public IEnumerable<int> OpenDestinations { get { return _pointerSet.Values.Distinct().ToArray(); } }
 
-      public IEnumerable<int> MappedDestinations { get { return _destinations.Keys; } }
+      public List<int> MappedDestinations { get { lock (_destinations) return _destinations.Keys.ToList(); } }
 
       public PointerMapper(byte[] data) {
          _pointerRun = new SimpleDataRun(4, Brush, Utils.ByteFlyweights) { Underlined = true, Interpret = InterpretPointer, Jump = JumpPointer };
@@ -41,10 +41,10 @@ namespace SorceryHex.Gba {
             _pointerSet.Remove(key);
          }
          _reversePointerSet.Remove(destination);
-         _destinations[destination] = keys;
+         lock (_destinations) _destinations[destination] = keys;
       }
 
-      public void ClaimRemainder(RunStorage storage) { // how do I get the runstorage to this method?
+      public void ClaimRemainder(RunStorage storage) {
          var pointerLocations = _pointedRuns.Keys.ToList();
          pointerLocations.Sort();
          foreach (var destination in _reversePointerSet.Keys) {
@@ -60,7 +60,7 @@ namespace SorceryHex.Gba {
             foreach (var key in keys) {
                storage.AddRun(key, _pointerRun);
             }
-            _destinations[destination] = keys;
+            lock (_destinations) _destinations[destination] = keys;
          }
          _pointerSet.Clear();
          _reversePointerSet.Clear();
@@ -124,7 +124,7 @@ namespace SorceryHex.Gba {
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var elements =_base.CreateElements(commander, start, length);
 
-         var destinations = _mapper.MappedDestinations.ToList();
+         var destinations = _mapper.MappedDestinations;
          destinations.Sort();
          var startIndex = destinations.BinarySearch(start);
          if (startIndex < 0) startIndex = ~startIndex;

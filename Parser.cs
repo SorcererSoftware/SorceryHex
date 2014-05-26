@@ -195,13 +195,12 @@ namespace SorceryHex {
       }
 
       public void AddRun(int location, IDataRun run) {
-         _runs.Add(location, run);
+         lock (_runs) _runs.Add(location, run);
          _listNeedsUpdate = true;
       }
 
       public void Load() {
          foreach (var parser in _runParsers) parser.Load(this);
-         _keys = _runs.Keys.ToList();
       }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
@@ -268,7 +267,7 @@ namespace SorceryHex {
       }
 
       public bool IsStartOfDataBlock(int location) {
-         return _runs.ContainsKey(location);
+         lock (_runs) return _runs.ContainsKey(location);
       }
 
       public bool IsWithinDataBlock(int location) {
@@ -330,7 +329,7 @@ namespace SorceryHex {
 
       void UpdateList() {
          if (!_listNeedsUpdate) return;
-         _keys = _runs.Keys.ToList();
+         lock (_runs) _keys = _runs.Keys.ToList();
          _listNeedsUpdate = false;
       }
    }
