@@ -15,13 +15,13 @@ namespace SorceryHex.Gba {
       readonly Geometry[] _pcsVisuals = new Geometry[0x100]; // leaving it null makes it use the default color and visualization
       readonly IDataRun _stringRun;
 
-      RunStorage _runs;
+      IRunStorage _runs;
 
       public PCS() {
          _stringRun = new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcsVisuals) { Interpret = GetInterpretation };
       }
 
-      public void Load(RunStorage runs) {
+      public void Load(IRunStorage runs) {
          _runs = runs;
          foreach (var line in System.IO.File.ReadAllLines("PCS3-W.ini")) {
             var sanitized = line.Trim();

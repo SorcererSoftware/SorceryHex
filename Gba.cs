@@ -6,6 +6,30 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
+   class VariableLengthDataRun : IDataRun {
+      readonly byte _endCharacter;
+      readonly int _stride;
+
+      public Brush Color { get; set; }
+      public Geometry[] Parser { get; set; }
+
+      public string HoverText { get; set; }
+      public bool Underlined { get; set; }
+      public InterpretationRule Interpret { get; set; }
+      public JumpRule Jump { get; set; }
+
+      public VariableLengthDataRun(byte endCharacter, int stride, Brush color, Geometry[] parser) {
+         _endCharacter = endCharacter; _stride = stride;
+         Color = color; Parser = parser;
+      }
+
+      public int GetLength(byte[] data, int startPoint) {
+         int len = 0;
+         while (data[startPoint + len] != _endCharacter) len += _stride;
+         return len;
+      }
+   }
+
    class Header : IRunParser {
       static SimpleDataRun HeaderRun(int len, string text, Geometry[] converter) { return new SimpleDataRun(len, Solarized.Brushes.Violet, converter) { HoverText = text, Underlined = true }; }
       static SimpleDataRun HeaderRun(int len, string text) { return HeaderRun(len, text, Utils.ByteFlyweights); }
@@ -29,7 +53,7 @@ namespace SorceryHex.Gba {
 
       public Header(PointerMapper mapper) { _pointers = mapper; }
 
-      public void Load(RunStorage runs) {
+      public void Load(IRunStorage runs) {
          int offset = 0;
          foreach (var run in _headerRuns) {
             runs.AddRun(offset, run);
@@ -48,7 +72,7 @@ namespace SorceryHex.Gba {
 
       public Lz(PointerMapper pointers) { _pointers = pointers; }
 
-      public void Load(RunStorage runs) {
+      public void Load(IRunStorage runs) {
          var initialContitions = new Func<int, bool>[]{
             loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] == 0x20 &&
                    runs.Data[loc + 2] == 0x00 && runs.Data[loc + 3] == 0x00,
@@ -61,7 +85,7 @@ namespace SorceryHex.Gba {
             foreach (var loc in _pointers.OpenDestinations) {
                if (!initialContitions[i](loc)) continue;
                int uncompressed, compressed;
-               GbaImages.CalculateLZSizes(runs.Data, loc, out uncompressed, out compressed);
+               ImageUtils.CalculateLZSizes(runs.Data, loc, out uncompressed, out compressed);
                if (uncompressed == -1 || compressed == -1) continue;
                var run = LzRun(compressed, interpretations[i]);
                _pointers.Claim(runs, run, loc);
@@ -74,20 +98,20 @@ namespace SorceryHex.Gba {
       public IEnumerable<int> Find(string term) { return null; }
 
       static FrameworkElement InterpretImage(byte[] data, int location)  {
-         var dataBytes = GbaImages.UncompressLZ(data, location);
-         int width, height; GbaImages.GuessWidthHeight(dataBytes.Length, out width, out height);
-         var source = GbaImages.Expand16bitImage(dataBytes, GbaImages.DefaultPalette, width, height);
+         var dataBytes = ImageUtils.UncompressLZ(data, location);
+         int width, height; ImageUtils.GuessWidthHeight(dataBytes.Length, out width, out height);
+         var source = ImageUtils.Expand16bitImage(dataBytes, ImageUtils.DefaultPalette, width, height);
          return new Image { Source = source, Width = width, Height = height };
       }
 
       static FrameworkElement InterpretPalette(byte[] data, int location) {
-         var dataBytes = GbaImages.UncompressLZ(data, location);
+         var dataBytes = ImageUtils.UncompressLZ(data, location);
          var grid = new Grid { Width = 40, Height = 40, Background = Brushes.Transparent };
          for (int i = 0; i < 4; i++) {
             grid.RowDefinitions.Add(new RowDefinition());
             grid.ColumnDefinitions.Add(new ColumnDefinition());
          }
-         var palette = new GbaImages.Palette(dataBytes);
+         var palette = new ImageUtils.Palette(dataBytes);
          for (int i = 0; i < 16; i++) {
             var rectangle = new Rectangle {
                Fill = new SolidColorBrush(palette.Colors[i]),

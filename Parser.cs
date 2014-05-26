@@ -173,12 +173,16 @@ namespace SorceryHex {
    public delegate FrameworkElement InterpretationRule(byte[] data, int index);
    
    public interface IRunParser {
-      void Load(RunStorage runs);
+      void Load(IRunStorage runs);
       IEnumerable<int> Find(string term);
    }
 
-   public class RunStorage : IPartialParser {
-      public readonly byte[] Data;
+   public interface IRunStorage {
+      byte[] Data { get; }
+      void AddRun(int location, IDataRun run);
+   }
+
+   class RunStorage : IPartialParser, IRunStorage {
       readonly SortedList<int, IDataRun> _runs = new SortedList<int, IDataRun>();
       readonly Queue<Border> _recycles = new Queue<Border>();
       readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();
@@ -188,6 +192,8 @@ namespace SorceryHex {
 
       List<int> _keys = new List<int>();
       bool _listNeedsUpdate;
+
+      public byte[] Data { get; private set; }
 
       public RunStorage(byte[] data, params IRunParser[] runParsers) {
          Data = data;
@@ -362,29 +368,5 @@ namespace SorceryHex {
       }
 
       public int GetLength(byte[] data, int startPoint) { return _length; }
-   }
-
-   public class VariableLengthDataRun : IDataRun {
-      readonly byte _endCharacter;
-      readonly int _stride;
-
-      public Brush Color { get; set; }
-      public Geometry[] Parser { get; set; }
-
-      public string HoverText { get; set; }
-      public bool Underlined { get; set; }
-      public InterpretationRule Interpret { get; set; }
-      public JumpRule Jump { get; set; }
-
-      public VariableLengthDataRun(byte endCharacter, int stride, Brush color, Geometry[] parser) {
-         _endCharacter = endCharacter; _stride = stride;
-         Color = color; Parser = parser;
-      }
-
-      public int GetLength(byte[] data, int startPoint) {
-         int len = 0;
-         while (data[startPoint + len] != _endCharacter) len += _stride;
-         return len;
-      }
    }
 }

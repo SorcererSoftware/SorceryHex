@@ -58,7 +58,7 @@
     <Compile Include="Gba.cs" />
     <Compile Include="Gba.Pointers.cs" />
     <Compile Include="Gba.Pokemon.cs" />
-    <Compile Include="GbaImages.cs" />
+    <Compile Include="Gba.ImageUtils.cs" />
     <Compile Include="MainCommandFactory.cs" />
     <Compile Include="Solarized.cs" />
     <Compile Include="Utils.cs" />

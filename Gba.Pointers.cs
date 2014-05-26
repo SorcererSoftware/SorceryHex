@@ -33,7 +33,7 @@ namespace SorceryHex.Gba {
          }
       }
 
-      public void Claim(RunStorage storage, IDataRun run, int destination) {
+      public void Claim(IRunStorage storage, IDataRun run, int destination) {
          var keys = _reversePointerSet[destination].ToArray();
          foreach (var key in keys) {
             storage.AddRun(key, _pointerRun);
@@ -44,7 +44,7 @@ namespace SorceryHex.Gba {
          lock (_destinations) _destinations[destination] = keys;
       }
 
-      public void ClaimRemainder(RunStorage storage) {
+      public void ClaimRemainder(IRunStorage storage) {
          var pointerLocations = _pointedRuns.Keys.ToList();
          pointerLocations.Sort();
          foreach (var destination in _reversePointerSet.Keys) {
@@ -97,7 +97,7 @@ namespace SorceryHex.Gba {
       readonly byte[] _data;
       readonly Queue<Grid> _spareContainers = new Queue<Grid>();
       readonly Queue<Path> _spareHats = new Queue<Path>();
-      readonly RunStorage _storage;
+      readonly IRunStorage _storage;
       readonly PointerMapper _mapper;
       bool _loaded = false;
 
@@ -107,7 +107,7 @@ namespace SorceryHex.Gba {
 
       public int Length { get { return _data.Length; } }
 
-      public PointerParser(IParser fallback, byte[] data, RunStorage storage, PointerMapper mapper) {
+      public PointerParser(IParser fallback, byte[] data, IRunStorage storage, PointerMapper mapper) {
          _data = data;
          _base = fallback;
          _storage = storage;
@@ -189,5 +189,4 @@ namespace SorceryHex.Gba {
 
       #endregion
    }
-
 }

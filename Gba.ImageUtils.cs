@@ -5,8 +5,8 @@ using System.Linq;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace SorceryHex {
-   class GbaImages {
+namespace SorceryHex.Gba {
+   class ImageUtils {
 
       const int Dpi = 96;
       public static readonly Palette DefaultPalette = new Palette(new[] {
