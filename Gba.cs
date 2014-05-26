@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -46,16 +45,14 @@ namespace SorceryHex.Gba {
       static SimpleDataRun LzRun(int len, InterpretationRule interpret) { return new SimpleDataRun(len, Solarized.Brushes.Cyan, Utils.ByteFlyweights) { Interpret = interpret }; }
 
       readonly PointerMapper _pointers;
-      RunStorage _runs;
 
       public Lz(PointerMapper pointers) { _pointers = pointers; }
 
       public void Load(RunStorage runs) {
-         _runs = runs;
          var initialContitions = new Func<int, bool>[]{
-            loc => _runs.Data[loc + 0] == 0x10 && _runs.Data[loc + 1] == 0x20 &&
-                   _runs.Data[loc + 2] == 0x00 && _runs.Data[loc + 3] == 0x00,
-            loc => _runs.Data[loc + 0] == 0x10 && _runs.Data[loc + 1] % 20 == 0
+            loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] == 0x20 &&
+                   runs.Data[loc + 2] == 0x00 && runs.Data[loc + 3] == 0x00,
+            loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] % 20 == 0
          };
          var interpretations = new InterpretationRule[] { InterpretPalette, InterpretImage };
 
@@ -64,11 +61,11 @@ namespace SorceryHex.Gba {
             foreach (var loc in _pointers.OpenDestinations) {
                if (!initialContitions[i](loc)) continue;
                int uncompressed, compressed;
-               GbaImages.CalculateLZSizes(_runs.Data, loc, out uncompressed, out compressed);
+               GbaImages.CalculateLZSizes(runs.Data, loc, out uncompressed, out compressed);
                if (uncompressed == -1 || compressed == -1) continue;
                var run = LzRun(compressed, interpretations[i]);
-               _pointers.Claim(_runs, run, loc);
-               _runs.AddRun(loc, run);
+               _pointers.Claim(runs, run, loc);
+               runs.AddRun(loc, run);
                count++;
             }
          }

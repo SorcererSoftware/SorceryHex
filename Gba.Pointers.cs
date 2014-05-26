@@ -143,20 +143,15 @@ namespace SorceryHex.Gba {
             return;
          }
 
-         var grid = element as Grid;
-         if (grid != null) {
-            Debug.Assert(grid.Children.Count == 2);
-            var child = (FrameworkElement)grid.Children[0];
-            var hat = (Path)grid.Children[1];
-            grid.Children.Clear();
-            _spareContainers.Enqueue(grid);
-            _spareHats.Enqueue(hat);
-            commander.RemoveJumpCommand(hat);
-            Recycle(commander, child);
-            return;
-         }
-
-         Debug.Fail("How did we get here? We tagged it, but we can't recycle it!");
+         var grid = (Grid)element;
+         Debug.Assert(grid.Children.Count == 2);
+         var child = (FrameworkElement)grid.Children[0];
+         var hat = (Path)grid.Children[1];
+         grid.Children.Clear();
+         _spareContainers.Enqueue(grid);
+         _spareHats.Enqueue(hat);
+         commander.RemoveJumpCommand(hat);
+         Recycle(commander, child);
       }
 
       public bool IsStartOfDataBlock(int location) { return _base.IsStartOfDataBlock(location); }
@@ -168,13 +163,6 @@ namespace SorceryHex.Gba {
       #endregion
 
       #region Helpers
-
-      static bool ContainsAny(int[] masterList, params int[] pointers) {
-         return pointers.Any(pointer => {
-            int index = Array.BinarySearch(masterList, pointer);
-            return index >= 0 && index < masterList.Length;
-         });
-      }
 
       FrameworkElement WrapForList(ICommandFactory commander, FrameworkElement element, params int[] jumpLocations) {
          Grid grid = null;

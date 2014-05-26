@@ -15,7 +15,6 @@ namespace SorceryHex {
       public static object GetCreator(this FrameworkElement element) { return (object)element.GetValue(CreatorProperty); }
 
       public static readonly string Hex = "0123456789ABCDEF";
-      public static Func<A, C> Compose<A, B, C>(this Func<A, B> x, Func<B, C> y) { return a => y(x(a)); }
       public static readonly Typeface Font = new Typeface("Consolas");
       public static readonly Geometry[] ByteFlyweights =
          Enumerable.Range(0, 0x100).Select(i => {
