@@ -44,6 +44,37 @@ namespace SorceryHex.Gba {
          lock (_destinations) _destinations[destination] = keys;
       }
 
+      public void Claim(IRunStorage storage, int source, int destination) {
+         // if it's already claimed, that's fine
+         if (_destinations.ContainsKey(destination)) return;
+
+         if (_reversePointerSet.ContainsKey(destination)) {
+            var keys = _reversePointerSet[destination].ToArray();
+            foreach (var key in keys) {
+               storage.AddRun(key, _pointerRun);
+               _pointerSet.Remove(key);
+            }
+            _reversePointerSet.Remove(destination);
+            lock (_destinations) _destinations[destination] = keys;
+         } else {
+            storage.AddRun(source, _pointerRun);
+            lock (_destinations) _destinations[destination] = new int[] { source };
+         }
+      }
+
+      public void Claim(IRunStorage storage, int destination) {
+         // if it's already claimed, that's fine
+         if (_destinations.ContainsKey(destination)) return;
+
+         var keys = _reversePointerSet[destination].ToArray();
+         foreach (var key in keys) {
+            storage.AddRun(key, _pointerRun);
+            _pointerSet.Remove(key);
+         }
+         _reversePointerSet.Remove(destination);
+         lock (_destinations) _destinations[destination] = keys;
+      }
+
       public void ClaimRemainder(IRunStorage storage) {
          var pointerLocations = _pointedRuns.Keys.ToList();
          pointerLocations.Sort();
@@ -57,10 +88,12 @@ namespace SorceryHex.Gba {
             if (pointer < destination && destination < pointer + _pointedRuns[pointer].GetLength(storage.Data, pointer)) continue;
 
             var keys = _reversePointerSet[destination].ToArray();
-            foreach (var key in keys) {
-               storage.AddRun(key, _pointerRun);
+            if (keys.All(storage.IsFree)) {
+               foreach (var key in keys) {
+                  storage.AddRun(key, _pointerRun);
+               }
+               lock (_destinations) _destinations[destination] = keys;
             }
-            lock (_destinations) _destinations[destination] = keys;
          }
          _pointerSet.Clear();
          _reversePointerSet.Clear();
@@ -76,7 +109,11 @@ namespace SorceryHex.Gba {
          }
       }
 
-      public int[] PointersFromDestination(int destination) { return _destinations[destination]; }
+      static readonly int[] Empty = new int[0];
+      public int[] PointersFromDestination(int destination) {
+         if (!_destinations.ContainsKey(destination)) return Empty;
+         return _destinations[destination];
+      }
 
       FrameworkElement InterpretPointer(byte[] data, int index) {
          if (!_pointedRuns.ContainsKey(index) || _pointedRuns[index].Interpret == null) return null;

@@ -19,7 +19,7 @@ namespace SorceryHex {
             }
 
             var pointerMapper = new Gba.PointerMapper(data);
-            var storage = new RunStorage(data, new Gba.Header(pointerMapper), new Gba.Lz(pointerMapper), new Gba.PCS());
+            var storage = new RunStorage(data, new Gba.Header(pointerMapper), new Gba.Lz(pointerMapper), new Gba.Maps(pointerMapper), new Gba.PCS());
             // TODO Gba.Maps
             IParser factory = new CompositeParser(data, storage);
             factory = new Gba.PointerParser(factory, data, storage, pointerMapper);

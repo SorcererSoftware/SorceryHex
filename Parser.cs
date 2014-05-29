@@ -180,6 +180,7 @@ namespace SorceryHex {
    public interface IRunStorage {
       byte[] Data { get; }
       void AddRun(int location, IDataRun run);
+      bool IsFree(int location);
    }
 
    class RunStorage : IPartialParser, IRunStorage {
@@ -201,8 +202,16 @@ namespace SorceryHex {
       }
 
       public void AddRun(int location, IDataRun run) {
-         lock (_runs) _runs.Add(location, run);
+         if (_runs.ContainsKey(location)) {
+            Debug.Assert(RunsAreEquivalent(_runs[location], run, location));
+         } else {
+            lock (_runs) _runs.Add(location, run);
+         }
          _listNeedsUpdate = true;
+      }
+
+      public bool IsFree(int location) {
+         return !_runs.ContainsKey(location);
       }
 
       public void Load() {
@@ -295,6 +304,19 @@ namespace SorceryHex {
 
       public IList<int> Find(string term) {
          return _runParsers.Select(parser => parser.Find(term) ?? new int[0]).Aggregate(Enumerable.Concat).ToList();
+      }
+
+      bool RunsAreEquivalent(IDataRun run1, IDataRun run2, int location) {
+         var conditions = new[] {
+            run1.Color.Equals(run2.Color),
+            run1.HoverText == run2.HoverText,
+            run1.Parser == run2.Parser,
+            run1.Underlined == run2.Underlined,
+            run1.Interpret == run2.Interpret,
+            run1.Jump == run2.Jump,
+            run1.GetLength(Data, location) == run2.GetLength(Data, location)
+         };
+         return conditions.All(b => b);
       }
 
       void InterpretData(IDataRun run, int dataIndex) {

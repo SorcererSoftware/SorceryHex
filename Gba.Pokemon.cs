@@ -106,9 +106,10 @@ namespace SorceryHex.Gba {
       }
    }
 
-   class Maps : IPartialParser {
-
+   class Maps : IRunParser {
       #region Setup
+
+      static IDataRun MediaRun(int length, string text = null) { return new SimpleDataRun(length, Solarized.Brushes.Cyan, Utils.ByteFlyweights) { HoverText = text }; }
 
       class DataType { public readonly int Length; public DataType(int length) { Length = length; } }
 
@@ -162,8 +163,8 @@ namespace SorceryHex.Gba {
                ,
                new Entry("x", @short), new Entry("y", @short),
                new Entry("talkingLevel", @byte), new Entry("signpostType", @byte), new Entry("?", @short),
-               new Entry("?", @unknown4),
-               new Entry("dynamic", new DataType(4)) // *script || -itemID .hiddenID .amount //*/
+               new Entry("?", @unknown4)
+               // new Entry("dynamic", new DataType(4)) // *script || -itemID .hiddenID .amount || <missing>? //*/
             )
          ),
          new Entry("script", @nullablepointer),
@@ -178,22 +179,24 @@ namespace SorceryHex.Gba {
 
       #endregion
 
-      readonly byte[] _data;
+      readonly PointerMapper _mapper;
+      byte[] _data;
       SortedSet<int> _mapLocations;
       SortedSet<int> _mapBankAddress;
       SortedSet<int> _allSubsetAddresses;
       int _masterMapAddress;
 
-      public Maps(byte[] data) { _data = data; }
+      public Maps(PointerMapper mapper) { _mapper = mapper; }
 
-      public string GameCode {
+      string GameCode {
          get {
             var chars = Enumerable.Range(0, 4).Select(i => (char)_data[0xAC + i]).ToArray();
             return new string(chars);
          }
       }
 
-      public void Load() {
+      public void Load(IRunStorage runs) {
+         _data = runs.Data;
          var code = GameCode;
 
          //           ruby            sapphire          emerald
@@ -216,61 +219,37 @@ namespace SorceryHex.Gba {
             );
          }
 
-         // first pass for addresses.
-         var pointerSet = new SortedList<int, int>();
-         var addressesSet = new HashSet<int>();
-         for (int i = 3; i < _data.Length; i += 4) {
-            if (_data[i] != 0x08) continue;
-            var address = _data.ReadPointer(i - 3);
-            if (address % 4 != 0) continue;
-            if (addressesSet.Contains(address)) continue;
-            pointerSet.Add(address, i - 3);
-            addressesSet.Add(address);
-         }
-         var addressesList = addressesSet.ToList();
-         addressesList.Sort();
-
-         // second pass for matching the nested layout
+         // match the nested layout
          _allSubsetAddresses = new SortedSet<int>();
          var matchingLayouts = new List<int>();
          var matchingPointers = new List<int>();
+         var addressesList = _mapper.OpenDestinations.ToList();
          foreach (var address in addressesList) {
             if (!CouldBe(DataLayout, address, addressesList)) continue;
-            matchingPointers.Add(pointerSet[address]);
+            SeekChildren(DataLayout, runs, address);
+            _mapper.Claim(runs, address);
+            matchingPointers.Add(_mapper.PointersFromDestination(address).First()); // can I do without the first?
             matchingLayouts.Add(address);
-            SeekChildren(DataLayout, address);
          }
 
          // third pass: find which of the pointers in matchingPointers have references to them (those are the heads of the lists)
-         _mapBankAddress = new SortedSet<int>();
-         var mapBankPointers = new List<int>();
-         foreach (var mapPointer in matchingPointers) {
-            if (!pointerSet.ContainsKey(mapPointer)) continue;
-            _mapBankAddress.Add(mapPointer);
-            mapBankPointers.Add(pointerSet[mapPointer]);
-         }
+         //_mapBankAddress = new SortedSet<int>();
+         //var mapBankPointers = new List<int>();
+         //foreach (var mapPointer in matchingPointers) {
+         //   var bankPointer = _mapper.PointersFromDestination(mapPointer);
+         //   if (bankPointer == null || bankPointer.Length == 0) continue;
+         //   _mapBankAddress.Add(mapPointer);
+         //   mapBankPointers.Add(bankPointer.First()); // can I do without the first?
+         //}
 
-         _masterMapAddress = pointerSet.Keys.First(mapBankPointers.Contains);
-         _mapLocations = new SortedSet<int>(matchingLayouts);
-         foreach (var location in matchingLayouts) _allSubsetAddresses.Add(location);
-         foreach (var location in _mapBankAddress) _allSubsetAddresses.Add(location);
+         //_masterMapAddress = _mapper.OpenDestinations.First(mapBankPointers.Contains);
+         //_mapLocations = new SortedSet<int>(matchingLayouts);
+         //foreach (var location in matchingLayouts) _allSubsetAddresses.Add(location);
+         //foreach (var location in _mapBankAddress) _allSubsetAddresses.Add(location);
       }
 
-      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
-         var list = new FrameworkElement[length];
-         // TODO
-         return list;
-      }
-
-      public void Recycle(ICommandFactory commander, FrameworkElement element) {
-         // TODO
-      }
-
-      public bool IsStartOfDataBlock(int location) { return _allSubsetAddresses.Contains(location); }
-      public bool IsWithinDataBlock(int location) { return false; }
-
-      Dictionary<int, FrameworkElement> _interpretations = new Dictionary<int,FrameworkElement>();
-      public FrameworkElement GetInterpretation(int location) {
+      /*
+      FrameworkElement GetInterpretation(int location) {
          if (_mapBankAddress.Contains(location)) {
             if (!_interpretations.ContainsKey(location)) _interpretations[location] = new TextBlock { Text = "MapBank", Foreground = Solarized.Theme.Instance.Emphasis };
             return _interpretations[location];
@@ -280,7 +259,9 @@ namespace SorceryHex.Gba {
          if (!_interpretations.ContainsKey(location)) _interpretations[location] = new TextBlock { Text = "Map", Foreground = Solarized.Theme.Instance.Emphasis };
          return _interpretations[location];
       }
-      public IList<int> Find(string term) {
+      //*/
+
+      public IEnumerable<int> Find(string term) {
          if (term == "magic") return _mapLocations.ToList();
          return null;
       }
@@ -312,7 +293,7 @@ namespace SorceryHex.Gba {
          return true;
       }
 
-      void SeekChildren(Entry entry, int address) {
+      void SeekChildren(Entry entry, IRunStorage runs, int address) {
          int currentOffset = 0;
          foreach (var child in entry.Children) {
             if (child.DataType == @pointer || child.DataType == @nullablepointer) {
@@ -321,9 +302,12 @@ namespace SorceryHex.Gba {
                   continue;
                } else {
                   var next = _data.ReadPointer(address + currentOffset);
-                  if (child.Children != null && child.Children.Length > 0) SeekChildren(child, next);
+                  if (child.Children != null && child.Children.Length > 0) SeekChildren(child, runs, next);
+                  _mapper.Claim(runs, address + currentOffset, next);
                   _allSubsetAddresses.Add(next);
                }
+            } else {
+               runs.AddRun(address + currentOffset, MediaRun(child.DataType.Length, child.Name));
             }
             currentOffset += child.DataType.Length;
          }
