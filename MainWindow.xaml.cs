@@ -43,13 +43,14 @@ namespace SorceryHex {
 
       #endregion
 
+      IDictionary<Key, Action> KeyActions;
       Func<string, byte[], IParser> _create;
       IParser _holder;
       MainCommandFactory _commandFactory;
       int _offset = 0;
 
-      public int CurrentColumnCount{get;private set;}
-      public int CurrentRowCount{get;private set;}
+      public int CurrentColumnCount { get; private set; }
+      public int CurrentRowCount { get; private set; }
 
       public MainWindow(Func<string, byte[], IParser> create, string fileName, byte[] data) {
          _create = create;
@@ -59,6 +60,7 @@ namespace SorceryHex {
          ScrollBar.Minimum = -MaxColumnCount;
          ScrollBar.Maximum = _holder.Length;
          Title = fileName.Split('\\').Last();
+         InitializeKeyActions();
          Task.Factory.StartNew(_holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(_offset)));
       }
 
@@ -281,20 +283,24 @@ namespace SorceryHex {
          }
       }
 
+      void InitializeKeyActions() {
+         KeyActions = new Dictionary<Key, Action> {
+            { Key.Subtract, () => NavigateBackClick(null, null) },
+            { Key.OemMinus, () => NavigateBackClick(null, null) },
+            { Key.Left,     () => ShiftColumns(-1) },
+            { Key.Right,    () => ShiftColumns(1) },
+            { Key.Down,     () => ShiftRows(1) },
+            { Key.Up,       () => ShiftRows(-1) },
+            { Key.G,        () => GotoClick(null, null) },
+            { Key.F,        () => FindClick(null, null) },
+            { Key.O,        () => OpenClick(null, null) },
+            { Key.I,        () => { InterpretItem.IsChecked = !InterpretItem.IsChecked; InterpretClick(InterpretItem, null); } },
+         };
+      }
+
       void HandleKey(object sender, KeyEventArgs e) {
          if (Keyboard.Modifiers == ModifierKeys.Control) {
-            switch (e.Key) {
-               case Key.Subtract: case Key.OemMinus: NavigateBackClick(null, null); break;
-               case Key.Left:  ShiftColumns(-1); break;
-               case Key.Right: ShiftColumns(1); break;
-               case Key.Down:  ShiftRows(1); break;
-               case Key.Up:    ShiftRows(-1); break;
-               case Key.G:     GotoClick(null, null); break;
-               case Key.F:     FindClick(null, null); break;
-               case Key.O:     OpenClick(null, null); break;
-               case Key.I:     InterpretItem.IsChecked = !InterpretItem.IsChecked; InterpretClick(InterpretItem, null); break;
-               case Key.B:     break; // only for testing
-            }
+            if (KeyActions.ContainsKey(e.Key)) KeyActions[e.Key]();
 
             if (arrowKeys.Contains(e.Key)) {
                ScrollBar.Value = _offset;
@@ -323,51 +329,57 @@ namespace SorceryHex {
       };
       void HandleMultiBoxKey(object sender, KeyEventArgs e) {
          if (MultiBoxLabel.Text == "Goto") {
-            // sanitize for goto
-            int caret = MultiBox.CaretIndex;
-            int selection = MultiBox.SelectionLength;
-            MultiBox.Text = new string(MultiBox.Text.ToUpper().Where(Utils.Hex.Contains).ToArray());
-            MultiBox.CaretIndex = Math.Min(caret, MultiBox.Text.Length);
-            MultiBox.SelectionLength = selection;
-
-            // check for special keys
-            if (e.Key == Key.Escape) {
-               MultiBoxContainer.Visibility = Visibility.Hidden;
-               BreadCrumbBar.Visibility = Visibility.Visible;
-               MainFocus();
-            }
-            if (e.Key == Key.Enter) {
-               int hex = MultiBox.Text.ParseAsHex();
-               AddLocationToBreadCrumb();
-               JumpTo(hex);
-               MultiBoxContainer.Visibility = Visibility.Hidden;
-               BreadCrumbBar.Visibility = Visibility.Visible;
-               MainFocus();
-            }
-
-            // only allow hex keys
-            if (!HexKeys.Contains(e.Key)) e.Handled = true;
+            HandleGotoKey(e);
          } else if (MultiBoxLabel.Text == "Find") {
-            // dumb find: make it smarter later
+            HandleFindKey(e);
+         }
+      }
 
-            // check for special keys
-            if (e.Key == Key.Escape) {
-               MultiBoxContainer.Visibility = Visibility.Hidden;
-               BreadCrumbBar.Visibility = Visibility.Visible;
-               MainFocus();
+      void HandleGotoKey(KeyEventArgs e) {
+         // sanitize for goto
+         int caret = MultiBox.CaretIndex;
+         int selection = MultiBox.SelectionLength;
+         MultiBox.Text = new string(MultiBox.Text.ToUpper().Where(Utils.Hex.Contains).ToArray());
+         MultiBox.CaretIndex = Math.Min(caret, MultiBox.Text.Length);
+         MultiBox.SelectionLength = selection;
+
+         // check for special keys
+         if (e.Key == Key.Escape) {
+            MultiBoxContainer.Visibility = Visibility.Hidden;
+            BreadCrumbBar.Visibility = Visibility.Visible;
+            MainFocus();
+         } else if (e.Key == Key.Enter) {
+            int hex = MultiBox.Text.ParseAsHex();
+            AddLocationToBreadCrumb();
+            JumpTo(hex);
+            MultiBoxContainer.Visibility = Visibility.Hidden;
+            BreadCrumbBar.Visibility = Visibility.Visible;
+            MainFocus();
+         }
+
+         // only allow hex keys
+         if (!HexKeys.Contains(e.Key)) e.Handled = true;
+      }
+
+      void HandleFindKey(KeyEventArgs e) {
+         // dumb find: make it smarter later
+
+         // check for special keys
+         if (e.Key == Key.Escape) {
+            MultiBoxContainer.Visibility = Visibility.Hidden;
+            BreadCrumbBar.Visibility = Visibility.Visible;
+            MainFocus();
+         } else if (e.Key == Key.Enter) {
+            _findPositions = _holder.Find(MultiBox.Text);
+            if (_findPositions.Count == 0) {
+               MessageBox.Show("No matches found for: " + MultiBox.Text);
+               return;
             }
-            if (e.Key == Key.Enter) {
-               _findPositions = _holder.Find(MultiBox.Text);
-               if (_findPositions.Count == 0) {
-                  MessageBox.Show("No matches found for: " + MultiBox.Text);
-                  return;
-               }
-               _findIndex = 0;
-               JumpTo(_findPositions[_findIndex]);
-               MultiBoxContainer.Visibility = Visibility.Hidden;
-               BreadCrumbBar.Visibility = Visibility.Visible;
-               MainFocus();
-            }
+            _findIndex = 0;
+            JumpTo(_findPositions[_findIndex]);
+            MultiBoxContainer.Visibility = Visibility.Hidden;
+            BreadCrumbBar.Visibility = Visibility.Visible;
+            MainFocus();
          }
       }
 
