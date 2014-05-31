@@ -26,7 +26,30 @@ namespace SorceryHex.Gba {
       public int GetLength(byte[] data, int startPoint) {
          int len = 0;
          while (data[startPoint + len] != _endCharacter) len += _stride;
-         return len;
+         return len + _stride;
+      }
+   }
+
+   class NestingDataRun : IDataRun {
+      readonly IDataRun[] _children;
+
+      public NestingDataRun(params IDataRun[] children) { _children = children; }
+
+      public Brush Color { get; set; }
+      public Geometry[] Parser { get; set; }
+      public string HoverText { get; set; }
+      public bool Underlined { get; set; }
+      public InterpretationRule Interpret { get; set; }
+      public JumpRule Jump { get; set; }
+
+      public int GetLength(byte[] data, int startPoint) {
+         int lengthSum = 0;
+         foreach (var run in _children) {
+            int length = run.GetLength(data, startPoint);
+            lengthSum += length;
+            startPoint += length;
+         }
+         return lengthSum;
       }
    }
 

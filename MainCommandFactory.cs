@@ -18,7 +18,6 @@ namespace SorceryHex {
       readonly Dictionary<FrameworkElement, FrameworkElement> _interpretations = new Dictionary<FrameworkElement, FrameworkElement>();
       readonly Dictionary<FrameworkElement, int> _interpretationReferenceCounts = new Dictionary<FrameworkElement, int>();
       readonly Dictionary<FrameworkElement, int[]> _jumpers = new Dictionary<FrameworkElement, int[]>();
-      readonly Queue<FrameworkElement> _interpretationBackgrounds = new Queue<FrameworkElement>();
 
       bool _sortInterpretations;
 
@@ -48,7 +47,6 @@ namespace SorceryHex {
          if (_interpretationReferenceCounts[visual] == 1) {
             _sortInterpretations = true;
             visual.MouseEnter += MouseEnterInterpretation;
-            visual.MouseLeave += MouseLeaveInterpretation;
          }
       }
 
@@ -60,7 +58,6 @@ namespace SorceryHex {
             _window.InterpretationPane.Children.Remove(visual);
             _interpretationReferenceCounts.Remove(visual);
             visual.MouseEnter -= MouseEnterInterpretation;
-            visual.MouseLeave -= MouseLeaveInterpretation;
          }
       }
 
@@ -101,33 +98,14 @@ namespace SorceryHex {
          }
       }
 
-      public void Recycle(FrameworkElement element) {
-         _interpretationBackgrounds.Enqueue(element);
-      }
-
       #region Interpretation Helpers
 
       void MouseEnterInterpretation(object sender, EventArgs e) {
          var visual = (FrameworkElement)sender;
 
-         foreach (var element in _interpretations.Keys.Where(key => _interpretations[key] == visual).Select(FindElementInBody)) {
-            var rectangle = _interpretationBackgrounds.Count > 0 ? _interpretationBackgrounds.Dequeue() : new Border {
-               Background = Solarized.Theme.Instance.Backlight
-            };
-            rectangle.SetCreator(this);
-            int loc = MainWindow.CombineLocation(element, _window.CurrentColumnCount);
-            MainWindow.SplitLocation(rectangle, _window.CurrentColumnCount, loc);
-            _window.BackgroundBody.Children.Add(rectangle);
-         }
-      }
-
-      void MouseLeaveInterpretation(object sender, EventArgs e) {
-         var children = new List<FrameworkElement>();
-         foreach (FrameworkElement child in _window.BackgroundBody.Children) children.Add(child);
-         foreach (var child in children.Where(c => c.GetCreator() == this)) {
-            _window.BackgroundBody.Children.Remove(child);
-            _interpretationBackgrounds.Enqueue(child);
-         }
+         var element = FindElementInBody(_interpretations.Keys.First(key => _interpretations[key] == visual));
+         int loc = MainWindow.CombineLocation(element, _window.CurrentColumnCount);
+         _window.HighlightFromLocation(loc);
       }
 
       #endregion

@@ -15,6 +15,8 @@ namespace SorceryHex {
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsStartOfDataBlock(int location);
       bool IsWithinDataBlock(int location);
+      int GetDataBlockStart(int location);
+      int GetDataBlockLength(int location);
       FrameworkElement GetInterpretation(int location);
       IList<int> Find(string term);
    }
@@ -25,6 +27,8 @@ namespace SorceryHex {
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsStartOfDataBlock(int location);
       bool IsWithinDataBlock(int location);
+      int GetDataBlockStart(int location);
+      int GetDataBlockLength(int location);
       FrameworkElement GetInterpretation(int location);
       IList<int> Find(string term);
    }
@@ -82,6 +86,16 @@ namespace SorceryHex {
       public bool IsWithinDataBlock(int location) {
          if (!_loaded) return false;
          return _children.Any(child => child.IsWithinDataBlock(location));
+      }
+
+      public int GetDataBlockStart(int location) {
+         var selectedChild = _children.First(child => child.IsStartOfDataBlock(location) || child.IsWithinDataBlock(location));
+         return selectedChild.GetDataBlockStart(location);
+      }
+
+      public int GetDataBlockLength(int location) {
+         var selectedChild = _children.First(child => child.IsStartOfDataBlock(location) || child.IsWithinDataBlock(location));
+         return selectedChild.GetDataBlockLength(location);
       }
 
       public FrameworkElement GetInterpretation(int location) {
@@ -205,17 +219,35 @@ namespace SorceryHex {
          if (_runs.ContainsKey(location)) {
             Debug.Assert(RunsAreEquivalent(_runs[location], run, location));
          } else {
+            Debug.Assert(IsFree(location));
             lock (_runs) _runs.Add(location, run);
          }
          _listNeedsUpdate = true;
       }
 
       public bool IsFree(int location) {
-         return !_runs.ContainsKey(location);
+         if (_runs.ContainsKey(location)) return false;
+         int keyIndex = ~_keys.BinarySearch(location) - 1;
+         if (keyIndex < 0) return true;
+         int prev = _keys[keyIndex];
+         int prevEnd = prev + _runs[prev].GetLength(Data, prev);
+         return prevEnd <= location;
       }
 
       public void Load() {
-         foreach (var parser in _runParsers) parser.Load(this);
+         foreach (var parser in _runParsers) {
+            parser.Load(this);
+            UpdateList();
+         }
+
+#if DEBUG
+         int prevEnd = 0;
+         foreach (var key in _runs.Keys) {
+            var run = _runs[key];
+            Debug.Assert(key >= prevEnd);
+            prevEnd = key + _runs[key].GetLength(Data, key);
+         }
+#endif
       }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
@@ -288,9 +320,22 @@ namespace SorceryHex {
       public bool IsWithinDataBlock(int location) {
          UpdateList();
          var insertionPoint = _keys.BinarySearch(location);
-         if (insertionPoint < 1) return false;
+         if (insertionPoint >= 0) return false;
+         insertionPoint = -insertionPoint;
          int startAddress = _keys[insertionPoint - 1];
          return startAddress + _runs[startAddress].GetLength(Data, startAddress) > location;
+      }
+
+      public int GetDataBlockStart(int location) {
+         var insertionPoint = _keys.BinarySearch(location);
+         if (insertionPoint >= 0) return _keys[insertionPoint];
+         if (insertionPoint < 0) insertionPoint = ~insertionPoint;
+         return _keys[insertionPoint - 1];
+      }
+
+      public int GetDataBlockLength(int location) {
+         int startAddress = GetDataBlockStart(location);
+         return _runs[startAddress].GetLength(Data, startAddress);
       }
 
       public FrameworkElement GetInterpretation(int location) {

@@ -43,11 +43,13 @@ namespace SorceryHex {
 
       #endregion
 
+      readonly Queue<FrameworkElement> _interpretationBackgrounds = new Queue<FrameworkElement>();
       IDictionary<Key, Action> KeyActions;
       Func<string, byte[], IParser> _create;
       IParser _holder;
       MainCommandFactory _commandFactory;
       int _offset = 0;
+      int _selectionStart, _selectionLength;
 
       public int CurrentColumnCount { get; private set; }
       public int CurrentRowCount { get; private set; }
@@ -88,6 +90,14 @@ namespace SorceryHex {
          var button = new Button { Content = hex };
          button.Click += NavigateBackClick;
          BreadCrumbBar.Children.Add(button);
+      }
+
+      public void HighlightFromLocation(int combinedLocation) {
+         int location = _offset + combinedLocation;
+         Debug.Assert(_holder.IsStartOfDataBlock(location) || _holder.IsWithinDataBlock(location));
+         _selectionStart = _holder.GetDataBlockStart(location);
+         _selectionLength = _holder.GetDataBlockLength(location);
+         UpdateSelection();
       }
 
       #endregion
@@ -160,7 +170,7 @@ namespace SorceryHex {
          if (_offset - add < -MaxColumnCount || _offset - add > _holder.Length) return;
 
          UpdateRows(Body, rows, Recycle);
-         UpdateRows(BackgroundBody, rows, _commandFactory.Recycle);
+         UpdateRows(BackgroundBody, rows, _interpretationBackgrounds.Enqueue);
 
          _offset -= add;
          if (rows > 0) Add(0, add);
@@ -187,7 +197,7 @@ namespace SorceryHex {
          if (_offset - shift < -MaxColumnCount || _offset - shift > _holder.Length) return;
 
          ShiftColumns(Body, shift, Recycle);
-         ShiftColumns(BackgroundBody, shift, _commandFactory.Recycle);
+         ShiftColumns(BackgroundBody, shift, _interpretationBackgrounds.Enqueue);
 
          _offset -= shift;
          if (shift > 0) Add(0, shift);
@@ -210,6 +220,31 @@ namespace SorceryHex {
 
       void Recycle(FrameworkElement element) {
          _holder.Recycle(_commandFactory, element);
+      }
+
+      void UpdateSelection() {
+         ClearBackground();
+
+         for (int i = 0; i < _selectionLength; i++) {
+            int loc = _selectionStart + i - _offset;
+            if (loc < 0) continue;
+            if (loc >= CurrentColumnCount * CurrentRowCount) continue;
+            var rectangle = _interpretationBackgrounds.Count > 0 ? _interpretationBackgrounds.Dequeue() : new Border {
+               Background = Solarized.Theme.Instance.Backlight
+            };
+            rectangle.SetCreator(this);
+            SplitLocation(rectangle, CurrentColumnCount, loc);
+            BackgroundBody.Children.Add(rectangle);
+         }
+      }
+
+      void ClearBackground() {
+         var children = new List<FrameworkElement>();
+         foreach (FrameworkElement child in BackgroundBody.Children) children.Add(child);
+         foreach (var child in children.Where(c => c.GetCreator() == this)) {
+            BackgroundBody.Children.Remove(child);
+            _interpretationBackgrounds.Enqueue(child);
+         }
       }
 
       #endregion

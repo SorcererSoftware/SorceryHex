@@ -160,6 +160,7 @@ namespace SorceryHex.Gba {
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var elements =_base.CreateElements(commander, start, length);
+         if (!_loaded) return elements;
 
          var destinations = _mapper.MappedDestinations;
          destinations.Sort();
@@ -193,6 +194,9 @@ namespace SorceryHex.Gba {
 
       public bool IsStartOfDataBlock(int location) { return _base.IsStartOfDataBlock(location); }
       public bool IsWithinDataBlock(int location) { return _base.IsWithinDataBlock(location); }
+      public int GetDataBlockStart(int location) { return _base.GetDataBlockStart(location); }
+      public int GetDataBlockLength(int location) { return _base.GetDataBlockLength(location); }
+
       public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
 
       public IList<int> Find(string term) { return _base.Find(term); }

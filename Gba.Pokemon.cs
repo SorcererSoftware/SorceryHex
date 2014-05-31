@@ -82,8 +82,11 @@ namespace SorceryHex.Gba {
                continue;
             } else if (_runs.Data[i] == 0xFF && currentLength >= 3) {
                // if all the characters are the same, don't add the run.
-               if (!Enumerable.Range(1, currentLength).All(j => _runs.Data[i - currentLength + j] == _runs.Data[i - currentLength])) {
-                  _runs.AddRun(i - currentLength, _stringRun);
+               int startLoc = i - currentLength;
+               if (!Enumerable.Range(1, currentLength).All(j => _runs.Data[startLoc + j] == _runs.Data[startLoc])) {
+                  if (_runs.IsFree(startLoc)) {
+                     _runs.AddRun(startLoc, _stringRun);
+                  }
                }
             }
             currentLength = 0;
@@ -314,6 +317,7 @@ namespace SorceryHex.Gba {
       }
    }
 
+   /*
    class Thumbnails : IPartialParser {
 
       readonly byte[] _data;
@@ -358,4 +362,5 @@ namespace SorceryHex.Gba {
       public IList<int> Find(string term) { return null; }
 
    }
+   //*/
 }
