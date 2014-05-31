@@ -49,13 +49,7 @@ namespace SorceryHex.Gba {
          if (_destinations.ContainsKey(destination)) return;
 
          if (_reversePointerSet.ContainsKey(destination)) {
-            var keys = _reversePointerSet[destination].ToArray();
-            foreach (var key in keys) {
-               storage.AddRun(key, _pointerRun);
-               _pointerSet.Remove(key);
-            }
-            _reversePointerSet.Remove(destination);
-            lock (_destinations) _destinations[destination] = keys;
+            Claim(storage, destination);
          } else {
             storage.AddRun(source, _pointerRun);
             lock (_destinations) _destinations[destination] = new int[] { source };
@@ -99,6 +93,10 @@ namespace SorceryHex.Gba {
          _reversePointerSet.Clear();
       }
 
+      /// <summary>
+      /// Remove all pointers with destinations that fail to meet a condition
+      /// </summary>
+      /// <param name="func">A function that returns true for destinations that may exist, or false for destinations that are incorrect.</param>
       public void FilterPointer(Func<int, bool> func) {
          foreach (var pointer in _pointerSet.Keys.ToArray()) {
             int dest = _pointerSet[pointer];
@@ -134,7 +132,7 @@ namespace SorceryHex.Gba {
       readonly byte[] _data;
       readonly Queue<Grid> _spareContainers = new Queue<Grid>();
       readonly Queue<Path> _spareHats = new Queue<Path>();
-      readonly IRunStorage _storage;
+      readonly RunStorage _storage;
       readonly PointerMapper _mapper;
       bool _loaded = false;
 
@@ -144,7 +142,7 @@ namespace SorceryHex.Gba {
 
       public int Length { get { return _data.Length; } }
 
-      public PointerParser(IParser fallback, byte[] data, IRunStorage storage, PointerMapper mapper) {
+      public PointerParser(IParser fallback, byte[] data, RunStorage storage, PointerMapper mapper) {
          _data = data;
          _base = fallback;
          _storage = storage;
@@ -154,6 +152,7 @@ namespace SorceryHex.Gba {
       public void Load() {
          _loaded = false;
          _base.Load();
+         _mapper.FilterPointer(dest => !_storage.IsWithinDataBlock(dest));
          _mapper.ClaimRemainder(_storage);
          _loaded = true;
       }

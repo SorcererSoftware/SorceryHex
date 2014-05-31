@@ -162,6 +162,7 @@ namespace SorceryHex {
             int location = Grid.GetRow(block) * cols + _offset;
             block.Text = location.ToHexString();
          }
+         UpdateSelection();
       }
 
       void ShiftRows(int rows) {

@@ -321,8 +321,8 @@ namespace SorceryHex {
          UpdateList();
          var insertionPoint = _keys.BinarySearch(location);
          if (insertionPoint >= 0) return false;
-         insertionPoint = -insertionPoint;
-         int startAddress = _keys[insertionPoint - 1];
+         insertionPoint = ~insertionPoint - 1;
+         int startAddress = _keys[insertionPoint];
          return startAddress + _runs[startAddress].GetLength(Data, startAddress) > location;
       }
 
