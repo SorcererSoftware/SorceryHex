@@ -79,7 +79,7 @@
         <ScrollBar x:Name="ScrollBar" DockPanel.Dock="Right" Scroll="OnScroll"/>
         <DockPanel Background="{Binding Source={StaticResource Theme}, Path=Background}">
             <StackPanel Name="InterpretationPane" DockPanel.Dock="Right" Width="100" Visibility="Collapsed"/>
-            <Grid x:Name="ResizeGrid" SizeChanged="Resize" Style="{StaticResource PanelStyle}" MouseLeftButtonDown="MouseClick">
+            <Grid x:Name="ResizeGrid" SizeChanged="Resize" Style="{StaticResource PanelStyle}" MouseLeftButtonDown="BodyMouseDown" MouseMove="BodyMouseMove" MouseLeftButtonUp="BodyMouseUp">
                 <Grid x:Name="BackgroundBody" HorizontalAlignment="Left" VerticalAlignment="Top"/>
                 <Grid x:Name="Body" HorizontalAlignment="Left" VerticalAlignment="Top"/>
             </Grid>

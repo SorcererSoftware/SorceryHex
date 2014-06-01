@@ -48,8 +48,11 @@ namespace SorceryHex {
       Func<string, byte[], IParser> _create;
       IParser _holder;
       MainCommandFactory _commandFactory;
+
       int _offset = 0;
       int _selectionStart, _selectionLength;
+      int _clickStart;
+      Point _mouseDownPosition;
 
       public int CurrentColumnCount { get; private set; }
       public int CurrentRowCount { get; private set; }
@@ -166,6 +169,7 @@ namespace SorceryHex {
       }
 
       void ShiftRows(int rows) {
+         Debug.Assert(Math.Abs(rows) <= CurrentRowCount);
          int all = CurrentColumnCount * CurrentRowCount;
          int add = CurrentColumnCount * rows;
          if (_offset - add < -MaxColumnCount || _offset - add > _holder.Length) return;
@@ -179,6 +183,7 @@ namespace SorceryHex {
       }
 
       void ShiftColumns(Panel panel, int shift, Action<FrameworkElement> removeAction) {
+         Debug.Assert(Math.Abs(shift) < CurrentColumnCount);
          int all = CurrentRowCount * CurrentColumnCount;
          var children = new FrameworkElement[panel.Children.Count];
          for (int i = 0; i < children.Length; i++) children[i] = (FrameworkElement)panel.Children[i];
@@ -248,6 +253,33 @@ namespace SorceryHex {
          }
       }
 
+      int ByteOffsetForMouse(MouseEventArgs e) {
+         var position = e.GetPosition(Body);
+         int row = (int)(position.Y / ElementHeight);
+         int col = (int)(position.X / ElementWidth);
+         return row * CurrentColumnCount + col + _offset;
+      }
+
+      void UpdateSelectionFromMovement() {
+         if (_selectionStart < _offset) {
+            int rowCount = (int)Math.Ceiling((double)(_offset - _selectionStart) / CurrentColumnCount);
+            if (rowCount > CurrentRowCount) {
+               JumpTo(_offset - rowCount * CurrentColumnCount);
+            } else {
+               ShiftRows(rowCount);
+            }
+         } else if (_selectionStart >= _offset + CurrentColumnCount * CurrentRowCount) {
+            int rowCount = (int)Math.Floor((double)(_selectionStart - (_offset + CurrentRowCount * CurrentColumnCount)) / CurrentColumnCount + 1);
+            if (rowCount > CurrentRowCount) {
+               JumpTo(_offset + rowCount * CurrentColumnCount);
+            } else {
+               ShiftRows(-rowCount);
+            }
+         }
+
+         UpdateHeaderText();
+      }
+
       #endregion
 
       #region Events
@@ -312,10 +344,37 @@ namespace SorceryHex {
          UpdateHeaderText();
       }
 
-      void MouseClick(object sender, MouseButtonEventArgs e) {
+      void BodyMouseDown(object sender, MouseButtonEventArgs e) {
          MainFocus();
+         _mouseDownPosition = e.GetPosition(Body);
+         _clickStart = ByteOffsetForMouse(e);
+         Body.CaptureMouse();
+      }
+
+      void BodyMouseMove(object sender, MouseEventArgs e) {
+         if (!Body.IsMouseCaptured) return;
+         if (e.LeftButton != MouseButtonState.Pressed) return;
+
+         int currentLoc = ByteOffsetForMouse(e);
+         if (currentLoc > _clickStart) {
+            _selectionStart = _clickStart;
+            _selectionLength = currentLoc - _clickStart + 1;
+         } else {
+            _selectionStart = currentLoc;
+            _selectionLength = _clickStart - currentLoc + 1;
+         }
+         UpdateSelection();
+      }
+
+      void BodyMouseUp(object sender, MouseButtonEventArgs e) {
+         Body.ReleaseMouseCapture();
          if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) {
-            _commandFactory.CheckJumpForMouseOver();
+            var upPosition = e.GetPosition(Body);
+            var dif = (_mouseDownPosition - upPosition);
+            dif = new Vector(Math.Abs(dif.X), Math.Abs(dif.Y));
+            if (dif.X <= SystemParameters.MinimumHorizontalDragDistance && dif.Y <= SystemParameters.MinimumVerticalDragDistance) {
+               _commandFactory.CheckJumpForMouseOver();
+            }
          }
       }
 
@@ -347,6 +406,16 @@ namespace SorceryHex {
                case Key.F3:
                   if (Keyboard.Modifiers == ModifierKeys.Shift) FindPrevious(null, null);
                   else FindNext(null, null);
+                  break;
+               case Key.Left: case Key.Up:
+                  if (_selectionLength > 1) _selectionLength = 1;
+                  else _selectionStart -= (e.Key == Key.Up) ? CurrentColumnCount : 1;
+                  UpdateSelectionFromMovement();
+                  break;
+               case Key.Right: case Key.Down:
+                  if (_selectionLength > 1) { _selectionStart += _selectionLength - 1; _selectionLength = 1; }
+                  else _selectionStart += (e.Key == Key.Down) ? CurrentColumnCount : 1;
+                  UpdateSelectionFromMovement();
                   break;
             }
          }
