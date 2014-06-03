@@ -8,7 +8,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex {
-   public interface IParser {
+   public interface IParser : IEditor {
       int Length { get; }
       void Load();
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
@@ -19,6 +19,12 @@ namespace SorceryHex {
       int GetDataBlockLength(int location);
       FrameworkElement GetInterpretation(int location);
       IList<int> Find(string term);
+   }
+
+   public interface IEditor {
+      void Edit(int location, char c); // called because the user entered an edit key
+      void CompleteEdit(); // called because the user entered a key that signifies the end of an edit
+      event EventHandler MoveToNext; // sent up because the editor realizes it's done with the current edit
    }
 
    public interface IPartialParser {
@@ -33,7 +39,7 @@ namespace SorceryHex {
       IList<int> Find(string term);
    }
 
-   class CompositeParser : IParser {
+   public class CompositeParser : IParser {
       readonly IList<IPartialParser> _children;
       readonly byte[] _data;
       readonly Queue<Path> _recycles = new Queue<Path>();
@@ -45,6 +51,8 @@ namespace SorceryHex {
          _data = data;
          _children = children;
       }
+
+      #region Parser
 
       public void Load() {
          _loaded = false;
@@ -128,6 +136,21 @@ namespace SorceryHex {
          return list;
       }
 
+      #endregion
+
+      #region Editor
+
+      public void Edit(int location, char c) {
+         _data[location] = 0;
+         MoveToNext(this, EventArgs.Empty);
+      }
+
+      public void CompleteEdit() { }
+
+      public event EventHandler MoveToNext;
+
+      #endregion
+
       IEnumerable<FrameworkElement> ChildCheck(ICommandFactory commander, int start, int length) {
          if (!_loaded) return CreateRawElements(commander, start, length);
 
@@ -197,7 +220,7 @@ namespace SorceryHex {
       bool IsFree(int location);
    }
 
-   class RunStorage : IPartialParser, IRunStorage {
+   public class RunStorage : IPartialParser, IRunStorage {
       readonly SortedList<int, IDataRun> _runs = new SortedList<int, IDataRun>();
       readonly Queue<Border> _recycles = new Queue<Border>();
       readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();

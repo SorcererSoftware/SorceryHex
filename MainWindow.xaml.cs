@@ -61,6 +61,7 @@ namespace SorceryHex {
          _create = create;
          _holder = _create(fileName, data);
          _commandFactory = new MainCommandFactory(this);
+         _holder.MoveToNext += HandleMoveNext;
          InitializeComponent();
          ScrollBar.Minimum = -MaxColumnCount;
          ScrollBar.Maximum = _holder.Length;
@@ -197,6 +198,19 @@ namespace SorceryHex {
                SplitLocation(element, CurrentColumnCount, loc);
             }
          }
+      }
+
+      void RefreshElement(int location) {
+         var children = new FrameworkElement[Body.Children.Count];
+         for (int i = 0; i < children.Length; i++) children[i] = (FrameworkElement)Body.Children[i];
+         foreach (var element in children) {
+            int loc = CombineLocation(element, CurrentColumnCount);
+            if (loc + _offset == location) {
+               Body.Children.Remove(element);
+               Recycle(element);
+            }
+         }
+         Add(location - _offset, 1);
       }
 
       void ShiftColumns(int shift) {
@@ -378,6 +392,11 @@ namespace SorceryHex {
          }
       }
 
+      void HandleMoveNext(object sender, EventArgs e) {
+         _selectionStart++;
+         UpdateSelectionFromMovement();
+      }
+
       void InitializeKeyActions() {
          KeyActions = new Dictionary<Key, Action> {
             { Key.Subtract, () => NavigateBackClick(null, null) },
@@ -401,37 +420,45 @@ namespace SorceryHex {
                ScrollBar.Value = _offset;
                UpdateHeaderText();
             }
-         } else {
-            switch (e.Key) {
-               case Key.F3:
-                  if (Keyboard.Modifiers == ModifierKeys.Shift) FindPrevious(null, null);
-                  else FindNext(null, null);
-                  break;
-               case Key.Left: case Key.Up:
-                  if (_selectionLength > 1) _selectionLength = 1;
-                  else _selectionStart -= (e.Key == Key.Up) ? CurrentColumnCount : 1;
-                  UpdateSelectionFromMovement();
-                  break;
-               case Key.Right: case Key.Down:
-                  if (_selectionLength > 1) { _selectionStart += _selectionLength - 1; _selectionLength = 1; }
-                  else _selectionStart += (e.Key == Key.Down) ? CurrentColumnCount : 1;
-                  UpdateSelectionFromMovement();
-                  break;
-            }
+            return;
          }
 
          if (e.Key == Key.Escape) {
             // some kind of modal knowledge required here...
          }
+
+         switch (e.Key) {
+            case Key.F3:
+               if (Keyboard.Modifiers == ModifierKeys.Shift) FindPrevious(null, null);
+               else FindNext(null, null);
+               break;
+            case Key.Left: case Key.Up:
+               if (_selectionLength > 1) {
+                  _selectionLength = 1;
+               } else {
+                  _selectionStart -= (e.Key == Key.Up) ? CurrentColumnCount : 1;
+               }
+               UpdateSelectionFromMovement();
+               break;
+            case Key.Right: case Key.Down:
+               if (_selectionLength > 1) {
+                  _selectionStart += _selectionLength - 1; _selectionLength = 1;
+               } else {
+                  _selectionStart += (e.Key == Key.Down) ? CurrentColumnCount : 1;
+               }
+               UpdateSelectionFromMovement();
+               break;
+            default:
+               if (_selectionLength > 1) return;
+               var c = Utils.Convert(e.Key);
+               if (c == null) return;
+               int editLocation = _selectionStart;
+               _holder.Edit(editLocation, (char)c);
+               RefreshElement(editLocation);
+               break;
+         }
       }
 
-      static readonly Key[] HexKeys = new[] {
-         Key.NumPad0, Key.NumPad1, Key.NumPad2, Key.NumPad3, Key.NumPad4,
-         Key.NumPad5, Key.NumPad6, Key.NumPad7, Key.NumPad8, Key.NumPad9,
-         Key.D0, Key.D1, Key.D2, Key.D3, Key.D4,
-         Key.D5, Key.D6, Key.D7, Key.D8, Key.D9,
-         Key.A, Key.B, Key.C, Key.D, Key.E, Key.F
-      };
       void HandleMultiBoxKey(object sender, KeyEventArgs e) {
          if (MultiBoxLabel.Text == "Goto") {
             HandleGotoKey(e);
@@ -463,7 +490,7 @@ namespace SorceryHex {
          }
 
          // only allow hex keys
-         if (!HexKeys.Contains(e.Key)) e.Handled = true;
+         if (!Utils.HexKeys.Contains(e.Key)) e.Handled = true;
       }
 
       void HandleFindKey(KeyEventArgs e) {
@@ -496,10 +523,12 @@ namespace SorceryHex {
       #region Menu
 
       void OpenClick(object sender, RoutedEventArgs e) {
+         _holder.MoveToNext -= HandleMoveNext;
          string fileName;
          var data = Utils.LoadFile(out fileName);
          if (data == null) return;
          _holder = _create(fileName, data);
+         _holder.MoveToNext += HandleMoveNext; 
          ScrollBar.Maximum = _holder.Length;
          Body.Children.Clear();
          JumpTo(0);

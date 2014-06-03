@@ -138,7 +138,7 @@ namespace SorceryHex.Gba {
 
       #endregion
 
-      #region Interface
+      #region Parser
 
       public int Length { get { return _data.Length; } }
 
@@ -199,6 +199,19 @@ namespace SorceryHex.Gba {
       public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
 
       public IList<int> Find(string term) { return _base.Find(term); }
+
+      #endregion
+
+      #region Editor
+
+      public void Edit(int location, char c) { _base.Edit(location, c); }
+
+      public void CompleteEdit() { _base.CompleteEdit(); }
+
+      public event EventHandler MoveToNext {
+         add { _base.MoveToNext += value; }
+         remove { _base.MoveToNext -= value; }
+      }
 
       #endregion
 

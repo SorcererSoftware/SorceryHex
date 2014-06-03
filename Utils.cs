@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace SorceryHex {
@@ -13,6 +14,32 @@ namespace SorceryHex {
       public static readonly DependencyProperty CreatorProperty = DependencyProperty.Register("Creator", typeof(object), typeof(FrameworkElement), new PropertyMetadata(null));
       public static void SetCreator(this FrameworkElement element, object creator) { element.SetValue(CreatorProperty, creator); }
       public static object GetCreator(this FrameworkElement element) { return (object)element.GetValue(CreatorProperty); }
+
+      public static readonly Key[] HexKeys = new[] {
+         Key.NumPad0, Key.NumPad1, Key.NumPad2, Key.NumPad3, Key.NumPad4,
+         Key.NumPad5, Key.NumPad6, Key.NumPad7, Key.NumPad8, Key.NumPad9,
+         Key.D0, Key.D1, Key.D2, Key.D3, Key.D4,
+         Key.D5, Key.D6, Key.D7, Key.D8, Key.D9,
+         Key.A, Key.B, Key.C, Key.D, Key.E, Key.F
+      };
+
+      public static IDictionary<Key, char> CharForKey = new Dictionary<Key, char> {
+         { Key.OemBackslash, '\\' }, { Key.Divide, '/' },
+         { Key.Multiply, '*' },
+         { Key.Subtract, '-' }, { Key.Add, '+' },
+         { Key.OemPlus, '+' }, { Key.OemMinus, '-' },
+         { Key.Space, ' ' },
+         { Key.OemPeriod, '.' }, { Key.Decimal, '.' },
+      };
+
+      public static char? Convert(Key key) {
+         if (key >= Key.A && key <= Key.Z) return (char)(key - Key.A + 'a');
+         if (key >= Key.NumPad0 && key <= Key.NumPad9) return (char)(key - Key.NumPad0 + '0');
+         if (key >= Key.D0 && key <= Key.D9) return (char)(key - Key.D0 + '0');
+         if (CharForKey.ContainsKey(key)) return CharForKey[key];
+         return null;
+         // return (char)KeyInterop.VirtualKeyFromKey(key);
+      }
 
       public static readonly string Hex = "0123456789ABCDEF";
       public static readonly Typeface Font = new Typeface("Consolas");
