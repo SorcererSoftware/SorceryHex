@@ -54,12 +54,14 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="CursorController.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="Gba.cs" />
     <Compile Include="Gba.Pointers.cs" />
     <Compile Include="Gba.Pokemon.cs" />
     <Compile Include="Gba.ImageUtils.cs" />
     <Compile Include="MainCommandFactory.cs" />
+    <Compile Include="RunStorage.cs" />
     <Compile Include="Solarized.cs" />
     <Compile Include="Utils.cs" />
     <Page Include="MainWindow.xaml">

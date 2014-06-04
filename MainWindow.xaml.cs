@@ -17,7 +17,7 @@ namespace SorceryHex {
 
       const int MaxColumnCount = 0x30;
 
-      static readonly int ElementWidth = 26, ElementHeight = 20;
+      public const int ElementWidth = 26, ElementHeight = 20;
       static readonly IEnumerable<Key> arrowKeys = new[] { Key.Left, Key.Right, Key.Up, Key.Down };
 
       public static int CombineLocation(UIElement ui, int columns) {
@@ -43,44 +43,42 @@ namespace SorceryHex {
 
       #endregion
 
-      readonly Queue<FrameworkElement> _interpretationBackgrounds = new Queue<FrameworkElement>();
       IDictionary<Key, Action> KeyActions;
       Func<string, byte[], IModel> _create;
-      IModel _holder;
       MainCommandFactory _commandFactory;
+      CursorController _cursorController;
 
-      int _offset = 0;
-      int _selectionStart, _selectionLength;
-      int _clickStart;
-      Point _mouseDownPosition;
+      public int Offset { get; private set; }
+      public IModel Holder { get; private set; }
 
       public int CurrentColumnCount { get; private set; }
       public int CurrentRowCount { get; private set; }
 
       public MainWindow(Func<string, byte[], IModel> create, string fileName, byte[] data) {
          _create = create;
-         _holder = _create(fileName, data);
+         Holder = _create(fileName, data);
          _commandFactory = new MainCommandFactory(this);
-         _holder.MoveToNext += HandleMoveNext;
          InitializeComponent();
+         _cursorController = new CursorController(this, _commandFactory);
+         Holder.MoveToNext += _cursorController.HandleMoveNext;
          ScrollBar.Minimum = -MaxColumnCount;
-         ScrollBar.Maximum = _holder.Length;
+         ScrollBar.Maximum = Holder.Length;
          Title = fileName.Split('\\').Last();
          InitializeKeyActions();
-         Task.Factory.StartNew(_holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(_offset)));
+         Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(Offset)));
       }
 
       #region Public Methods
 
       public void JumpTo(int location) {
-         location = Math.Min(Math.Max(-MaxColumnCount, location), _holder.Length);
+         location = Math.Min(Math.Max(-MaxColumnCount, location), Holder.Length);
 
          foreach (FrameworkElement element in Body.Children) Recycle(element);
          Body.Children.Clear();
 
-         _offset = location;
+         Offset = location;
          Add(0, CurrentColumnCount * CurrentRowCount);
-         ScrollBar.Value = _offset;
+         ScrollBar.Value = Offset;
          UpdateHeaderText();
       }
 
@@ -89,7 +87,7 @@ namespace SorceryHex {
             ((Button)BreadCrumbBar.Children[0]).Click -= NavigateBackClick;
             BreadCrumbBar.Children.RemoveAt(0);
          }
-         var hex = _offset.ToHexString();
+         var hex = Offset.ToHexString();
          while (hex.Length < 6) hex = "0" + hex;
          var button = new Button { Content = hex };
          button.Click += NavigateBackClick;
@@ -97,11 +95,68 @@ namespace SorceryHex {
       }
 
       public void HighlightFromLocation(int combinedLocation) {
-         int location = _offset + combinedLocation;
-         Debug.Assert(_holder.IsStartOfDataBlock(location) || _holder.IsWithinDataBlock(location));
-         _selectionStart = _holder.GetDataBlockStart(location);
-         _selectionLength = _holder.GetDataBlockLength(location);
-         UpdateSelection();
+         int location = Offset + combinedLocation;
+         Debug.Assert(Holder.IsStartOfDataBlock(location) || Holder.IsWithinDataBlock(location));
+         _cursorController.UpdateSelection(Holder, location);
+      }
+
+      public void UpdateHeaderText() {
+         int cols = CurrentColumnCount;
+         foreach (TextBlock block in Headers.Children) {
+            int location = Grid.GetRow(block) * cols + Offset;
+            block.Text = location.ToHexString();
+         }
+         _cursorController.UpdateSelection();
+      }
+
+      public void ShiftRows(int rows) {
+         Debug.Assert(Math.Abs(rows) <= CurrentRowCount);
+         int all = CurrentColumnCount * CurrentRowCount;
+         int add = CurrentColumnCount * rows;
+         if (Offset - add < -MaxColumnCount || Offset - add > Holder.Length) return;
+
+         UpdateRows(Body, rows, Recycle);
+         UpdateRows(BackgroundBody, rows, _cursorController.Recycle);
+
+         Offset -= add;
+         if (rows > 0) Add(0, add);
+         else Add(all + add, -add);
+      }
+
+      public void ShiftColumns(Panel panel, int shift, Action<FrameworkElement> removeAction) {
+         Debug.Assert(Math.Abs(shift) < CurrentColumnCount);
+         int all = CurrentRowCount * CurrentColumnCount;
+         var children = new FrameworkElement[panel.Children.Count];
+         for (int i = 0; i < children.Length; i++) children[i] = (FrameworkElement)panel.Children[i];
+         foreach (var element in children) {
+            int loc = CombineLocation(element, CurrentColumnCount);
+            loc += shift;
+            if (loc < 0 || loc >= all) {
+               panel.Children.Remove(element);
+               removeAction(element);
+            } else {
+               SplitLocation(element, CurrentColumnCount, loc);
+            }
+         }
+      }
+
+      public void MainFocus() {
+         DependencyObject scope = FocusManager.GetFocusScope(MultiBox);
+         FocusManager.SetFocusedElement(scope, this as IInputElement);
+      }
+
+      public void RefreshElement(int location) {
+         Debug.Assert(0 <= location - Offset && location - Offset < CurrentColumnCount * CurrentRowCount);
+         var children = new FrameworkElement[Body.Children.Count];
+         for (int i = 0; i < children.Length; i++) children[i] = (FrameworkElement)Body.Children[i];
+         foreach (var element in children) {
+            int loc = CombineLocation(element, CurrentColumnCount);
+            if (loc + Offset == location) {
+               Body.Children.Remove(element);
+               Recycle(element);
+            }
+         }
+         Add(location - Offset, 1);
       }
 
       #endregion
@@ -124,14 +179,9 @@ namespace SorceryHex {
          }
       }
 
-      void MainFocus() {
-         DependencyObject scope = FocusManager.GetFocusScope(MultiBox);
-         FocusManager.SetFocusedElement(scope, this as IInputElement);
-      }
-
       void Add(int start, int length) {
          int rows = CurrentRowCount, cols = CurrentColumnCount;
-         var elements = _holder.CreateElements(_commandFactory, _offset + start, length).ToArray();
+         var elements = Holder.CreateElements(_commandFactory, Offset + start, length).ToArray();
          Debug.Assert(elements.Length == length);
          for (var i = 0; i < elements.Length; i++) {
             SplitLocation(elements[i], cols, start + i);
@@ -146,7 +196,7 @@ namespace SorceryHex {
 
          // add new header rows
          for (int i = oldRows; i < newRows; i++) {
-            var headerText = (_offset + i * CurrentColumnCount).ToHexString();
+            var headerText = (Offset + i * CurrentColumnCount).ToHexString();
             var block = new TextBlock { Text = headerText, HorizontalAlignment = HorizontalAlignment.Right };
             Grid.SetRow(block, i);
             Headers.Children.Add(block);
@@ -160,67 +210,14 @@ namespace SorceryHex {
          }
       }
 
-      void UpdateHeaderText() {
-         int cols = CurrentColumnCount;
-         foreach (TextBlock block in Headers.Children) {
-            int location = Grid.GetRow(block) * cols + _offset;
-            block.Text = location.ToHexString();
-         }
-         UpdateSelection();
-      }
-
-      void ShiftRows(int rows) {
-         Debug.Assert(Math.Abs(rows) <= CurrentRowCount);
-         int all = CurrentColumnCount * CurrentRowCount;
-         int add = CurrentColumnCount * rows;
-         if (_offset - add < -MaxColumnCount || _offset - add > _holder.Length) return;
-
-         UpdateRows(Body, rows, Recycle);
-         UpdateRows(BackgroundBody, rows, _interpretationBackgrounds.Enqueue);
-
-         _offset -= add;
-         if (rows > 0) Add(0, add);
-         else Add(all + add, -add);
-      }
-
-      void ShiftColumns(Panel panel, int shift, Action<FrameworkElement> removeAction) {
-         Debug.Assert(Math.Abs(shift) < CurrentColumnCount);
-         int all = CurrentRowCount * CurrentColumnCount;
-         var children = new FrameworkElement[panel.Children.Count];
-         for (int i = 0; i < children.Length; i++) children[i] = (FrameworkElement)panel.Children[i];
-         foreach (var element in children) {
-            int loc = CombineLocation(element, CurrentColumnCount);
-            loc += shift;
-            if (loc < 0 || loc >= all) {
-               panel.Children.Remove(element);
-               removeAction(element);
-            } else {
-               SplitLocation(element, CurrentColumnCount, loc);
-            }
-         }
-      }
-
-      void RefreshElement(int location) {
-         Debug.Assert(0 <= location - _offset && location - _offset < CurrentColumnCount * CurrentRowCount);
-         var children = new FrameworkElement[Body.Children.Count];
-         for (int i = 0; i < children.Length; i++) children[i] = (FrameworkElement)Body.Children[i];
-         foreach (var element in children) {
-            int loc = CombineLocation(element, CurrentColumnCount);
-            if (loc + _offset == location) {
-               Body.Children.Remove(element);
-               Recycle(element);
-            }
-         }
-         Add(location - _offset, 1);
-      }
 
       void ShiftColumns(int shift) {
-         if (_offset - shift < -MaxColumnCount || _offset - shift > _holder.Length) return;
+         if (Offset - shift < -MaxColumnCount || Offset - shift > Holder.Length) return;
 
          ShiftColumns(Body, shift, Recycle);
-         ShiftColumns(BackgroundBody, shift, _interpretationBackgrounds.Enqueue);
+         ShiftColumns(BackgroundBody, shift, _cursorController.Recycle);
 
-         _offset -= shift;
+         Offset -= shift;
          if (shift > 0) Add(0, shift);
          else Add(CurrentRowCount * CurrentColumnCount + shift, -shift);
       }
@@ -231,68 +228,16 @@ namespace SorceryHex {
          var magn = Math.Abs(dif);
          magn -= magn % CurrentColumnCount; // discard the column portion
          int all = CurrentColumnCount * CurrentRowCount;
-         if (magn > all) { JumpTo(_offset - (magn * sign)); return; }
+         if (magn > all) { JumpTo(Offset - (magn * sign)); return; }
 
          int rowPart = magn / CurrentColumnCount;
          ShiftRows(rowPart * sign);
          UpdateHeaderText();
-         ScrollBar.Value = _offset;
+         ScrollBar.Value = Offset;
       }
 
       void Recycle(FrameworkElement element) {
-         _holder.Recycle(_commandFactory, element);
-      }
-
-      void UpdateSelection() {
-         ClearBackground();
-
-         for (int i = 0; i < _selectionLength; i++) {
-            int loc = _selectionStart + i - _offset;
-            if (loc < 0) continue;
-            if (loc >= CurrentColumnCount * CurrentRowCount) continue;
-            var rectangle = _interpretationBackgrounds.Count > 0 ? _interpretationBackgrounds.Dequeue() : new Border {
-               Background = Solarized.Theme.Instance.Backlight
-            };
-            rectangle.SetCreator(this);
-            SplitLocation(rectangle, CurrentColumnCount, loc);
-            BackgroundBody.Children.Add(rectangle);
-         }
-      }
-
-      void ClearBackground() {
-         var children = new List<FrameworkElement>();
-         foreach (FrameworkElement child in BackgroundBody.Children) children.Add(child);
-         foreach (var child in children.Where(c => c.GetCreator() == this)) {
-            BackgroundBody.Children.Remove(child);
-            _interpretationBackgrounds.Enqueue(child);
-         }
-      }
-
-      int ByteOffsetForMouse(MouseEventArgs e) {
-         var position = e.GetPosition(Body);
-         int row = (int)(position.Y / ElementHeight);
-         int col = (int)(position.X / ElementWidth);
-         return row * CurrentColumnCount + col + _offset;
-      }
-
-      void UpdateSelectionFromMovement() {
-         if (_selectionStart < _offset) {
-            int rowCount = (int)Math.Ceiling((double)(_offset - _selectionStart) / CurrentColumnCount);
-            if (rowCount > CurrentRowCount) {
-               JumpTo(_offset - rowCount * CurrentColumnCount);
-            } else {
-               ShiftRows(rowCount);
-            }
-         } else if (_selectionStart >= _offset + CurrentColumnCount * CurrentRowCount) {
-            int rowCount = (int)Math.Floor((double)(_selectionStart - (_offset + CurrentRowCount * CurrentColumnCount)) / CurrentColumnCount + 1);
-            if (rowCount > CurrentRowCount) {
-               JumpTo(_offset + rowCount * CurrentColumnCount);
-            } else {
-               ShiftRows(-rowCount);
-            }
-         }
-
-         UpdateHeaderText();
+         Holder.Recycle(_commandFactory, element);
       }
 
       #endregion
@@ -349,53 +294,14 @@ namespace SorceryHex {
             ScrollBar.Value = 0;
          }
 
-         int dif = _offset - (int)ScrollBar.Value;
+         int dif = Offset - (int)ScrollBar.Value;
          Scroll(dif);
       }
 
       void ScrollWheel(object sender, MouseWheelEventArgs e) {
          ShiftRows(Math.Sign(e.Delta));
-         ScrollBar.Value = _offset;
+         ScrollBar.Value = Offset;
          UpdateHeaderText();
-      }
-
-      void BodyMouseDown(object sender, MouseButtonEventArgs e) {
-         MainFocus();
-         _mouseDownPosition = e.GetPosition(Body);
-         _clickStart = ByteOffsetForMouse(e);
-         Body.CaptureMouse();
-      }
-
-      void BodyMouseMove(object sender, MouseEventArgs e) {
-         if (!Body.IsMouseCaptured) return;
-         if (e.LeftButton != MouseButtonState.Pressed) return;
-
-         int currentLoc = ByteOffsetForMouse(e);
-         if (currentLoc > _clickStart) {
-            _selectionStart = _clickStart;
-            _selectionLength = currentLoc - _clickStart + 1;
-         } else {
-            _selectionStart = currentLoc;
-            _selectionLength = _clickStart - currentLoc + 1;
-         }
-         UpdateSelection();
-      }
-
-      void BodyMouseUp(object sender, MouseButtonEventArgs e) {
-         Body.ReleaseMouseCapture();
-         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) {
-            var upPosition = e.GetPosition(Body);
-            var dif = (_mouseDownPosition - upPosition);
-            dif = new Vector(Math.Abs(dif.X), Math.Abs(dif.Y));
-            if (dif.X <= SystemParameters.MinimumHorizontalDragDistance && dif.Y <= SystemParameters.MinimumVerticalDragDistance) {
-               _commandFactory.CheckJumpForMouseOver();
-            }
-         }
-      }
-
-      void HandleMoveNext(object sender, EventArgs e) {
-         _selectionStart++;
-         UpdateSelectionFromMovement();
       }
 
       void InitializeKeyActions() {
@@ -418,7 +324,7 @@ namespace SorceryHex {
             if (KeyActions.ContainsKey(e.Key)) KeyActions[e.Key]();
 
             if (arrowKeys.Contains(e.Key)) {
-               ScrollBar.Value = _offset;
+               ScrollBar.Value = Offset;
                UpdateHeaderText();
             }
             return;
@@ -433,29 +339,8 @@ namespace SorceryHex {
                if (Keyboard.Modifiers == ModifierKeys.Shift) FindPrevious(null, null);
                else FindNext(null, null);
                break;
-            case Key.Left: case Key.Up:
-               if (_selectionLength > 1) {
-                  _selectionLength = 1;
-               } else {
-                  _selectionStart -= (e.Key == Key.Up) ? CurrentColumnCount : 1;
-               }
-               UpdateSelectionFromMovement();
-               break;
-            case Key.Right: case Key.Down:
-               if (_selectionLength > 1) {
-                  _selectionStart += _selectionLength - 1; _selectionLength = 1;
-               } else {
-                  _selectionStart += (e.Key == Key.Down) ? CurrentColumnCount : 1;
-               }
-               UpdateSelectionFromMovement();
-               break;
             default:
-               if (_selectionLength > 1) return;
-               var c = Utils.Convert(e.Key);
-               if (c == null) return;
-               int editLocation = _selectionStart;
-               _holder.Edit(editLocation, (char)c);
-               RefreshElement(editLocation);
+               _cursorController.HandleKey(e.Key);
                break;
          }
       }
@@ -503,7 +388,7 @@ namespace SorceryHex {
             BreadCrumbBar.Visibility = Visibility.Visible;
             MainFocus();
          } else if (e.Key == Key.Enter) {
-            _findPositions = _holder.Find(MultiBox.Text);
+            _findPositions = Holder.Find(MultiBox.Text);
             if (_findPositions.Count == 0) {
                MessageBox.Show("No matches found for: " + MultiBox.Text);
                return;
@@ -524,17 +409,17 @@ namespace SorceryHex {
       #region Menu
 
       void OpenClick(object sender, RoutedEventArgs e) {
-         _holder.MoveToNext -= HandleMoveNext;
+         Holder.MoveToNext -= _cursorController.HandleMoveNext;
          string fileName;
          var data = Utils.LoadFile(out fileName);
          if (data == null) return;
-         _holder = _create(fileName, data);
-         _holder.MoveToNext += HandleMoveNext; 
-         ScrollBar.Maximum = _holder.Length;
+         Holder = _create(fileName, data);
+         Holder.MoveToNext += _cursorController.HandleMoveNext; 
+         ScrollBar.Maximum = Holder.Length;
          Body.Children.Clear();
          JumpTo(0);
          Title = fileName.Split('\\').Last();
-         Task.Factory.StartNew(_holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(_offset)));
+         Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(Offset)));
       }
 
       void ExitClick(object sender, RoutedEventArgs e) { Close(); }

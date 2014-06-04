@@ -13,7 +13,7 @@ namespace SorceryHex {
       void UnlinkFromInterpretation(FrameworkElement element);
    }
 
-   class MainCommandFactory : ICommandFactory {
+   public class MainCommandFactory : ICommandFactory {
       readonly MainWindow _window;
       readonly Dictionary<FrameworkElement, FrameworkElement> _interpretations = new Dictionary<FrameworkElement, FrameworkElement>();
       readonly Dictionary<FrameworkElement, int> _interpretationReferenceCounts = new Dictionary<FrameworkElement, int>();
