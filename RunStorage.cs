@@ -8,7 +8,6 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex {
-
    public interface IRunParser {
       void Load(IRunStorage runs);
       IEnumerable<int> Find(string term);

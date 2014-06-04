@@ -153,6 +153,8 @@ namespace SorceryHex {
 
       #region Editor
 
+      string _editBuffer = string.Empty;
+
       public void Edit(int location, char c) {
          foreach (var child in _children) {
             if (!child.CanEdit(location)) continue;
@@ -160,9 +162,14 @@ namespace SorceryHex {
             return;
          }
 
-         // TODO update this to edit raw bytes
-         _data[location] = 0;
-         MoveToNext(this, EventArgs.Empty);
+         if (!Utils.Hex.Contains(c) && !Utils.Hex.ToLower().Contains(c)) return;
+
+         _editBuffer += c;
+         _data[location] = (byte)_editBuffer.ParseAsHex();
+         if (_editBuffer.Length >= 2) {
+            MoveToNext(this, EventArgs.Empty);
+            _editBuffer = string.Empty;
+         }
       }
 
       public void CompleteEdit(int location) {
@@ -172,7 +179,7 @@ namespace SorceryHex {
             return;
          }
 
-         // TODO update this to clear the edit buffer
+         _editBuffer = string.Empty;
       }
 
       public event EventHandler MoveToNext;

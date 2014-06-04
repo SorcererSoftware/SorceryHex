@@ -71,9 +71,24 @@ namespace SorceryHex.Gba {
       #region Editor
 
       public void Edit(int location, char c) {
-         if (_runs.Data[location] == 0xFF) _runs.Data[location + 1] = 0xFF; // TODO this byte needs to show the update too
-         _runs.Data[location] = (byte)Enumerable.Range(0, 256).First(i => _pcs[i] == "Q");
-         MoveToNext(this, EventArgs.Empty);
+         if (c == ' ') {
+            _runs.Data[location] = 0;
+            MoveToNext(this, EventArgs.Empty);
+            return;
+         } else if (c == '\n') {
+            _runs.Data[location] = 0;
+            MoveToNext(this, EventArgs.Empty);
+            return;
+         }
+
+         for (int i = 0x00; i <= 0xFF; i++) {
+            if (_pcs[i] == null) continue;
+            if (_pcs[i][0] != c) continue;
+            if (_runs.Data[location] == 0xFF) _runs.Data[location + 1] = 0xFF; // TODO this byte needs to show the update too
+            _runs.Data[location] = (byte)i;
+            MoveToNext(this, EventArgs.Empty);
+            return;
+         }
       }
 
       public void CompleteEdit(int location) { }

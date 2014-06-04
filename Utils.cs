@@ -28,12 +28,15 @@ namespace SorceryHex {
          { Key.Multiply, '*' },
          { Key.Subtract, '-' }, { Key.Add, '+' },
          { Key.OemPlus, '+' }, { Key.OemMinus, '-' },
-         { Key.Space, ' ' },
+         { Key.Space, ' ' }, { Key.Enter, '\n' },
          { Key.OemPeriod, '.' }, { Key.Decimal, '.' },
       };
 
       public static char? Convert(Key key) {
-         if (key >= Key.A && key <= Key.Z) return (char)(key - Key.A + 'a');
+         if (key >= Key.A && key <= Key.Z) {
+            var baseChar = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 'A' : 'a';
+            return (char)(key - Key.A + baseChar);
+         }
          if (key >= Key.NumPad0 && key <= Key.NumPad9) return (char)(key - Key.NumPad0 + '0');
          if (key >= Key.D0 && key <= Key.D9) return (char)(key - Key.D0 + '0');
          if (CharForKey.ContainsKey(key)) return CharForKey[key];
