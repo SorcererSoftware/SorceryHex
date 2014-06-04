@@ -123,12 +123,12 @@ namespace SorceryHex.Gba {
       }
    }
 
-   class PointerParser : IParser {
+   class PointerParser : IModel {
       #region Fields
 
       static readonly Geometry Hat = Geometry.Parse("m0,0 l0,-1 1,0 z");
 
-      readonly IParser _base;
+      readonly IModel _base;
       readonly byte[] _data;
       readonly Queue<Grid> _spareContainers = new Queue<Grid>();
       readonly Queue<Path> _spareHats = new Queue<Path>();
@@ -142,7 +142,7 @@ namespace SorceryHex.Gba {
 
       public int Length { get { return _data.Length; } }
 
-      public PointerParser(IParser fallback, byte[] data, RunStorage storage, PointerMapper mapper) {
+      public PointerParser(IModel fallback, byte[] data, RunStorage storage, PointerMapper mapper) {
          _data = data;
          _base = fallback;
          _storage = storage;
@@ -206,7 +206,7 @@ namespace SorceryHex.Gba {
 
       public void Edit(int location, char c) { _base.Edit(location, c); }
 
-      public void CompleteEdit() { _base.CompleteEdit(); }
+      public void CompleteEdit(int location) { _base.CompleteEdit(location); }
 
       public event EventHandler MoveToNext {
          add { _base.MoveToNext += value; }

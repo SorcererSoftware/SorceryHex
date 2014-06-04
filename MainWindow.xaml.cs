@@ -45,8 +45,8 @@ namespace SorceryHex {
 
       readonly Queue<FrameworkElement> _interpretationBackgrounds = new Queue<FrameworkElement>();
       IDictionary<Key, Action> KeyActions;
-      Func<string, byte[], IParser> _create;
-      IParser _holder;
+      Func<string, byte[], IModel> _create;
+      IModel _holder;
       MainCommandFactory _commandFactory;
 
       int _offset = 0;
@@ -57,7 +57,7 @@ namespace SorceryHex {
       public int CurrentColumnCount { get; private set; }
       public int CurrentRowCount { get; private set; }
 
-      public MainWindow(Func<string, byte[], IParser> create, string fileName, byte[] data) {
+      public MainWindow(Func<string, byte[], IModel> create, string fileName, byte[] data) {
          _create = create;
          _holder = _create(fileName, data);
          _commandFactory = new MainCommandFactory(this);
@@ -201,6 +201,7 @@ namespace SorceryHex {
       }
 
       void RefreshElement(int location) {
+         Debug.Assert(0 <= location - _offset && location - _offset < CurrentColumnCount * CurrentRowCount);
          var children = new FrameworkElement[Body.Children.Count];
          for (int i = 0; i < children.Length; i++) children[i] = (FrameworkElement)Body.Children[i];
          foreach (var element in children) {

@@ -17,6 +17,7 @@ namespace SorceryHex.Gba {
       public bool Underlined { get; set; }
       public InterpretationRule Interpret { get; set; }
       public JumpRule Jump { get; set; }
+      public IEditor Editor { get; set; }
 
       public VariableLengthDataRun(byte endCharacter, int stride, Brush color, Geometry[] parser) {
          _endCharacter = endCharacter; _stride = stride;
@@ -30,6 +31,7 @@ namespace SorceryHex.Gba {
       }
    }
 
+   /*
    class NestingDataRun : IDataRun {
       readonly IDataRun[] _children;
 
@@ -52,6 +54,7 @@ namespace SorceryHex.Gba {
          return lengthSum;
       }
    }
+   //*/
 
    class Header : IRunParser {
       static SimpleDataRun HeaderRun(int len, string text, Geometry[] converter) { return new SimpleDataRun(len, Solarized.Brushes.Violet, converter) { HoverText = text, Underlined = true }; }

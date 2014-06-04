@@ -8,7 +8,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex {
-   public interface IParser : IEditor {
+   public interface IParser {
       int Length { get; }
       void Load();
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
@@ -23,11 +23,21 @@ namespace SorceryHex {
 
    public interface IEditor {
       void Edit(int location, char c); // called because the user entered an edit key
-      void CompleteEdit(); // called because the user entered a key that signifies the end of an edit
+      void CompleteEdit(int location); // called because the user entered a key that signifies the end of an edit
       event EventHandler MoveToNext; // sent up because the editor realizes it's done with the current edit
    }
 
-   public interface IPartialParser {
+   public class DisableEditor : IEditor {
+      public void Edit(int location, char c) { }
+      public void CompleteEdit(int location) { }
+      public event EventHandler MoveToNext;
+   }
+
+   public interface IModel : IParser, IEditor { }
+
+   public interface IPartialModel {
+      bool CanEdit(int location);
+      IEditor Editor { get; }
       void Load();
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
@@ -39,17 +49,21 @@ namespace SorceryHex {
       IList<int> Find(string term);
    }
 
-   public class CompositeParser : IParser {
-      readonly IList<IPartialParser> _children;
+   public class CompositeModel : IModel {
+      readonly IList<IPartialModel> _children;
       readonly byte[] _data;
       readonly Queue<Path> _recycles = new Queue<Path>();
       bool _loaded;
 
       public int Length { get { return _data.Length; } }
 
-      public CompositeParser(byte[] data, params IPartialParser[] children) {
+      public CompositeModel(byte[] data, params IPartialModel[] children) {
          _data = data;
          _children = children;
+         foreach (var child in _children) {
+            if (child.Editor == null) continue;
+            child.Editor.MoveToNext += ChainMoveToNext;
+         }
       }
 
       #region Parser
@@ -81,7 +95,7 @@ namespace SorceryHex {
          if (element.GetCreator() == this) {
             _recycles.Enqueue((Path)element);
          } else {
-            var child = (IPartialParser)element.GetCreator();
+            var child = (IPartialModel)element.GetCreator();
             child.Recycle(commander, element);
          }
       }
@@ -141,13 +155,30 @@ namespace SorceryHex {
       #region Editor
 
       public void Edit(int location, char c) {
+         foreach (var child in _children) {
+            if (!child.CanEdit(location)) continue;
+            child.Editor.Edit(location, c);
+            return;
+         }
+
+         // TODO update this to edit raw bytes
          _data[location] = 0;
          MoveToNext(this, EventArgs.Empty);
       }
 
-      public void CompleteEdit() { }
+      public void CompleteEdit(int location) {
+         foreach (var child in _children) {
+            if (!child.CanEdit(location)) continue;
+            child.Editor.CompleteEdit(location);
+            return;
+         }
+
+         // TODO update this to clear the edit buffer
+      }
 
       public event EventHandler MoveToNext;
+
+      void ChainMoveToNext(object sender, EventArgs e) { MoveToNext(sender, e); }
 
       #endregion
 
@@ -220,16 +251,19 @@ namespace SorceryHex {
       bool IsFree(int location);
    }
 
-   public class RunStorage : IPartialParser, IRunStorage {
+   public class RunStorage : IPartialModel, IRunStorage, IEditor {
       readonly SortedList<int, IDataRun> _runs = new SortedList<int, IDataRun>();
       readonly Queue<Border> _recycles = new Queue<Border>();
       readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();
       readonly HashSet<FrameworkElement> _interpretationLinks = new HashSet<FrameworkElement>();
       readonly HashSet<FrameworkElement> _jumpLinks = new HashSet<FrameworkElement>();
+      readonly HashSet<IDataRun> _runSet = new HashSet<IDataRun>(); 
       readonly IRunParser[] _runParsers;
 
       List<int> _keys = new List<int>();
       bool _listNeedsUpdate;
+
+      #region Run Storage
 
       public byte[] Data { get; private set; }
 
@@ -243,6 +277,10 @@ namespace SorceryHex {
             Debug.Assert(RunsAreEquivalent(_runs[location], run, location));
          } else {
             Debug.Assert(IsFree(location));
+            if (!_runSet.Contains(run) && run.Editor != null) {
+               run.Editor.MoveToNext += ChainMoveNext;
+               _runSet.Add(run);
+            }
             lock (_runs) _runs.Add(location, run);
          }
          _listNeedsUpdate = true;
@@ -256,6 +294,19 @@ namespace SorceryHex {
          int prevEnd = prev + _runs[prev].GetLength(Data, prev);
          return prevEnd <= location;
       }
+
+      #endregion
+
+      #region Partial Parser
+
+      public bool CanEdit(int location) {
+         int index = _keys.BinarySearch(location);
+         if (index < 0) index = Math.Max(~index - 1, 0);
+         int startPoint = _keys[index];
+         return startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null;
+      }
+
+      public IEditor Editor { get { return this; } }
 
       public void Load() {
          foreach (var parser in _runParsers) {
@@ -374,6 +425,34 @@ namespace SorceryHex {
          return _runParsers.Select(parser => parser.Find(term) ?? new int[0]).Aggregate(Enumerable.Concat).ToList();
       }
 
+      #endregion
+
+      #region Editor
+
+      public void Edit(int location, char c) {
+         int index = _keys.BinarySearch(location);
+         if (index < 0) index = Math.Max(~index - 1, 0);
+         int startPoint = _keys[index];
+         Debug.Assert(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null);
+         _runs[startPoint].Editor.Edit(location, c);
+      }
+
+      public void CompleteEdit(int location) {
+         int index = _keys.BinarySearch(location);
+         if (index < 0) index = Math.Max(~index - 1, 0);
+         int startPoint = _keys[index];
+         Debug.Assert(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null);
+         _runs[startPoint].Editor.CompleteEdit(location);
+      }
+
+      public event EventHandler MoveToNext;
+
+      void ChainMoveNext(object sender, EventArgs e) { MoveToNext(sender, e); }
+
+      #endregion
+
+      #region Helpers
+
       bool RunsAreEquivalent(IDataRun run1, IDataRun run2, int location) {
          var conditions = new[] {
             run1.Color.Equals(run2.Color),
@@ -428,6 +507,8 @@ namespace SorceryHex {
          lock (_runs) _keys = _runs.Keys.ToList();
          _listNeedsUpdate = false;
       }
+
+      #endregion
    }
 
    public interface IDataRun {
@@ -438,11 +519,13 @@ namespace SorceryHex {
       bool Underlined { get; }
       InterpretationRule Interpret { get; }
       JumpRule Jump { get; }
+      IEditor Editor { get; }
 
       int GetLength(byte[] data, int startPoint);
    }
 
    public class SimpleDataRun : IDataRun {
+      static readonly IEditor DefaultEditor = new DisableEditor();
       readonly int _length;
 
       public Brush Color { get; set; }
@@ -452,9 +535,13 @@ namespace SorceryHex {
       public bool Underlined { get; set; }
       public InterpretationRule Interpret { get; set; }
       public JumpRule Jump { get; set; }
+      public IEditor Editor { get; set; }
 
       public SimpleDataRun(int length, Brush color, Geometry[] parser) {
-         _length = length; Color = color; Parser = parser;
+         _length = length;
+         Color = color;
+         Parser = parser;
+         Editor = DefaultEditor;
       }
 
       public int GetLength(byte[] data, int startPoint) { return _length; }

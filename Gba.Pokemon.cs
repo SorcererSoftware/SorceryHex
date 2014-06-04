@@ -9,8 +9,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
-   class PCS : IRunParser {
-
+   class PCS : IRunParser, IEditor {
       readonly string[] _pcs = new string[0x100];
       readonly Geometry[] _pcsVisuals = new Geometry[0x100]; // leaving it null makes it use the default color and visualization
       readonly IDataRun _stringRun;
@@ -18,7 +17,10 @@ namespace SorceryHex.Gba {
       IRunStorage _runs;
 
       public PCS() {
-         _stringRun = new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcsVisuals) { Interpret = GetInterpretation };
+         _stringRun = new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcsVisuals) {
+            Interpret = GetInterpretation,
+            Editor = this
+         };
       }
 
       public void Load(IRunStorage runs) {
@@ -65,6 +67,20 @@ namespace SorceryHex.Gba {
          }
          return list;
       }
+
+      #region Editor
+
+      public void Edit(int location, char c) {
+         if (_runs.Data[location] == 0xFF) _runs.Data[location + 1] = 0xFF; // TODO this byte needs to show the update too
+         _runs.Data[location] = (byte)Enumerable.Range(0, 256).First(i => _pcs[i] == "Q");
+         MoveToNext(this, EventArgs.Empty);
+      }
+
+      public void CompleteEdit(int location) { }
+
+      public event EventHandler MoveToNext;
+
+      #endregion
 
       void FindStrings() {
          int currentLength = 0;
