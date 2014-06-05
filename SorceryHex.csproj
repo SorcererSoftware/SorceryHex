@@ -63,6 +63,7 @@
     <Compile Include="MainCommandFactory.cs" />
     <Compile Include="RunStorage.cs" />
     <Compile Include="Solarized.cs" />
+    <Compile Include="StringDecoder.cs" />
     <Compile Include="Utils.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>

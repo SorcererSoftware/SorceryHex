@@ -141,8 +141,7 @@ namespace SorceryHex {
       }
 
       public void MainFocus() {
-         DependencyObject scope = FocusManager.GetFocusScope(MultiBox);
-         FocusManager.SetFocusedElement(scope, this as IInputElement);
+         ResizeGrid.Focus();
       }
 
       public void RefreshElement(int location) {
@@ -319,6 +318,8 @@ namespace SorceryHex {
       }
 
       void HandleKey(object sender, KeyEventArgs e) {
+         if (MultiBox.IsKeyboardFocused) return;
+         e.Handled = true;
          if (Keyboard.Modifiers == ModifierKeys.Control) {
             if (KeyActions.ContainsKey(e.Key)) KeyActions[e.Key]();
 

@@ -4,7 +4,7 @@
         xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
         x:Class="SorceryHex.MainWindow"
         Title="SorceryHex" Height="400" Width="525"
-        MouseWheel="ScrollWheel" KeyDown="HandleKey">
+        MouseWheel="ScrollWheel">
     <DockPanel Background="{Binding Backlight, Source={StaticResource Theme}}">
         <DockPanel.ContextMenu>
             <ContextMenu Name="BodyContextMenu"/>
@@ -79,7 +79,7 @@
         <ScrollBar x:Name="ScrollBar" DockPanel.Dock="Right" Scroll="OnScroll"/>
         <DockPanel Background="{Binding Source={StaticResource Theme}, Path=Background}">
             <StackPanel Name="InterpretationPane" DockPanel.Dock="Right" Width="100" Visibility="Collapsed"/>
-            <Grid x:Name="ResizeGrid" SizeChanged="Resize" Style="{StaticResource PanelStyle}">
+            <Grid x:Name="ResizeGrid" SizeChanged="Resize" Style="{StaticResource PanelStyle}" KeyDown="HandleKey" Focusable="True">
                 <Grid x:Name="BackgroundBody" HorizontalAlignment="Left" VerticalAlignment="Top"/>
                 <Grid x:Name="Body" HorizontalAlignment="Left" VerticalAlignment="Top"/>
             </Grid>

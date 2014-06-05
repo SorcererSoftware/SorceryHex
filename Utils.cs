@@ -29,6 +29,8 @@ namespace SorceryHex {
          { Key.Subtract, '-' }, { Key.Add, '+' },
          { Key.OemPlus, '+' }, { Key.OemMinus, '-' },
          { Key.Space, ' ' }, { Key.Enter, '\n' },
+         { Key.Oem7, '\'' }, { Key.Oem3, '`' },
+         { Key.OemComma, ',' },
          { Key.OemPeriod, '.' }, { Key.Decimal, '.' },
       };
 
@@ -38,7 +40,12 @@ namespace SorceryHex {
             return (char)(key - Key.A + baseChar);
          }
          if (key >= Key.NumPad0 && key <= Key.NumPad9) return (char)(key - Key.NumPad0 + '0');
-         if (key >= Key.D0 && key <= Key.D9) return (char)(key - Key.D0 + '0');
+         if (key >= Key.D0 && key <= Key.D9) {
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) {
+               return ")!@#$%^&*("[key - Key.D0];
+            }
+            return (char)(key - Key.D0 + '0');
+         }
          if (CharForKey.ContainsKey(key)) return CharForKey[key];
          return null;
       }
@@ -55,6 +62,18 @@ namespace SorceryHex {
       public static readonly Geometry[] AsciiFlyweights =
          Enumerable.Range(0, 0x100).Select(i => {
             var geo = new string((char)i, 1).ToGeometry();
+            geo.Freeze();
+            return geo;
+         }).ToArray();
+      public static readonly Geometry[] UpperCaseFlyweights =
+         Enumerable.Range(0, 'Z' - 'A' + 1).Select(i => {
+            var geo = new string((char)('A' + i), 1).ToGeometry();
+            geo.Freeze();
+            return geo;
+         }).ToArray();
+      public static readonly Geometry[] LowerCaseFlyweights =
+         Enumerable.Range(0, 'z' - 'a' + 1).Select(i => {
+            var geo = new string((char)('a' + i), 1).ToGeometry();
             geo.Freeze();
             return geo;
          }).ToArray();
