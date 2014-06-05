@@ -11,7 +11,7 @@ namespace SorceryHex {
       readonly MainCommandFactory _commandFactory;
       readonly Queue<FrameworkElement> _interpretationBackgrounds = new Queue<FrameworkElement>();
 
-      int _selectionStart, _selectionLength;
+      int _selectionStart, _selectionLength = 1;
       int _clickStart;
       Point _mouseDownPosition;
 
@@ -21,6 +21,7 @@ namespace SorceryHex {
          _window.ResizeGrid.MouseLeftButtonDown += BodyMouseDown;
          _window.ResizeGrid.MouseMove += BodyMouseMove;
          _window.ResizeGrid.MouseLeftButtonUp += BodyMouseUp;
+         _window.JumpCompleted += HandleJumpCompleted;
       }
 
       public void UpdateSelection(IModel model, int location) {
@@ -47,7 +48,7 @@ namespace SorceryHex {
 
       public void Recycle(FrameworkElement item) { _interpretationBackgrounds.Enqueue(item); }
 
-      public void HandleKey(Key key) {
+      public bool HandleKey(Key key) {
          switch (key) {
             case Key.Left:
             case Key.Up:
@@ -57,7 +58,7 @@ namespace SorceryHex {
                   _selectionStart -= (key == Key.Up) ? _window.CurrentColumnCount : 1;
                }
                UpdateSelectionFromMovement();
-               break;
+               return true;
             case Key.Right:
             case Key.Down:
                if (_selectionLength > 1) {
@@ -66,15 +67,15 @@ namespace SorceryHex {
                   _selectionStart += (key == Key.Down) ? _window.CurrentColumnCount : 1;
                }
                UpdateSelectionFromMovement();
-               break;
+               return true;
             default:
-               if (_selectionLength > 1) return;
+               if (_selectionLength > 1) return false;
                var c = Utils.Convert(key);
-               if (c == null) return;
+               if (c == null) return false;
                int editLocation = _selectionStart;
                _window.Holder.Edit(editLocation, (char)c);
                _window.RefreshElement(editLocation);
-               break;
+               return true;
          }
       }
 
@@ -106,7 +107,7 @@ namespace SorceryHex {
          _window.Body.ReleaseMouseCapture();
          if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) {
             var upPosition = e.GetPosition(_window.Body);
-            var dif = (_mouseDownPosition - upPosition);
+            var dif = _mouseDownPosition - upPosition;
             dif = new Vector(Math.Abs(dif.X), Math.Abs(dif.Y));
             if (dif.X <= SystemParameters.MinimumHorizontalDragDistance && dif.Y <= SystemParameters.MinimumVerticalDragDistance) {
                _commandFactory.CheckJumpForMouseOver();
@@ -117,6 +118,11 @@ namespace SorceryHex {
       public void HandleMoveNext(object sender, EventArgs e) {
          _selectionStart++;
          UpdateSelectionFromMovement();
+      }
+
+      public void HandleJumpCompleted(object sender, EventArgs e) {
+         _selectionStart = _window.Offset;
+         _selectionLength = 1;
       }
 
       #endregion

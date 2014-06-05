@@ -11,9 +11,10 @@ namespace SorceryHex {
       readonly byte[] _data;
       readonly Queue<Path> _recycles = new Queue<Path>();
       readonly IDictionary<byte, Geometry> _specialCharacters = new Dictionary<byte, Geometry>(); 
+      readonly int Stride;
       int lowerCaseStart = -1, upperCaseStart = -1;
 
-      public StringDecoder(byte[] data) { _data = data; }
+      public StringDecoder(byte[] data, int stride) { _data = data; Stride = stride; }
 
       #region Partial Model
 
@@ -26,6 +27,7 @@ namespace SorceryHex {
          var list = new FrameworkElement[length];
 
          for(int i=0;i<length;i++){
+            if ((start + i) % Stride != 0) continue;
             var data = _data[start + i];
             if (lowerCaseStart != -1 && lowerCaseStart <= data && data < lowerCaseStart + 26) {
                list[i] = UseElement(Utils.LowerCaseFlyweights[data - lowerCaseStart]);
@@ -60,7 +62,7 @@ namespace SorceryHex {
 
          if (searchTerm == null) return null;
          var list = new List<int>();
-         for (int i = 0, j = 0; i < _data.Length; i++) {
+         for (int i = 0, j = 0; i < _data.Length; i += Stride) {
             j = _data[i] == searchTerm[j] || _data[i] == searchTerm[j] ? j + 1 : 0;
             if (j < searchTerm.Length) continue;
             list.Add(i - j + 1);
@@ -74,6 +76,7 @@ namespace SorceryHex {
       #region Editor
 
       public void Edit(int location, char c) {
+         if (location % Stride != 0) return;
          if (LowerCaseAlphabet.Contains(c)) {
             lowerCaseStart = GetLowerStartFromLowerReference(_data[location], c);
          } else if (UpperCaseAlphabet.Contains(c)) {
@@ -83,7 +86,7 @@ namespace SorceryHex {
             geo.Freeze();
             _specialCharacters[_data[location]] = geo;
          }
-         MoveToNext(this, EventArgs.Empty);
+         for (int i = 0; i < Stride; i++) MoveToNext(this, EventArgs.Empty);
       }
 
       public void CompleteEdit(int location) { }

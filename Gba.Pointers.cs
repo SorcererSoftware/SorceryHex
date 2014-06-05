@@ -8,6 +8,16 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
+
+   /*
+    * ffva notes:
+    * 1554E8 Abilities { -requiredAbp -abilityIndex }
+    * 156E6C Equipment { 32 bits, each bit is an equipment type flag }
+    * 15616C Inate     { .abilityIndex .abilityIndex .abilityIndex .abilityIndex }
+    * 145A28 Level     { exp -hp -mp }
+    * 156E04 Stats     { .strength .agility .stamina .magic }
+   //*/
+
    class PointerMapper {
       public static Brush Brush = Solarized.Brushes.Orange;
       readonly SortedList<int, int> _pointerSet = new SortedList<int, int>(); // unclaimed pointers
@@ -78,8 +88,10 @@ namespace SorceryHex.Gba {
             if (index < 0) index = 0;
 
             // don't add it if it points into a used range
-            var pointer = pointerLocations[index];
-            if (pointer < destination && destination < pointer + _pointedRuns[pointer].GetLength(storage.Data, pointer)) continue;
+            if (pointerLocations.Count > 0) {
+               var pointer = pointerLocations[index];
+               if (pointer < destination && destination < pointer + _pointedRuns[pointer].GetLength(storage.Data, pointer)) continue;
+            }
 
             var keys = _reversePointerSet[destination].ToArray();
             if (keys.All(storage.IsFree)) {

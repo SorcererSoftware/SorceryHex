@@ -4,7 +4,7 @@
         xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
         x:Class="SorceryHex.MainWindow"
         Title="SorceryHex" Height="400" Width="525"
-        MouseWheel="ScrollWheel">
+        MouseWheel="ScrollWheel" PreviewKeyDown="HandleWindowKey">
     <DockPanel Background="{Binding Backlight, Source={StaticResource Theme}}">
         <DockPanel.ContextMenu>
             <ContextMenu Name="BodyContextMenu"/>

@@ -66,10 +66,12 @@ namespace SorceryHex {
          Title = fileName.Split('\\').Last();
          InitializeKeyActions();
          Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(Offset)));
+         MainFocus();
       }
 
       #region Public Methods
 
+      public event EventHandler JumpCompleted;
       public void JumpTo(int location) {
          location = Math.Min(Math.Max(-MaxColumnCount, location), Holder.Length);
 
@@ -79,6 +81,7 @@ namespace SorceryHex {
          Offset = location;
          Add(0, CurrentColumnCount * CurrentRowCount);
          ScrollBar.Value = Offset;
+         JumpCompleted(this, EventArgs.Empty);
          UpdateHeaderText();
       }
 
@@ -317,30 +320,33 @@ namespace SorceryHex {
          };
       }
 
-      void HandleKey(object sender, KeyEventArgs e) {
-         if (MultiBox.IsKeyboardFocused) return;
-         e.Handled = true;
+      void HandleWindowKey(object sender, KeyEventArgs e) {
          if (Keyboard.Modifiers == ModifierKeys.Control) {
+            e.Handled = true;
             if (KeyActions.ContainsKey(e.Key)) KeyActions[e.Key]();
-
-            if (arrowKeys.Contains(e.Key)) {
+            else if (arrowKeys.Contains(e.Key)) {
                ScrollBar.Value = Offset;
                UpdateHeaderText();
+            } else {
+               e.Handled = false;
             }
             return;
          }
+      }
 
+      void HandleKey(object sender, KeyEventArgs e) {
          if (e.Key == Key.Escape) {
             // some kind of modal knowledge required here...
          }
 
          switch (e.Key) {
             case Key.F3:
+               e.Handled = true;
                if (Keyboard.Modifiers == ModifierKeys.Shift) FindPrevious(null, null);
                else FindNext(null, null);
                break;
             default:
-               _cursorController.HandleKey(e.Key);
+               e.Handled = _cursorController.HandleKey(e.Key);
                break;
          }
       }
