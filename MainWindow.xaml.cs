@@ -210,7 +210,6 @@ namespace SorceryHex {
          }
       }
 
-
       void ShiftColumns(int shift) {
          if (Offset - shift < -MaxColumnCount || Offset - shift > Holder.Length) return;
 

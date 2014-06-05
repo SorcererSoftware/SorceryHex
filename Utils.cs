@@ -41,7 +41,6 @@ namespace SorceryHex {
          if (key >= Key.D0 && key <= Key.D9) return (char)(key - Key.D0 + '0');
          if (CharForKey.ContainsKey(key)) return CharForKey[key];
          return null;
-         // return (char)KeyInterop.VirtualKeyFromKey(key);
       }
 
       public static readonly string Hex = "0123456789ABCDEF";
@@ -67,6 +66,17 @@ namespace SorceryHex {
 
       public static int ReadShort(this byte[] memory, int offset) {
          return (memory[offset + 1] << 8) | memory[offset + 0];
+      }
+
+      public static int ReadData(this byte[] memory, int length, int offset) {
+         int value = 0;
+         while (length > 0) {
+            length--;
+            value <<= 8;
+            value |= memory[offset];
+            offset++;
+         }
+         return value;
       }
 
       public static Geometry ToGeometry(this string text) {

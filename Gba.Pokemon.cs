@@ -153,11 +153,19 @@ namespace SorceryHex.Gba {
       static readonly DataType @unknown4 = new DataType(4);
       static readonly DataType @pointer = new DataType(4);
       static readonly DataType @nullablepointer = new DataType(4);
+      static readonly DataType @pointerToArray = new DataType(4);
 
       class Entry {
          public readonly string Name;
+         public readonly string ArrayLengthEntry;
          public readonly DataType DataType;
          public readonly Entry[] Children;
+
+         public int ChildOffset(string childName) {
+            return Children.TakeWhile(child => child.Name != childName).Sum(child => child.DataType.Length);
+         }
+
+         public Entry this[string childName] { get { return Children.First(child => child.Name == childName); } }
 
          public Entry(string name, params Entry[] children) {
             Name = name; DataType = @pointer; Children = children;
@@ -166,13 +174,17 @@ namespace SorceryHex.Gba {
          public Entry(string name, DataType type, params Entry[] children) {
             Name = name; DataType = type; Children = children;
          }
+
+         public Entry(string name, string arrayLength, params Entry[] children) {
+            Name = name; DataType = @pointerToArray; ArrayLengthEntry = arrayLength; Children = children;
+         }
       }
 
       static readonly Entry DataLayout = new Entry("map",
          new Entry("mapTileData", @pointer),
          new Entry("mapEventData",
             new Entry("personCount", @byte), new Entry("warpCount", @byte), new Entry("scriptCount", @byte), new Entry("signpostCount", @byte),
-            new Entry("persons", @nullablepointer
+            new Entry("persons", "personCount"
                ,
                new Entry("?", @byte), new Entry("picture", @byte), new Entry("?", @byte), new Entry("?", @byte),
                new Entry("x", @short), new Entry("y", @short),
@@ -181,19 +193,19 @@ namespace SorceryHex.Gba {
                new Entry("script", @nullablepointer),
                new Entry("id", @short), new Entry("?", @byte), new Entry("?", @byte)
             ),
-            new Entry("warps", @nullablepointer
+            new Entry("warps", "warpCount"
                ,
                new Entry("x", @short), new Entry("y", @short),
                new Entry("?", @byte), new Entry("warp", @byte), new Entry("map", @byte), new Entry("bank", @byte)
             ),
-            new Entry("scripts", @nullablepointer
+            new Entry("scripts", "scriptCount"
                ,
                new Entry("x", @short), new Entry("y", @short),
                new Entry("?", @short), new Entry("scriptVariable", @short),
                new Entry("scriptVariableValue", @short), new Entry("?", @short),
                new Entry("script", @nullablepointer)
             ),
-            new Entry("signposts", @nullablepointer
+            new Entry("signposts", "signpostCount"
                ,
                new Entry("x", @short), new Entry("y", @short),
                new Entry("talkingLevel", @byte), new Entry("signpostType", @byte), new Entry("?", @short),
@@ -303,17 +315,25 @@ namespace SorceryHex.Gba {
       bool CouldBe(Entry entry, int address, IList<int> addresses) {
          int currentOffset = 0;
          foreach (var child in entry.Children) {
-            if (child.DataType == @pointer || child.DataType == @nullablepointer) {
-               if (child.DataType == @nullablepointer && _data[address + currentOffset + 3] == 0x00) {
+            if (IsPointerType(child)) {
+               if (child.DataType != @pointer && _data[address + currentOffset + 3] == 0x00) {
                   // if it's nullable and null, make sure it's all null
-                  if ((_data[address + currentOffset] | _data[address + currentOffset + 1] | _data[address + currentOffset + 2]) != 0x00) return false;
+                  if (_data.ReadData(4, address) != 0) return false;
                } else  {
                   // it's a pointer and it's not null (or nullable)
                   if (_data[address + currentOffset + 3] != 0x08) return false;
                   if (child.Children != null && child.Children.Length > 0) {
                      var childAddress = _data.ReadPointer(address + currentOffset);
                      if (childAddress % 4 != 0) return false;
-                     if (!CouldBe(child, childAddress, addresses)) return false;
+                     if (child.DataType == @pointerToArray) {
+                        int elementCount = _data.ReadData(entry[child.ArrayLengthEntry].DataType.Length, address + entry.ChildOffset(child.ArrayLengthEntry));
+                        int elementLength = child.Children.Sum(c => c.DataType.Length);
+                        for (int i = 0; i < elementCount; i++) {
+                           if (!CouldBe(child, childAddress + elementLength * i, addresses)) return false;
+                        }
+                     } else {
+                        if (!CouldBe(child, childAddress, addresses)) return false;
+                     }
                   }
                }
             }
@@ -330,13 +350,23 @@ namespace SorceryHex.Gba {
       void SeekChildren(Entry entry, IRunStorage runs, int address) {
          int currentOffset = 0;
          foreach (var child in entry.Children) {
-            if (child.DataType == @pointer || child.DataType == @nullablepointer) {
-               if (child.DataType == @nullablepointer && _data[address + currentOffset + 3] == 0x00) {
-                  currentOffset+=child.DataType.Length;
+            if (IsPointerType(child)) {
+               if (child.DataType != @pointer && _data[address + currentOffset + 3] == 0x00) {
+                  currentOffset += child.DataType.Length;
                   continue;
                } else {
                   var next = _data.ReadPointer(address + currentOffset);
-                  if (child.Children != null && child.Children.Length > 0) SeekChildren(child, runs, next);
+
+                  if (child.DataType == @pointerToArray) {
+                     int elementCount = _data.ReadData(entry[child.ArrayLengthEntry].DataType.Length, address + entry.ChildOffset(child.ArrayLengthEntry));
+                     int elementLength = child.Children.Sum(c => c.DataType.Length);
+                     for (int i = 0; i < elementCount; i++) {
+                        SeekChildren(child, runs, next + elementLength * i);
+                     }
+                  } else {
+                     if (child.Children != null && child.Children.Length > 0) SeekChildren(child, runs, next);
+                  }
+
                   _mapper.Claim(runs, address + currentOffset, next);
                   _allSubsetAddresses.Add(next);
                }
@@ -345,6 +375,11 @@ namespace SorceryHex.Gba {
             }
             currentOffset += child.DataType.Length;
          }
+      }
+
+      readonly DataType[] pointerTypes = new[] { @pointer, @nullablepointer, @pointerToArray };
+      bool IsPointerType(Entry child) {
+         return pointerTypes.Contains(child.DataType);
       }
    }
 
