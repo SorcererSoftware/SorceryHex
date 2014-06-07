@@ -87,13 +87,13 @@ namespace SorceryHex {
 
       public void AddLocationToBreadCrumb() {
          if (BreadCrumbBar.Children.Count >= 5) {
-            ((Button)BreadCrumbBar.Children[0]).Click -= NavigateBackClick;
+            ((Button)BreadCrumbBar.Children[0]).Click -= BackExecuted;
             BreadCrumbBar.Children.RemoveAt(0);
          }
          var hex = Offset.ToHexString();
          while (hex.Length < 6) hex = "0" + hex;
          var button = new Button { Content = hex };
-         button.Click += NavigateBackClick;
+         button.Click += BackExecuted;
          BreadCrumbBar.Children.Add(button);
       }
 
@@ -307,15 +307,10 @@ namespace SorceryHex {
 
       void InitializeKeyActions() {
          KeyActions = new Dictionary<Key, Action> {
-            { Key.Subtract, () => NavigateBackClick(null, null) },
-            { Key.OemMinus, () => NavigateBackClick(null, null) },
             { Key.Left,     () => ShiftColumns(-1) },
             { Key.Right,    () => ShiftColumns(1) },
             { Key.Down,     () => ShiftRows(1) },
             { Key.Up,       () => ShiftRows(-1) },
-            { Key.G,        () => GotoClick(null, null) },
-            { Key.F,        () => FindClick(null, null) },
-            { Key.O,        () => OpenClick(null, null) },
             { Key.I,        () => { InterpretItem.IsChecked = !InterpretItem.IsChecked; InterpretClick(InterpretItem, null); } },
          };
       }
@@ -340,11 +335,6 @@ namespace SorceryHex {
          }
 
          switch (e.Key) {
-            case Key.F3:
-               e.Handled = true;
-               if (Keyboard.Modifiers == ModifierKeys.Shift) FindPrevious(null, null);
-               else FindNext(null, null);
-               break;
             default:
                e.Handled = _cursorController.HandleKey(e.Key);
                break;
@@ -414,22 +404,6 @@ namespace SorceryHex {
 
       #region Menu
 
-      void OpenClick(object sender, RoutedEventArgs e) {
-         Holder.MoveToNext -= _cursorController.HandleMoveNext;
-         string fileName;
-         var data = Utils.LoadFile(out fileName);
-         if (data == null) return;
-         Holder = _create(fileName, data);
-         Holder.MoveToNext += _cursorController.HandleMoveNext; 
-         ScrollBar.Maximum = Holder.Length;
-         Body.Children.Clear();
-         JumpTo(0);
-         Title = fileName.Split('\\').Last();
-         Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(Offset)));
-      }
-
-      void ExitClick(object sender, RoutedEventArgs e) { Close(); }
-
       void InterpretClick(object sender, EventArgs e) {
          var item = sender as MenuItem;
          InterpretationPane.Visibility = item.IsChecked ? Visibility.Visible : Visibility.Collapsed;
@@ -449,48 +423,6 @@ namespace SorceryHex {
          }
       }
 
-      void FindClick(object sender, EventArgs e) {
-         MultiBoxLabel.Text = "Find";
-         MultiBoxContainer.Visibility = Visibility.Visible;
-         BreadCrumbBar.Visibility = Visibility.Hidden;
-         Keyboard.Focus(MultiBox);
-         MultiBox.SelectAll();
-      }
-
-      void FindPrevious(object sender, EventArgs e) {
-         if (_findPositions == null || _findPositions.Count == 0) return;
-         _findIndex--;
-         if (_findIndex < 0) _findIndex = _findPositions.Count - 1;
-         JumpTo(_findPositions[_findIndex]);
-      }
-
-      void FindNext(object sender, EventArgs e) {
-         if (_findPositions == null || _findPositions.Count == 0) return;
-         _findIndex++;
-         if (_findIndex >= _findPositions.Count) _findIndex = 0;
-         JumpTo(_findPositions[_findIndex]);
-      }
-
-      void GotoClick(object sender, EventArgs e) {
-         MultiBoxLabel.Text = "Goto";
-         MultiBoxContainer.Visibility = Visibility.Visible;
-         BreadCrumbBar.Visibility = Visibility.Hidden;
-         Keyboard.Focus(MultiBox);
-         MultiBox.SelectAll();
-      }
-
-      void NavigateBackClick(object sender, EventArgs e) {
-         if (sender == null || sender is MenuItem) {
-            sender = BreadCrumbBar.Children[BreadCrumbBar.Children.Count - 1];
-         }
-         var button = sender as Button;
-         Debug.Assert(BreadCrumbBar.Children.Contains(button));
-         int address = button.Content.ToString().ParseAsHex();
-         JumpTo(address);
-         BreadCrumbBar.Children.Remove(button);
-         button.Click -= NavigateBackClick;
-      }
-
       void AboutClick(object sender, RoutedEventArgs e) {
          switch (((MenuItem)sender).Header.ToString()) {
             case "_About":
@@ -501,6 +433,70 @@ namespace SorceryHex {
                break;
          }
       }
+
+      void OpenExecuted(object sender, RoutedEventArgs e) {
+         Holder.MoveToNext -= _cursorController.HandleMoveNext;
+         string fileName;
+         var data = Utils.LoadFile(out fileName);
+         if (data == null) return;
+         Holder = _create(fileName, data);
+         Holder.MoveToNext += _cursorController.HandleMoveNext; 
+         ScrollBar.Maximum = Holder.Length;
+         Body.Children.Clear();
+         JumpTo(0);
+         Title = fileName.Split('\\').Last();
+         Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(Offset)));
+      }
+
+      void CloseExecuted(object sender, RoutedEventArgs e) { Close(); }
+
+      void FindExecuted(object sender, EventArgs e) {
+         MultiBoxLabel.Text = "Find";
+         MultiBoxContainer.Visibility = Visibility.Visible;
+         BreadCrumbBar.Visibility = Visibility.Hidden;
+         Keyboard.Focus(MultiBox);
+         MultiBox.SelectAll();
+      }
+
+      void FindPreviousExecuted(object sender, EventArgs e) {
+         if (_findPositions == null || _findPositions.Count == 0) return;
+         _findIndex--;
+         if (_findIndex < 0) _findIndex = _findPositions.Count - 1;
+         JumpTo(_findPositions[_findIndex]);
+      }
+
+      void FindNextExecuted(object sender, EventArgs e) {
+         if (_findPositions == null || _findPositions.Count == 0) return;
+         _findIndex++;
+         if (_findIndex >= _findPositions.Count) _findIndex = 0;
+         JumpTo(_findPositions[_findIndex]);
+      }
+
+      void GotoExecuted(object sender, EventArgs e) {
+         MultiBoxLabel.Text = "Goto";
+         MultiBoxContainer.Visibility = Visibility.Visible;
+         BreadCrumbBar.Visibility = Visibility.Hidden;
+         Keyboard.Focus(MultiBox);
+         MultiBox.SelectAll();
+      }
+
+      void BackExecuted(object sender, EventArgs e) {
+         if (sender == null || sender is MenuItem || sender is Window) {
+            sender = BreadCrumbBar.Children[BreadCrumbBar.Children.Count - 1];
+         }
+         var button = sender as Button;
+         Debug.Assert(BreadCrumbBar.Children.Contains(button));
+         int address = button.Content.ToString().ParseAsHex();
+         JumpTo(address);
+         BreadCrumbBar.Children.Remove(button);
+         button.Click -= BackExecuted;
+      }
+
+      void Always(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = true; }
+
+      void BackCanExecute(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = BreadCrumbBar.Children.Count > 0; }
+
+      void FindNavigationCanExecute(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = _findPositions != null && _findPositions.Count > 0; }
 
       #endregion
    }

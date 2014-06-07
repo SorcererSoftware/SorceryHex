@@ -12,7 +12,7 @@ namespace SorceryHex {
       readonly Queue<FrameworkElement> _interpretationBackgrounds = new Queue<FrameworkElement>();
 
       int _selectionStart, _selectionLength = 1;
-      int _clickStart;
+      int _clickStart, _clickCount;
       Point _mouseDownPosition;
 
       public CursorController(MainWindow window, MainCommandFactory commandFactory) {
@@ -49,6 +49,7 @@ namespace SorceryHex {
       public void Recycle(FrameworkElement item) { _interpretationBackgrounds.Enqueue(item); }
 
       public bool HandleKey(Key key) {
+         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) return false;
          switch (key) {
             case Key.Left:
             case Key.Up:
@@ -84,8 +85,9 @@ namespace SorceryHex {
       void BodyMouseDown(object sender, MouseButtonEventArgs e) {
          _window.MainFocus();
          _mouseDownPosition = e.GetPosition(_window.Body);
-         _clickStart = ByteOffsetForMouse(e);
+         if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) _clickStart = ByteOffsetForMouse(e);
          _window.Body.CaptureMouse();
+         _clickCount = e.ClickCount;
       }
 
       void BodyMouseMove(object sender, MouseEventArgs e) {
@@ -104,8 +106,9 @@ namespace SorceryHex {
       }
 
       void BodyMouseUp(object sender, MouseButtonEventArgs e) {
+         if (!_window.Body.IsMouseCaptured) return;
          _window.Body.ReleaseMouseCapture();
-         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) {
+         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || _clickCount > 1) {
             var upPosition = e.GetPosition(_window.Body);
             var dif = _mouseDownPosition - upPosition;
             dif = new Vector(Math.Abs(dif.X), Math.Abs(dif.Y));

@@ -5,6 +5,22 @@
         x:Class="SorceryHex.MainWindow"
         Title="SorceryHex" Height="400" Width="525"
         MouseWheel="ScrollWheel" PreviewKeyDown="HandleWindowKey">
+    <Window.InputBindings>
+        <KeyBinding Key="OemMinus" Modifiers="Control" Command="NavigationCommands.BrowseBack" />
+        <KeyBinding Key="Back" Command="NavigationCommands.BrowseBack" />
+        <KeyBinding Key="G" Modifiers="Control" Command="NavigationCommands.GoToPage" />
+        <KeyBinding Key="F3" Command="NavigationCommands.NextPage" />
+        <KeyBinding Key="F3" Modifiers="Shift" Command="NavigationCommands.PreviousPage" />
+    </Window.InputBindings>
+    <Window.CommandBindings>
+        <CommandBinding Command="ApplicationCommands.Open" Executed="OpenExecuted" CanExecute="Always"/>
+        <CommandBinding Command="ApplicationCommands.Close" Executed="CloseExecuted" CanExecute="Always"/>
+        <CommandBinding Command="NavigationCommands.BrowseBack" Executed="BackExecuted" CanExecute="BackCanExecute"/>
+        <CommandBinding Command="NavigationCommands.GoToPage" Executed="GotoExecuted" CanExecute="Always"/>
+        <CommandBinding Command="ApplicationCommands.Find" Executed="FindExecuted" CanExecute="Always"/>
+        <CommandBinding Command="NavigationCommands.NextPage" Executed="FindPreviousExecuted" CanExecute="FindNavigationCanExecute"/>
+        <CommandBinding Command="NavigationCommands.PreviousPage" Executed="FindNextExecuted" CanExecute="FindNavigationCanExecute"/>
+    </Window.CommandBindings>
     <DockPanel Background="{Binding Backlight, Source={StaticResource Theme}}">
         <DockPanel.ContextMenu>
             <ContextMenu Name="BodyContextMenu"/>
@@ -12,19 +28,19 @@
         <Grid DockPanel.Dock="Top">
             <Menu>
                 <MenuItem Header="_File">
-                    <MenuItem Header="_Open" InputGestureText="Ctrl+O" Click="OpenClick"/>
-                    <MenuItem Header="E_xit" Click="ExitClick"/>
+                    <MenuItem Command="ApplicationCommands.Open"/>
+                    <MenuItem Command="ApplicationCommands.Close" InputGestureText="Alt+F4"/>
                 </MenuItem>
                 <MenuItem Header="_View">
                     <MenuItem Name="InterpretItem" Header="_Interpreter" IsCheckable="True" InputGestureText="Ctrl+I" Click="InterpretClick"/>
                     <MenuItem Header="Switch _Themes" Click="ThemeClick"/>
                 </MenuItem>
                 <MenuItem Header="_Search">
-                    <MenuItem Header="_Find" InputGestureText="Ctrl+F" Click="FindClick"/>
-                    <MenuItem Header="Find _Next" InputGestureText="F3" Click="FindNext"/>
-                    <MenuItem Header="Find _Previous" InputGestureText="Shift+F3" Click="FindPrevious"/>
-                    <MenuItem Header="_Goto" InputGestureText="Ctrl+G" Click="GotoClick"/>
-                    <MenuItem Header="Go _Back" InputGestureText="Ctrl+-" Click="NavigateBackClick"/>
+                    <MenuItem Command="ApplicationCommands.Find" />
+                    <MenuItem Command="NavigationCommands.NextPage" Header="Find _Next" InputGestureText="F3"/>
+                    <MenuItem Command="NavigationCommands.PreviousPage" Header="Find _Previous" InputGestureText="Shift+F3"/>
+                    <MenuItem Command="NavigationCommands.GoToPage" Header="_Go To" InputGestureText="Ctrl+G" />
+                    <MenuItem Command="NavigationCommands.BrowseBack" InputGestureText="Alt+Left, Ctrl+-, Backspace" />
                 </MenuItem>
                 <MenuItem Header="_Help">
                     <MenuItem Header="_About" Click="AboutClick"/>

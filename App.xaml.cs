@@ -17,7 +17,7 @@ namespace SorceryHex {
             if (!name.EndsWith(".gba")) {
                return new CompositeModel(data);
             }
-            /*
+            //*
             var pointerMapper = new Gba.PointerMapper(data);
             var storage = new RunStorage(data
                , new Gba.Header(pointerMapper)
