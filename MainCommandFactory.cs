@@ -77,14 +77,12 @@ namespace SorceryHex {
                   var item = new MenuItem { Header = header };
                   _window.BodyContextMenu.Items.Add(item);
                   item.Click += (s, e1) => {
-                     _window.AddLocationToBreadCrumb();
-                     _window.JumpTo(item.Header.ToString().ParseAsHex());
+                     _window.JumpTo(item.Header.ToString().ParseAsHex(), true);
                   };
                }
                _window.BodyContextMenu.IsOpen = true;
             } else {
-               _window.AddLocationToBreadCrumb();
-               _window.JumpTo(list[0]);
+               _window.JumpTo(list[0], true);
             }
          }
       }

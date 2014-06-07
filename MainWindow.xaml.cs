@@ -12,7 +12,7 @@ namespace SorceryHex {
    /// <summary>
    /// Interaction logic for MainWindow.xaml
    /// </summary>
-   partial class MainWindow : Window {
+   partial class MainWindow : Window, IAppCommands {
       #region Utils
 
       const int MaxColumnCount = 0x30;
@@ -50,6 +50,7 @@ namespace SorceryHex {
 
       public int Offset { get; private set; }
       public IModel Holder { get; private set; }
+      public byte[] Data { get; private set; }
 
       public int CurrentColumnCount { get; private set; }
       public int CurrentRowCount { get; private set; }
@@ -57,8 +58,10 @@ namespace SorceryHex {
       public MainWindow(Func<string, byte[], IModel> create, string fileName, byte[] data) {
          _create = create;
          Holder = _create(fileName, data);
+         Data = data;
          _commandFactory = new MainCommandFactory(this);
          InitializeComponent();
+         MultiBox.AppCommands = this;
          _cursorController = new CursorController(this, _commandFactory);
          Holder.MoveToNext += _cursorController.HandleMoveNext;
          ScrollBar.Minimum = -MaxColumnCount;
@@ -72,7 +75,8 @@ namespace SorceryHex {
       #region Public Methods
 
       public event EventHandler JumpCompleted;
-      public void JumpTo(int location) {
+      public void JumpTo(int location, bool addToBreadcrumb = false) {
+         if (addToBreadcrumb) MultiBox.AddLocationToBreadCrumb();
          location = Math.Min(Math.Max(-MaxColumnCount, location), Holder.Length);
 
          foreach (FrameworkElement element in Body.Children) Recycle(element);
@@ -85,17 +89,7 @@ namespace SorceryHex {
          UpdateHeaderText();
       }
 
-      public void AddLocationToBreadCrumb() {
-         if (BreadCrumbBar.Children.Count >= 5) {
-            ((Button)BreadCrumbBar.Children[0]).Click -= BackExecuted;
-            BreadCrumbBar.Children.RemoveAt(0);
-         }
-         var hex = Offset.ToHexString();
-         while (hex.Length < 6) hex = "0" + hex;
-         var button = new Button { Content = hex };
-         button.Click += BackExecuted;
-         BreadCrumbBar.Children.Add(button);
-      }
+      public int[] Find(string term) { return this.Holder.Find(term).ToArray(); }
 
       public void HighlightFromLocation(int combinedLocation) {
          int location = Offset + combinedLocation;
@@ -341,65 +335,6 @@ namespace SorceryHex {
          }
       }
 
-      void HandleMultiBoxKey(object sender, KeyEventArgs e) {
-         if (MultiBoxLabel.Text == "Goto") {
-            HandleGotoKey(e);
-         } else if (MultiBoxLabel.Text == "Find") {
-            HandleFindKey(e);
-         }
-      }
-
-      void HandleGotoKey(KeyEventArgs e) {
-         // sanitize for goto
-         int caret = MultiBox.CaretIndex;
-         int selection = MultiBox.SelectionLength;
-         MultiBox.Text = new string(MultiBox.Text.ToUpper().Where(Utils.Hex.Contains).ToArray());
-         MultiBox.CaretIndex = Math.Min(caret, MultiBox.Text.Length);
-         MultiBox.SelectionLength = selection;
-
-         // check for special keys
-         if (e.Key == Key.Escape) {
-            MultiBoxContainer.Visibility = Visibility.Hidden;
-            BreadCrumbBar.Visibility = Visibility.Visible;
-            MainFocus();
-         } else if (e.Key == Key.Enter) {
-            int hex = MultiBox.Text.ParseAsHex();
-            AddLocationToBreadCrumb();
-            JumpTo(hex);
-            MultiBoxContainer.Visibility = Visibility.Hidden;
-            BreadCrumbBar.Visibility = Visibility.Visible;
-            MainFocus();
-         }
-
-         // only allow hex keys
-         if (!Utils.HexKeys.Contains(e.Key)) e.Handled = true;
-      }
-
-      void HandleFindKey(KeyEventArgs e) {
-         // dumb find: make it smarter later
-
-         // check for special keys
-         if (e.Key == Key.Escape) {
-            MultiBoxContainer.Visibility = Visibility.Hidden;
-            BreadCrumbBar.Visibility = Visibility.Visible;
-            MainFocus();
-         } else if (e.Key == Key.Enter) {
-            _findPositions = Holder.Find(MultiBox.Text);
-            if (_findPositions.Count == 0) {
-               MessageBox.Show("No matches found for: " + MultiBox.Text);
-               return;
-            }
-            _findIndex = 0;
-            JumpTo(_findPositions[_findIndex]);
-            MultiBoxContainer.Visibility = Visibility.Hidden;
-            BreadCrumbBar.Visibility = Visibility.Visible;
-            MainFocus();
-         }
-      }
-
-      IList<int> _findPositions;
-      int _findIndex;
-
       #endregion
 
       #region Menu
@@ -450,54 +385,19 @@ namespace SorceryHex {
 
       void CloseExecuted(object sender, RoutedEventArgs e) { Close(); }
 
-      void FindExecuted(object sender, EventArgs e) {
-         MultiBoxLabel.Text = "Find";
-         MultiBoxContainer.Visibility = Visibility.Visible;
-         BreadCrumbBar.Visibility = Visibility.Hidden;
-         Keyboard.Focus(MultiBox);
-         MultiBox.SelectAll();
-      }
-
-      void FindPreviousExecuted(object sender, EventArgs e) {
-         if (_findPositions == null || _findPositions.Count == 0) return;
-         _findIndex--;
-         if (_findIndex < 0) _findIndex = _findPositions.Count - 1;
-         JumpTo(_findPositions[_findIndex]);
-      }
-
-      void FindNextExecuted(object sender, EventArgs e) {
-         if (_findPositions == null || _findPositions.Count == 0) return;
-         _findIndex++;
-         if (_findIndex >= _findPositions.Count) _findIndex = 0;
-         JumpTo(_findPositions[_findIndex]);
-      }
-
-      void GotoExecuted(object sender, EventArgs e) {
-         MultiBoxLabel.Text = "Goto";
-         MultiBoxContainer.Visibility = Visibility.Visible;
-         BreadCrumbBar.Visibility = Visibility.Hidden;
-         Keyboard.Focus(MultiBox);
-         MultiBox.SelectAll();
-      }
-
-      void BackExecuted(object sender, EventArgs e) {
-         if (sender == null || sender is MenuItem || sender is Window) {
-            sender = BreadCrumbBar.Children[BreadCrumbBar.Children.Count - 1];
-         }
-         var button = sender as Button;
-         Debug.Assert(BreadCrumbBar.Children.Contains(button));
-         int address = button.Content.ToString().ParseAsHex();
-         JumpTo(address);
-         BreadCrumbBar.Children.Remove(button);
-         button.Click -= BackExecuted;
-      }
-
       void Always(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = true; }
 
-      void BackCanExecute(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = BreadCrumbBar.Children.Count > 0; }
+      #endregion
 
-      void FindNavigationCanExecute(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = _findPositions != null && _findPositions.Count > 0; }
-
+      #region Hack TODO remove this
+      public void RubyExecuted(object sender, EventArgs e) { MultiBox.RubyExecuted(sender, e); }
+      public void FindExecuted(object sender, EventArgs e) { MultiBox.FindExecuted(sender, e); }
+      public void FindPreviousExecuted(object sender, EventArgs e) { MultiBox.FindPreviousExecuted(sender, e); }
+      public void FindNextExecuted(object sender, EventArgs e) { MultiBox.FindNextExecuted(sender, e); }
+      public void GotoExecuted(object sender, EventArgs e) { MultiBox.GotoExecuted(sender, e); }
+      public void BackExecuted(object sender, EventArgs e) { MultiBox.BackExecuted(sender, e); }
+      public void BackCanExecute(object sender, CanExecuteRoutedEventArgs e) { MultiBox.BackCanExecute(sender, e); }
+      public void FindNavigationCanExecute(object sender, CanExecuteRoutedEventArgs e) { MultiBox.FindNavigationCanExecute(sender, e); }
       #endregion
    }
 }

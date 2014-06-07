@@ -1,0 +1,56 @@
+﻿<UserControl x:Class="SorceryHex.MultiBoxControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:m="clr-namespace:SorceryHex"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             DataContext="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type Window}}}"
+             Height="24"
+             d:DesignWidth="300">
+    <UserControl.CommandBindings>
+        <CommandBinding Command="NavigationCommands.GoToPage" Executed="GotoExecuted" CanExecute="Always"/>
+        <CommandBinding Command="ApplicationCommands.Find" Executed="FindExecuted" CanExecute="Always"/>
+        <CommandBinding Command="NavigationCommands.NextPage" Executed="FindPreviousExecuted" CanExecute="FindNavigationCanExecute"/>
+        <CommandBinding Command="NavigationCommands.PreviousPage" Executed="FindNextExecuted" CanExecute="FindNavigationCanExecute"/>
+        <CommandBinding Command="NavigationCommands.BrowseBack" Executed="BackExecuted" CanExecute="BackCanExecute" />
+        <CommandBinding Command="MediaCommands.Select" Executed="RubyExecuted" CanExecute="Always" />
+    </UserControl.CommandBindings>
+    <UserControl.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="buttonBorder" Padding="1" Background="Transparent" VerticalAlignment="Center" BorderBrush="{Binding Secondary, Source={StaticResource Theme}}">
+                            <ContentPresenter TextBlock.Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Margin" Value="4,1"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="true">
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Setter Property="Margin" Value="3,0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <StackPanel Margin="170,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Name="BreadCrumbBar"/>
+        <StackPanel x:Name="MultiBoxContainer" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+            <TextBlock x:Name="MultiBoxLabel" Text="Goto" VerticalAlignment="Center" Padding="4,2" Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
+            <TextBox x:Name="MultiBoxInput" Width="150" Margin="2" HorizontalAlignment="Right" KeyDown="HandleMultiBoxKey"/>
+            <Button x:Name="Close" Content="X" />
+        </StackPanel>
+        <DockPanel Name="ScriptContainer" Visibility="Hidden">
+            <TextBlock Text="Ruby" VerticalAlignment="Center" Padding="4,2" Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
+            <TextBox x:Name="ScriptBox" Margin="2" KeyDown="HandleScriptKey"/>
+        </DockPanel>
+    </Grid>
+</UserControl>
