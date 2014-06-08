@@ -44,6 +44,10 @@ namespace SorceryHex.Gba {
       }
 
       public void Claim(IRunStorage storage, IDataRun run, int destination) {
+         // if it's already claimed, that's fine
+         if (_destinations.ContainsKey(destination)) return;
+         storage.AddRun(destination, run);
+
          var keys = _reversePointerSet[destination].ToArray();
          foreach (var key in keys) {
             storage.AddRun(key, _pointerRun);

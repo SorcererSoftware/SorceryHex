@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
@@ -143,7 +144,7 @@ namespace SorceryHex.Gba {
    class Maps : IRunParser {
       #region Setup
 
-      static IDataRun MediaRun(int length, string text = null) { return new SimpleDataRun(length, Solarized.Brushes.Cyan, Utils.ByteFlyweights) { HoverText = text }; }
+      public static IDataRun MediaRun(int length, string text = null) { return new SimpleDataRun(length, Solarized.Brushes.Cyan, Utils.ByteFlyweights) { HoverText = text }; }
 
       class DataType { public readonly int Length; public DataType(int length) { Length = length; } }
 
@@ -376,50 +377,96 @@ namespace SorceryHex.Gba {
       }
    }
 
-   /*
-   class Thumbnails : IPartialParser {
+   enum Offset { IconImage, IconPalette, IconPaletteIndex }
 
-      readonly byte[] _data;
-      readonly IList<int> _iconStartPoints = new List<int>();
-      readonly IList<int> _paletteIndex = new List<int>();
+   class Thumbnails : IRunParser {
+      #region Utils
 
+      static readonly IDictionary<Offset, int> _fireredLeafgreen = new Dictionary<Offset, int> {
+         { Offset.IconImage, 0x138 },
+         { Offset.IconPaletteIndex, 0x13C },
+         { Offset.IconPalette, 0x140 }
+      };
 
-      public Thumbnails(byte[] data) {
-         _data = data;
+      static readonly IDictionary<Offset, int> _rubySapphire = new Dictionary<Offset, int> {
+         { Offset.IconImage, 0x99AA0 },
+         { Offset.IconPaletteIndex, 0x99BB0 },
+         { Offset.IconPalette, 0x9D53C }
+      };
+
+      static readonly IDictionary<string, IDictionary<Offset, int>> _tables = new Dictionary<string, IDictionary<Offset, int>> {
+         { "AXVE", _rubySapphire },
+         { "AXPE", _rubySapphire },
+         { "BPEE", _fireredLeafgreen },
+         { "BPRE", _fireredLeafgreen },
+         { "BPGE", _fireredLeafgreen }
+      };
+
+      public static FrameworkElement GetIcon(byte[] data, int index) {
+         var code = Header.GetCode(data);
+         var table = _tables[code];
+         int imageOffset = data.ReadPointer(table[Offset.IconImage]);
+         int paletteOffset = data.ReadPointer(table[Offset.IconPaletteIndex]);
+         int paletteTable = data.ReadPointer(table[Offset.IconPalette]);
+
+         paletteOffset += index;
+         imageOffset += index * 4;
+
+         var paletteStart = data.ReadPointer(paletteTable + data[paletteOffset] * 8);
+         var imageStart = data.ReadPointer(imageOffset);
+
+         var dataBytes = new byte[0x400];
+         Array.Copy(data, imageStart, dataBytes, 0, 0x400);
+         var paletteBytes = new byte[0x20];
+         Array.Copy(data, paletteStart, paletteBytes, 0, 0x20);
+         var palette = new ImageUtils.Palette(paletteBytes);
+         int width = 32, height = 64;
+         var source = ImageUtils.Expand16bitImage(dataBytes, palette, width, height);
+         var image = new Image { Source = source, Width = width, Height = height };
+         return image;
       }
 
-      public void Load() {
-         int icons = _data.ReadPointer(0x0138);
-         int palettePointers = _data.ReadPointer(0x13C);
-         int paletteIndex = _data.ReadPointer(0x140);
-         while (_data[icons + 3] == 0x08) {
-            _iconStartPoints.Add(_data.ReadPointer(icons));
-            _paletteIndex.Add(_data[paletteIndex]);
-            icons += 4;
-            paletteIndex++;
+      public static void CropIcon(Image image) {
+         int newWidth = MainWindow.ElementWidth, newHeight = MainWindow.ElementHeight;
+         int oldWidth = (int)image.Width, oldHeight = (int)image.Height;
+         int x = (oldWidth - newWidth) / 2, y = (oldHeight / 2 - newHeight) / 2 + 2;
+         image.Source = new CroppedBitmap((BitmapSource)image.Source, new Int32Rect(x, y, newWidth, newHeight));
+         image.Width = 24;
+         image.Height = 24;
+      }
+
+      #endregion
+
+      readonly PointerMapper _mapper;
+
+      public Thumbnails(PointerMapper mapper) { _mapper = mapper; }
+
+      public IEnumerable<int> Find(string term) { return null; }
+
+      public void Load(IRunStorage runs) {
+         var data = runs.Data;
+         var code = Header.GetCode(data);
+         var table = _tables[code];
+
+         int imageOffset = data.ReadPointer(table[Offset.IconImage]);
+         _mapper.Claim(runs, imageOffset);
+
+         int index = 0;
+         while (data[imageOffset + 3] == 0x08) {
+            int i = index; // closure
+            var run = new SimpleDataRun(0x400, Solarized.Brushes.Cyan, Utils.ByteFlyweights) {
+               Interpret = (d, dex) => GetIcon(data, i)
+            };
+
+            _mapper.Claim(runs, run, data.ReadPointer(imageOffset));
+
+            imageOffset += 4;
+            index++;
          }
+
+         // TODO change data type based on what we now know
+         _mapper.Claim(runs, new SimpleDataRun(index, Solarized.Brushes.Cyan, Utils.ByteFlyweights), data.ReadPointer(table[Offset.IconPaletteIndex]));
+         _mapper.Claim(runs, data.ReadPointer(table[Offset.IconPalette]));
       }
-
-      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
-         return new FrameworkElement[length];
-      }
-
-      public void Recycle(ICommandFactory commander, FrameworkElement element) {
-         throw new NotImplementedException();
-      }
-
-      public bool IsStartOfDataBlock(int location) { return _iconStartPoints.Contains(location); }
-
-      public bool IsWithinDataBlock(int location) {
-         return false; // TODO
-      }
-
-      public FrameworkElement GetInterpretation(int location) {
-         return null; // TODO
-      }
-
-      public IList<int> Find(string term) { return null; }
-
    }
-   //*/
 }

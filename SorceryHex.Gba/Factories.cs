@@ -20,15 +20,16 @@ namespace SorceryHex.Gba {
       }
 
       public IModel CreateModel(string name, byte[] data) {
-         var pointerMapper = new Gba.PointerMapper(data);
+         var pointerMapper = new PointerMapper(data);
          var storage = new RunStorage(data
-            , new Gba.Header(pointerMapper)
-            , new Gba.Lz(pointerMapper)
-            , new Gba.Maps(pointerMapper)
-            , new Gba.PCS()
+            , new Header(pointerMapper)
+            , new Thumbnails(pointerMapper)
+            , new Lz(pointerMapper)
+            , new Maps(pointerMapper)
+            , new PCS()
          );
          IModel model = new CompositeModel(data, storage);
-         model = new Gba.PointerParser(model, data, storage, pointerMapper);
+         model = new PointerParser(model, data, storage, pointerMapper);
          return model;
       }
 

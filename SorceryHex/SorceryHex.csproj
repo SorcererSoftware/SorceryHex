@@ -106,6 +106,12 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SorceryHex.Gba\SorceryHex.Gba.csproj">
+      <Project>{196731ed-c7ea-4946-a420-d51646a590d1}</Project>
+      <Name>SorceryHex.Gba</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>mkdir "$(TargetDir)data"

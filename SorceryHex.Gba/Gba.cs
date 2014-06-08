@@ -120,7 +120,6 @@ namespace SorceryHex.Gba {
                if (uncompressed == -1 || compressed == -1) continue;
                var run = LzRun(compressed, interpretations[i]);
                _pointers.Claim(runs, run, loc);
-               runs.AddRun(loc, run);
                count++;
             }
          }
