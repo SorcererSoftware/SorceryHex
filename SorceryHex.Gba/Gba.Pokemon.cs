@@ -382,6 +382,8 @@ namespace SorceryHex.Gba {
    class Thumbnails : IRunParser {
       #region Utils
 
+      public static readonly Brush MediaBrush = Solarized.Brushes.Cyan;
+
       static readonly IDictionary<Offset, int> _fireredLeafgreen = new Dictionary<Offset, int> {
          { Offset.IconImage, 0x138 },
          { Offset.IconPaletteIndex, 0x13C },
@@ -454,7 +456,7 @@ namespace SorceryHex.Gba {
          int index = 0;
          while (data[imageOffset + 3] == 0x08) {
             int i = index; // closure
-            var run = new SimpleDataRun(0x400, Solarized.Brushes.Cyan, Utils.ByteFlyweights) {
+            var run = new SimpleDataRun(0x400, MediaBrush, Utils.ByteFlyweights) {
                Interpret = (d, dex) => GetIcon(data, i)
             };
 
@@ -464,8 +466,20 @@ namespace SorceryHex.Gba {
             index++;
          }
 
-         // TODO change data type based on what we now know
-         _mapper.Claim(runs, new SimpleDataRun(index, Solarized.Brushes.Cyan, Utils.ByteFlyweights), data.ReadPointer(table[Offset.IconPaletteIndex]));
+         byte[] palettes = new byte[index];
+         Array.Copy(data, data.ReadPointer(table[Offset.IconPaletteIndex]), palettes, 0, index);
+         int paletteCount = palettes.Max() + 1;
+         int pointersToPalettes = data.ReadPointer(table[Offset.IconPalette]);
+         var paletteRun = new SimpleDataRun(0x20, MediaBrush, Utils.ByteFlyweights) {
+            Interpret = (d, dex) => {
+               var dataBytes = new byte[0x20];
+               Array.Copy(d, dex, dataBytes, 0, dataBytes.Length);
+               return Lz.InterpretPalette(dataBytes);
+            }
+         };
+         for (int i = 0; i < paletteCount; i++) _mapper.Claim(runs, paletteRun, data.ReadPointer(pointersToPalettes + i * 8));
+
+         _mapper.Claim(runs, new SimpleDataRun(index, MediaBrush, Utils.ByteFlyweights), data.ReadPointer(table[Offset.IconPaletteIndex]));
          _mapper.Claim(runs, data.ReadPointer(table[Offset.IconPalette]));
       }
    }

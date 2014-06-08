@@ -136,6 +136,10 @@ namespace SorceryHex.Gba {
 
       static FrameworkElement InterpretPalette(byte[] data, int location) {
          var dataBytes = ImageUtils.UncompressLZ(data, location);
+         return InterpretPalette(dataBytes);
+      }
+
+      public static FrameworkElement InterpretPalette(byte[] dataBytes) {
          var grid = new Grid { Width = 40, Height = 40, Background = Brushes.Transparent };
          for (int i = 0; i < 4; i++) {
             grid.RowDefinitions.Add(new RowDefinition());
