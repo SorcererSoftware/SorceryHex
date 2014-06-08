@@ -17,7 +17,7 @@ namespace SorceryHex {
             if (!name.EndsWith(".gba")) {
                return new CompositeModel(data);
             }
-            //*
+            /*
             var pointerMapper = new Gba.PointerMapper(data);
             var storage = new RunStorage(data
                , new Gba.Header(pointerMapper)
@@ -29,10 +29,7 @@ namespace SorceryHex {
             factory = new Gba.PointerParser(factory, data, storage, pointerMapper);
             return factory;
             /*/
-            var pointerMapper = new Gba.PointerMapper(data);
-            var storage = new RunStorage(data, new Gba.Header(pointerMapper));
-            var factory = new CompositeModel(data, storage);
-            return new Gba.PointerParser(factory, data, storage, pointerMapper);
+            return new CompositeModel(data, new StringDecoder(data, 1));
             //*/
          };
 

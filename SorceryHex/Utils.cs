@@ -10,7 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 
 namespace SorceryHex {
-   static class Utils {
+   public static class Utils {
       public static readonly DependencyProperty CreatorProperty = DependencyProperty.Register("Creator", typeof(object), typeof(FrameworkElement), new PropertyMetadata(null));
       public static void SetCreator(this FrameworkElement element, object creator) { element.SetValue(CreatorProperty, creator); }
       public static object GetCreator(this FrameworkElement element) { return (object)element.GetValue(CreatorProperty); }
