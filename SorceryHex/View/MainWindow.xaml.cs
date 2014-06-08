@@ -344,8 +344,10 @@ namespace SorceryHex {
       void HandleWindowKey(object sender, KeyEventArgs e) {
          if (Keyboard.Modifiers == ModifierKeys.Control) {
             e.Handled = true;
-            if (KeyActions.ContainsKey(e.Key)) KeyActions[e.Key]();
-            else if (arrowKeys.Contains(e.Key)) {
+            if (KeyActions.ContainsKey(e.Key)) {
+               KeyActions[e.Key]();
+               UpdateHeaderText();
+            } else if (arrowKeys.Contains(e.Key)) {
                ScrollBar.Value = Offset;
                UpdateHeaderText();
             } else {

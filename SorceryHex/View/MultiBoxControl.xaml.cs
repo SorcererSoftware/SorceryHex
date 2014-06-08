@@ -2,6 +2,7 @@
 using Microsoft.Scripting;
 using Microsoft.Scripting.Hosting;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -162,21 +163,31 @@ namespace SorceryHex {
             try {
                SetupScope();
                var result = _engine.CreateScriptSourceFromString(ScriptBox.Text, SourceCodeKind.SingleStatement).Execute(_scope);
-               string output = string.Empty;
                if (result == null) return;
-               if (result is Array) {
-                  foreach (var element in result) output += element.ToString() + Environment.NewLine;
-               } else {
-                  output = result.ToString();
-               }
                _outputText.Foreground = Solarized.Theme.Instance.Primary;
-               _outputText.Text = output;
+               _outputText.Text = Parse(result);
             } catch (Exception e1) {
                _outputText.Foreground = Solarized.Brushes.Red;
                _outputText.Text = "error: " + e1.Message;
             }
             _popup.IsOpen = true;
          }
+      }
+
+      string Parse(dynamic result) {
+         string output = "";
+         if (result is IEnumerable) {
+            foreach (var element in result) {
+               output += Parse(element) + Environment.NewLine;
+            }
+            return output;
+         }
+
+         output = result.ToString();
+         int num; if (int.TryParse(output, out num)) {
+            output = "0x" + num.ToHexString();
+         }
+         return output;
       }
 
       void CloseClick(object sender, EventArgs e) { UpdateVisibility(BreadCrumbBar); }
@@ -224,8 +235,11 @@ namespace SorceryHex {
          Debug.Assert(BreadCrumbBar.Children.Contains(button));
          int address = button.Content.ToString().ParseAsHex();
          AppCommands.JumpTo(address);
-         BreadCrumbBar.Children.Remove(button);
-         button.Click -= BackExecuted;
+         var index = BreadCrumbBar.Children.IndexOf(button);
+         while (BreadCrumbBar.Children.Count > index) {
+            ((Button)BreadCrumbBar.Children[index]).Click -= BackExecuted;
+            BreadCrumbBar.Children.RemoveAt(index);
+         }
       }
 
       public void BackCanExecute(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = BreadCrumbBar.Children.Count > 0; }
