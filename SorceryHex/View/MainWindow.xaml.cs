@@ -60,6 +60,7 @@ namespace SorceryHex {
          Data = data;
          _commandFactory = new MainCommandFactory(this);
          InitializeComponent();
+         CommandBindings.AddRange(MultiBox.CommandBindings);
          MultiBox.AppCommands = this;
          _cursorController = new CursorController(this, _commandFactory);
          ScrollBar.Minimum = -MaxColumnCount;
@@ -421,17 +422,6 @@ namespace SorceryHex {
 
       void Always(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = true; }
 
-      #endregion
-
-      #region Hack TODO remove this
-      public void RubyExecuted(object sender, EventArgs e) { MultiBox.RubyExecuted(sender, e); }
-      public void FindExecuted(object sender, EventArgs e) { MultiBox.FindExecuted(sender, e); }
-      public void FindPreviousExecuted(object sender, EventArgs e) { MultiBox.FindPreviousExecuted(sender, e); }
-      public void FindNextExecuted(object sender, EventArgs e) { MultiBox.FindNextExecuted(sender, e); }
-      public void GotoExecuted(object sender, EventArgs e) { MultiBox.GotoExecuted(sender, e); }
-      public void BackExecuted(object sender, EventArgs e) { MultiBox.BackExecuted(sender, e); }
-      public void BackCanExecute(object sender, CanExecuteRoutedEventArgs e) { MultiBox.BackCanExecute(sender, e); }
-      public void FindNavigationCanExecute(object sender, CanExecuteRoutedEventArgs e) { MultiBox.FindNavigationCanExecute(sender, e); }
       #endregion
    }
 }
