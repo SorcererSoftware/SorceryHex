@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -57,6 +58,10 @@ namespace SorceryHex.Gba {
    //*/
 
    class Header : IRunParser {
+      public static string GetCode(byte[] rom) {
+         return new string(Enumerable.Range(0, 4).Select(i => (char)rom[0xAC + i]).ToArray());
+      }
+
       static SimpleDataRun HeaderRun(int len, string text, Geometry[] converter) { return new SimpleDataRun(len, Solarized.Brushes.Violet, converter) { HoverText = text, Underlined = true }; }
       static SimpleDataRun HeaderRun(int len, string text) { return HeaderRun(len, text, Utils.ByteFlyweights); }
 

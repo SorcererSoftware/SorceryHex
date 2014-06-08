@@ -46,7 +46,7 @@
         <StackPanel x:Name="MultiBoxContainer" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
             <TextBlock x:Name="MultiBoxLabel" Text="Goto" VerticalAlignment="Center" Padding="4,2" Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
             <TextBox x:Name="MultiBoxInput" Width="150" Margin="2" HorizontalAlignment="Right" KeyDown="HandleMultiBoxKey"/>
-            <Button x:Name="Close" Content="X" />
+            <Button x:Name="Close" Content="X" Click="CloseClick"/>
         </StackPanel>
         <DockPanel Name="ScriptContainer" Visibility="Hidden">
             <TextBlock Text="Ruby" VerticalAlignment="Center" Padding="4,2" Foreground="{Binding Primary, Source={StaticResource Theme}}"/>

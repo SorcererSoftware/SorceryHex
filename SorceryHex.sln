@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SorceryHex.Gba", "SorceryHex.Gba\SorceryHex.Gba.csproj", "{196731ED-C7EA-4946-A420-D51646A590D1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SorceryHex", "SorceryHex\SorceryHex.csproj", "{FBEDE84D-078A-422A-852A-947B65A2CF0E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{196731ED-C7EA-4946-A420-D51646A590D1} = {196731ED-C7EA-4946-A420-D51646A590D1}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

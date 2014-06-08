@@ -148,7 +148,6 @@ namespace SorceryHex {
          }
       }
 
-
       void HandleScriptKey(object sender, KeyEventArgs e) {
          if (e.Key == Key.Escape) {
             if (_popup.IsOpen) {
@@ -179,6 +178,8 @@ namespace SorceryHex {
             _popup.IsOpen = true;
          }
       }
+
+      void CloseClick(object sender, EventArgs e) { UpdateVisibility(BreadCrumbBar); }
 
       #endregion
 

@@ -25,7 +25,7 @@ namespace SorceryHex.Gba {
 
       public void Load(IRunStorage runs) {
          _runs = runs;
-         foreach (var line in System.IO.File.ReadAllLines("PCS3-W.ini")) {
+         foreach (var line in System.IO.File.ReadAllLines("data\\PCS3-W.ini")) {
             var sanitized = line.Trim();
             if (sanitized.StartsWith("#") || sanitized.Length == 0) continue;
             Debug.Assert(sanitized.StartsWith("0x"));
@@ -234,16 +234,9 @@ namespace SorceryHex.Gba {
 
       public Maps(PointerMapper mapper) { _mapper = mapper; }
 
-      string GameCode {
-         get {
-            var chars = Enumerable.Range(0, 4).Select(i => (char)_data[0xAC + i]).ToArray();
-            return new string(chars);
-         }
-      }
-
       public void Load(IRunStorage runs) {
          _data = runs.Data;
-         var code = GameCode;
+         var code = Header.GetCode(_data);
 
          //           ruby            sapphire          emerald
          if (code == "AXVE" || code == "AXPE" || code == "BPEE") {

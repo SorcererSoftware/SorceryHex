@@ -15,7 +15,7 @@
         <KeyBinding Key="F3" Modifiers="Shift" Command="NavigationCommands.PreviousPage" />
     </Window.InputBindings>
     <Window.CommandBindings>
-        <CommandBinding Command="ApplicationCommands.Open" Executed="OpenExecuted" CanExecute="Always" />
+        <CommandBinding Command="ApplicationCommands.Open" Executed="OpenExecuted" CanExecute="OpenCanExecute" />
         <CommandBinding Command="ApplicationCommands.Close" Executed="CloseExecuted" CanExecute="Always" />
         <!-- TODO remove these ones -->
         <CommandBinding Command="NavigationCommands.GoToPage" Executed="GotoExecuted" CanExecute="Always"/>
@@ -38,6 +38,7 @@
                 <MenuItem Header="_View">
                     <MenuItem Name="InterpretItem" Header="_Interpreter" IsCheckable="True" InputGestureText="Ctrl+I" Click="InterpretClick"/>
                     <MenuItem Header="Switch _Themes" Click="ThemeClick"/>
+                    <MenuItem Name="Parser" Header="_Parser" Visibility="Collapsed"/>
                 </MenuItem>
                 <MenuItem Header="_Search">
                     <MenuItem Command="ApplicationCommands.Find" Header="_Find" />

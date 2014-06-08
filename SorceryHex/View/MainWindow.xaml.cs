@@ -43,8 +43,8 @@ namespace SorceryHex {
 
       #endregion
 
+      readonly IEnumerable<IModelFactory> _factories;
       IDictionary<Key, Action> KeyActions;
-      Func<string, byte[], IModel> _create;
       MainCommandFactory _commandFactory;
       CursorController _cursorController;
 
@@ -55,21 +55,17 @@ namespace SorceryHex {
       public int CurrentColumnCount { get; private set; }
       public int CurrentRowCount { get; private set; }
 
-      public MainWindow(Func<string, byte[], IModel> create, string fileName, byte[] data) {
-         _create = create;
-         Holder = _create(fileName, data);
+      public MainWindow(IEnumerable<IModelFactory> factories, string fileName, byte[] data) {
+         _factories = factories;
          Data = data;
          _commandFactory = new MainCommandFactory(this);
          InitializeComponent();
          MultiBox.AppCommands = this;
          _cursorController = new CursorController(this, _commandFactory);
-         Holder.MoveToNext += _cursorController.HandleMoveNext;
          ScrollBar.Minimum = -MaxColumnCount;
-         ScrollBar.Maximum = Holder.Length;
-         Title = fileName.Split('\\').Last();
          InitializeKeyActions();
-         Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(Offset)));
          MainFocus();
+         LoadBestMatch(fileName, data);
       }
 
       #region Public Methods
@@ -235,6 +231,41 @@ namespace SorceryHex {
          Holder.Recycle(_commandFactory, element);
       }
 
+      void LoadBestMatch(string filename, byte[] data) {
+         Title = filename.Split('\\').Last();
+         var array = _factories.Where(f => f.CanCreateModel(filename, data)).ToArray();
+         Array.Sort(array);
+         foreach (MenuItem item in Parser.Items) item.Click -= SwitchParserClick;
+         Parser.Items.Clear();
+         foreach (var factory in array) {
+            var item = new MenuItem { Header = factory.DisplayName, IsCheckable = true };
+            item.Click += SwitchParserClick;
+            item.Tag = factory;
+            Parser.Items.Add(item);
+         }
+         if (Parser.Items.Count > 1) {
+            Parser.Visibility = Visibility.Visible;
+            ((MenuItem)Parser.Items[Parser.Items.Count - 1]).IsChecked = true;
+         }
+         LoadParser(array.Last(), filename, data);
+      }
+
+      void LoadParser(IModelFactory factory, string name, byte[] data) {
+         Body.Children.Clear();
+         if (Holder != null) Holder.MoveToNext -= _cursorController.HandleMoveNext;
+         Holder = factory.CreateModel(name, data);
+         Holder.MoveToNext += _cursorController.HandleMoveNext;
+         ScrollBar.Maximum = Holder.Length;
+         JumpTo(0);
+         Parser.IsEnabled = false;
+         Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(LoadComplete));
+      }
+
+      void LoadComplete() {
+         Parser.IsEnabled = true;
+         JumpTo(Offset);
+      }
+
       #endregion
 
       #region Events
@@ -374,16 +405,19 @@ namespace SorceryHex {
          string fileName;
          var data = Utils.LoadFile(out fileName);
          if (data == null) return;
-         Holder = _create(fileName, data);
-         Holder.MoveToNext += _cursorController.HandleMoveNext; 
-         ScrollBar.Maximum = Holder.Length;
-         Body.Children.Clear();
-         JumpTo(0);
-         Title = fileName.Split('\\').Last();
-         Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(() => JumpTo(Offset)));
+         LoadBestMatch(fileName, data);
+      }
+
+      void SwitchParserClick(object sender, EventArgs e) {
+         var element = (FrameworkElement)sender;
+         var factory = (IModelFactory)element.Tag;
+         foreach (MenuItem item in Parser.Items) item.IsChecked = element == item;
+         LoadParser(factory, this.Title, Data);
       }
 
       void CloseExecuted(object sender, RoutedEventArgs e) { Close(); }
+
+      void OpenCanExecute(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = Parser.IsEnabled; }
 
       void Always(object sender, CanExecuteRoutedEventArgs e) { e.CanExecute = true; }
 

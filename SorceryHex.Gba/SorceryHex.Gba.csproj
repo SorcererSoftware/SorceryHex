@@ -39,6 +39,7 @@
       <HintPath>..\SorceryHex\bin\Debug\SorceryHex.exe</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
@@ -53,6 +54,7 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Factories.cs" />
     <Compile Include="Gba.cs" />
     <Compile Include="Gba.Pointers.cs" />
     <Compile Include="Gba.Pokemon.cs" />
