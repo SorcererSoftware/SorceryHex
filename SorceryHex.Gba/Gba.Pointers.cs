@@ -125,7 +125,13 @@ namespace SorceryHex.Gba {
 
       static readonly int[] Empty = new int[0];
       public int[] PointersFromDestination(int destination) {
-         if (!_destinations.ContainsKey(destination)) return Empty;
+         if (!_destinations.ContainsKey(destination)) {
+            if (_reversePointerSet.ContainsKey(destination)) {
+               return _reversePointerSet[destination].ToArray();
+            } else {
+               return Empty;
+            }
+         }
          return _destinations[destination];
       }
 

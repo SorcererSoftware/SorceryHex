@@ -42,14 +42,13 @@ namespace SorceryHex.Gba {
       }
 
       public IEnumerable<int> Find(string term) {
-         if (!term.All(s => s == ' ' || _pcs.Contains(new string(s, 1)))) return null;
+         if (!term.All(s => s == ' ' || _pcs.Contains(new string(s, 1)))) yield break;
 
          var lower = term.ToLower();
          var upper = term.ToUpper();
          var byteRange = Enumerable.Range(0, 0x100).Select(i => (byte)i);
 
          // two searchTerms, one with caps and one with lowercase
-         var list = new List<int>();
          byte[] searchTerm1 =
             Enumerable.Range(0, term.Length)
             .Select(i => term[i] == ' ' ? (byte)0x00 : byteRange.First(key => _pcs[key] == lower.Substring(i, 1)))
@@ -63,10 +62,9 @@ namespace SorceryHex.Gba {
          for (int i = 0, j = 0; i < _runs.Data.Length; i++) {
             j = _runs.Data[i] == searchTerm1[j] || _runs.Data[i] == searchTerm2[j] ? j + 1 : 0;
             if (j < searchTerm1.Length) continue;
-            list.Add(i - j + 1);
+            yield return i - j + 1;
             j = 0;
          }
-         return list;
       }
 
       #region Editor
@@ -186,6 +184,7 @@ namespace SorceryHex.Gba {
          new Entry("mapEventData",
             new Entry("personCount", @byte), new Entry("warpCount", @byte), new Entry("scriptCount", @byte), new Entry("signpostCount", @byte),
             new Entry("persons", "personCount"
+               //*
                ,
                new Entry("?", @byte), new Entry("picture", @byte), new Entry("?", @byte), new Entry("?", @byte),
                new Entry("x", @short), new Entry("y", @short),
@@ -193,25 +192,32 @@ namespace SorceryHex.Gba {
                new Entry("isTrainer", @byte), new Entry("?", @byte), new Entry("viewRadius", @short),
                new Entry("script", @nullablepointer),
                new Entry("id", @short), new Entry("?", @byte), new Entry("?", @byte)
+               //*/
             ),
             new Entry("warps", "warpCount"
+               //*
                ,
                new Entry("x", @short), new Entry("y", @short),
                new Entry("?", @byte), new Entry("warp", @byte), new Entry("map", @byte), new Entry("bank", @byte)
+               //*/
             ),
             new Entry("scripts", "scriptCount"
+               //*
                ,
                new Entry("x", @short), new Entry("y", @short),
                new Entry("?", @short), new Entry("scriptVariable", @short),
                new Entry("scriptVariableValue", @short), new Entry("?", @short),
                new Entry("script", @nullablepointer)
+               //*/
             ),
             new Entry("signposts", "signpostCount"
+               //*
                ,
                new Entry("x", @short), new Entry("y", @short),
                new Entry("talkingLevel", @byte), new Entry("signpostType", @byte), new Entry("?", @short),
                new Entry("?", @unknown4)
                // new Entry("dynamic", new DataType(4)) // *script || -itemID .hiddenID .amount || <missing>? //*/
+               //*/
             )
          ),
          new Entry("script", @nullablepointer),
@@ -273,19 +279,19 @@ namespace SorceryHex.Gba {
          }
 
          // third pass: find which of the pointers in matchingPointers have references to them (those are the heads of the lists)
-         //_mapBankAddress = new SortedSet<int>();
-         //var mapBankPointers = new List<int>();
-         //foreach (var mapPointer in matchingPointers) {
-         //   var bankPointer = _mapper.PointersFromDestination(mapPointer);
-         //   if (bankPointer == null || bankPointer.Length == 0) continue;
-         //   _mapBankAddress.Add(mapPointer);
-         //   mapBankPointers.Add(bankPointer.First()); // can I do without the first?
-         //}
+         _mapBankAddress = new SortedSet<int>();
+         var mapBankPointers = new List<int>();
+         foreach (var mapPointer in matchingPointers) {
+            var bankPointer = _mapper.PointersFromDestination(mapPointer);
+            if (bankPointer == null || bankPointer.Length == 0) continue;
+            _mapBankAddress.Add(mapPointer);
+            mapBankPointers.Add(bankPointer.First()); // can I do without the first?
+         }
 
-         //_masterMapAddress = _mapper.OpenDestinations.First(mapBankPointers.Contains);
-         //_mapLocations = new SortedSet<int>(matchingLayouts);
-         //foreach (var location in matchingLayouts) _allSubsetAddresses.Add(location);
-         //foreach (var location in _mapBankAddress) _allSubsetAddresses.Add(location);
+         _masterMapAddress = _mapper.OpenDestinations.First(mapBankPointers.Contains);
+         _mapLocations = new SortedSet<int>(matchingLayouts);
+         foreach (var location in matchingLayouts) _allSubsetAddresses.Add(location);
+         foreach (var location in _mapBankAddress) _allSubsetAddresses.Add(location);
       }
 
       /*
@@ -302,8 +308,7 @@ namespace SorceryHex.Gba {
       //*/
 
       public IEnumerable<int> Find(string term) {
-         if (term == "magic") return _mapLocations.ToList();
-         return null;
+         if (term == "maps") yield return _masterMapAddress;
       }
 
       bool CouldBe(Entry entry, int address, IList<int> addresses) {
@@ -312,7 +317,7 @@ namespace SorceryHex.Gba {
             if (IsPointerType(child)) {
                if (child.DataType != @pointer && _data[address + currentOffset + 3] == 0x00) {
                   // if it's nullable and null, make sure it's all null
-                  if (_data.ReadData(4, address) != 0) return false;
+                  if (_data.ReadData(4, address + currentOffset) != 0) return false;
                } else  {
                   // it's a pointer and it's not null (or nullable)
                   if (_data[address + currentOffset + 3] != 0x08) return false;
