@@ -26,6 +26,7 @@ namespace SorceryHex.Gba {
             , new Thumbnails(pointerMapper)
             , new Lz(pointerMapper)
             , new Maps(pointerMapper)
+            , new WildData(pointerMapper)
             , new PCS()
          );
          IModel model = new CompositeModel(data, storage);

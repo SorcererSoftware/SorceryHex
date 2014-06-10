@@ -139,95 +139,167 @@ namespace SorceryHex.Gba {
       }
    }
 
+   class DataType { public readonly int Length; public DataType(int length) { Length = length; } }
+
+   static class DataTypes {
+      public static IDataRun MediaRun(int length, string text = null) { return new SimpleDataRun(length, Solarized.Brushes.Cyan, Utils.ByteFlyweights) { HoverText = text }; }
+      public static readonly DataType @byte = new DataType(1);
+      public static readonly DataType @short = new DataType(2);
+      public static readonly DataType @word = new DataType(4);
+      public static readonly DataType @unknown4 = new DataType(4);
+      public static readonly DataType @pointer = new DataType(4);
+      public static readonly DataType @nullablepointer = new DataType(4);
+      public static readonly DataType @pointerToArray = new DataType(4);
+
+      public static readonly DataType[] pointerTypes = new[] { DataTypes.@pointer, DataTypes.@nullablepointer, DataTypes.@pointerToArray };
+      public static bool IsPointerType(Entry child) {
+         return pointerTypes.Contains(child.DataType);
+      }
+
+      public static bool CouldBe(byte[] data, Entry entry, int address, IList<int> addresses, Entry parent = null, int parentAddress = -1) {
+         if (!IsPointerType(entry)) {
+            return entry.DataType != DataTypes.@word || data[address + 3] == 0x00;
+         }
+
+         // assume we've alread followed the pointer, so it's non-null
+         int elementCount = 1;
+         int elementLength = entry.Children.Sum(c => c.DataType.Length);
+         if (entry.DataType == @pointerToArray) {
+            if (!int.TryParse(entry.ArrayLengthEntry, out elementCount)) {
+               if (entry.ArrayLengthEntry.StartsWith("+")) {
+                  elementCount = FindDynamicLength(data, address, entry);
+                  if (elementCount < 10) return false;
+               } else {
+                  elementCount = data.ReadData(parent[entry.ArrayLengthEntry].DataType.Length, parentAddress + parent.ChildOffset(entry.ArrayLengthEntry));
+               }
+            }
+         }
+
+         int childAddress = address;
+         for (int i = 0; i < elementCount; i++) {
+            for (int j = 0; j < entry.Children.Length; childAddress += entry.Children[j++].DataType.Length) {
+               var child = entry.Children[j];
+
+               // if it's not a pointer, check it here
+               if (!IsPointerType(child)) {
+                  if (!CouldBe(data, child, childAddress, addresses)) return false;
+                  continue;
+               }
+
+               // if it's nullable and looks null, make sure it's all null
+               if (child.DataType != DataTypes.@pointer && data[childAddress + 3] == 0x00) {
+                  if (data.ReadData(4, childAddress) != 0) return false;
+                  continue;
+               }
+
+               // check the pointer
+               if (data[childAddress + 3] != 0x08) return false;
+               if (child.Children != null && child.Children.Length > 0) {
+                  if (!CouldBe(data, child, data.ReadPointer(childAddress), addresses, entry, address)) return false;
+               }
+            }
+         }
+
+         return true;
+      }
+
+      public static int FindDynamicLength(byte[] data, int address, Entry entry) {
+         int stride = entry.Children.Sum(child => child.DataType.Length);
+         var endByte = (byte)entry.ArrayLengthEntry.Substring(1).ParseAsHex();
+         var unique = entry.Children.FirstOrDefault(child => child.ArrayUnique);
+         var ids = new HashSet<int>();
+         int elementCount = 0;
+         while (address + stride * elementCount < data.Length && data[address + stride * elementCount] != endByte) {
+            if (unique != null) {
+               int key = data.ReadData(unique.DataType.Length, address + stride * elementCount + entry.ChildOffset(unique.Name));
+               if (ids.Contains(key)) return -1;
+               ids.Add(key);
+            }
+            elementCount++;
+         }
+         if (address + stride * elementCount >= data.Length) return -1;
+         return elementCount;
+      }
+   }
+
+   class Entry {
+      public readonly string Name;
+      public readonly string ArrayLengthEntry;
+      public readonly DataType DataType;
+      public readonly Entry[] Children;
+      public bool ArrayUnique;
+
+      public int ChildOffset(string childName) {
+         return Children.TakeWhile(child => child.Name != childName).Sum(child => child.DataType.Length);
+      }
+
+      public Entry this[string childName] { get { return Children.First(child => child.Name == childName); } }
+
+      public Entry(string name, params Entry[] children) {
+         Name = name; DataType = DataTypes.@pointer; Children = children;
+      }
+
+      public Entry(string name, DataType type, params Entry[] children) {
+         Name = name; DataType = type; Children = children;
+      }
+
+      public Entry(string name, string arrayLength, params Entry[] children) {
+         Name = name; DataType = DataTypes.@pointerToArray; ArrayLengthEntry = arrayLength; Children = children;
+      }
+   }
+
    class Maps : IRunParser {
       #region Setup
 
-      public static IDataRun MediaRun(int length, string text = null) { return new SimpleDataRun(length, Solarized.Brushes.Cyan, Utils.ByteFlyweights) { HoverText = text }; }
-
-      class DataType { public readonly int Length; public DataType(int length) { Length = length; } }
-
-      static readonly DataType @byte = new DataType(1);
-      static readonly DataType @short = new DataType(2);
-      static readonly DataType @word = new DataType(4);
-      static readonly DataType @unknown4 = new DataType(4);
-      static readonly DataType @pointer = new DataType(4);
-      static readonly DataType @nullablepointer = new DataType(4);
-      static readonly DataType @pointerToArray = new DataType(4);
-
-      class Entry {
-         public readonly string Name;
-         public readonly string ArrayLengthEntry;
-         public readonly DataType DataType;
-         public readonly Entry[] Children;
-
-         public int ChildOffset(string childName) {
-            return Children.TakeWhile(child => child.Name != childName).Sum(child => child.DataType.Length);
-         }
-
-         public Entry this[string childName] { get { return Children.First(child => child.Name == childName); } }
-
-         public Entry(string name, params Entry[] children) {
-            Name = name; DataType = @pointer; Children = children;
-         }
-
-         public Entry(string name, DataType type, params Entry[] children) {
-            Name = name; DataType = type; Children = children;
-         }
-
-         public Entry(string name, string arrayLength, params Entry[] children) {
-            Name = name; DataType = @pointerToArray; ArrayLengthEntry = arrayLength; Children = children;
-         }
-      }
-
       static readonly Entry DataLayout = new Entry("map",
-         new Entry("mapTileData", @pointer),
+         new Entry("mapTileData", DataTypes.@pointer),
          new Entry("mapEventData",
-            new Entry("personCount", @byte), new Entry("warpCount", @byte), new Entry("scriptCount", @byte), new Entry("signpostCount", @byte),
+            new Entry("personCount", DataTypes.@byte), new Entry("warpCount", DataTypes.@byte), new Entry("scriptCount", DataTypes.@byte), new Entry("signpostCount", DataTypes.@byte),
             new Entry("persons", "personCount"
                //*
                ,
-               new Entry("?", @byte), new Entry("picture", @byte), new Entry("?", @byte), new Entry("?", @byte),
-               new Entry("x", @short), new Entry("y", @short),
-               new Entry("?", @byte), new Entry("movementType", @byte), new Entry("movement", @byte), new Entry("?", @byte),
-               new Entry("isTrainer", @byte), new Entry("?", @byte), new Entry("viewRadius", @short),
-               new Entry("script", @nullablepointer),
-               new Entry("id", @short), new Entry("?", @byte), new Entry("?", @byte)
+               new Entry("?", DataTypes.@byte), new Entry("picture", DataTypes.@byte), new Entry("?", DataTypes.@byte), new Entry("?", DataTypes.@byte),
+               new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
+               new Entry("?", DataTypes.@byte), new Entry("movementType", DataTypes.@byte), new Entry("movement", DataTypes.@byte), new Entry("?", DataTypes.@byte),
+               new Entry("isTrainer", DataTypes.@byte), new Entry("?", DataTypes.@byte), new Entry("viewRadius", DataTypes.@short),
+               new Entry("script", DataTypes.@nullablepointer),
+               new Entry("id", DataTypes.@short), new Entry("?", DataTypes.@byte), new Entry("?", DataTypes.@byte)
                //*/
             ),
             new Entry("warps", "warpCount"
                //*
                ,
-               new Entry("x", @short), new Entry("y", @short),
-               new Entry("?", @byte), new Entry("warp", @byte), new Entry("map", @byte), new Entry("bank", @byte)
+               new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
+               new Entry("?", DataTypes.@byte), new Entry("warp", DataTypes.@byte), new Entry("map", DataTypes.@byte), new Entry("bank", DataTypes.@byte)
                //*/
             ),
             new Entry("scripts", "scriptCount"
                //*
                ,
-               new Entry("x", @short), new Entry("y", @short),
-               new Entry("?", @short), new Entry("scriptVariable", @short),
-               new Entry("scriptVariableValue", @short), new Entry("?", @short),
-               new Entry("script", @nullablepointer)
+               new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
+               new Entry("?", DataTypes.@short), new Entry("scriptVariable", DataTypes.@short),
+               new Entry("scriptVariableValue", DataTypes.@short), new Entry("?", DataTypes.@short),
+               new Entry("script", DataTypes.@nullablepointer)
                //*/
             ),
             new Entry("signposts", "signpostCount"
                //*
                ,
-               new Entry("x", @short), new Entry("y", @short),
-               new Entry("talkingLevel", @byte), new Entry("signpostType", @byte), new Entry("?", @short),
-               new Entry("?", @unknown4)
+               new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
+               new Entry("talkingLevel", DataTypes.@byte), new Entry("signpostType", DataTypes.@byte), new Entry("?", DataTypes.@short),
+               new Entry("?", DataTypes.@unknown4)
                // new Entry("dynamic", new DataType(4)) // *script || -itemID .hiddenID .amount || <missing>? //*/
                //*/
             )
          ),
-         new Entry("script", @nullablepointer),
-         new Entry("connections", @nullablepointer,
-            new Entry("count", @word),
-            new Entry("data", @pointer)
+         new Entry("script", DataTypes.@nullablepointer),
+         new Entry("connections", DataTypes.@nullablepointer,
+            new Entry("count", DataTypes.@word),
+            new Entry("data", DataTypes.@pointer)
          ),
-         new Entry("song", @short), new Entry("map", @short),
-         new Entry("label_id", @byte), new Entry("flash", @byte), new Entry("weather", @byte), new Entry("type", @byte),
-         new Entry("_", @short), new Entry("labelToggle", @byte), new Entry("_", @byte)
+         new Entry("song", DataTypes.@short), new Entry("map", DataTypes.@short),
+         new Entry("label_id", DataTypes.@byte), new Entry("flash", DataTypes.@byte), new Entry("weather", DataTypes.@byte), new Entry("type", DataTypes.@byte),
+         new Entry("_", DataTypes.@short), new Entry("labelToggle", DataTypes.@byte), new Entry("_", DataTypes.@byte)
       );
 
       #endregion
@@ -248,20 +320,20 @@ namespace SorceryHex.Gba {
          //           ruby            sapphire          emerald
          if (code == "AXVE" || code == "AXPE" || code == "BPEE") {
             DataLayout.Children[0] = new Entry("mapTileData",
-               new Entry("width", @word), new Entry("height", @word),
-               new Entry("borderTile", @pointer),
-               new Entry("tiles", @pointer),
-               new Entry("tileset", @pointer),
-               new Entry("tileset", @pointer)
+               new Entry("width", DataTypes.@word), new Entry("height", DataTypes.@word),
+               new Entry("borderTile", DataTypes.@pointer),
+               new Entry("tiles", DataTypes.@pointer),
+               new Entry("tileset", DataTypes.@pointer),
+               new Entry("tileset", DataTypes.@pointer)
             );
          } else { // FR / LG
             DataLayout.Children[0] = new Entry("mapTileData",
-               new Entry("width", @word), new Entry("height", @word),
-               new Entry("borderTile", @pointer),
-               new Entry("tiles", @pointer),
-               new Entry("tileset", @pointer),
-               new Entry("tileset", @pointer),
-               new Entry("borderWidth", @byte), new Entry("borderHeight", @byte), new Entry("_", @byte), new Entry("_", @byte)
+               new Entry("width", DataTypes.@word), new Entry("height", DataTypes.@word),
+               new Entry("borderTile", DataTypes.@pointer),
+               new Entry("tiles", DataTypes.@pointer),
+               new Entry("tileset", DataTypes.@pointer),
+               new Entry("tileset", DataTypes.@pointer),
+               new Entry("borderWidth", DataTypes.@byte), new Entry("borderHeight", DataTypes.@byte), new Entry("_", DataTypes.@byte), new Entry("_", DataTypes.@byte)
             );
          }
 
@@ -271,7 +343,7 @@ namespace SorceryHex.Gba {
          var matchingPointers = new List<int>();
          var addressesList = _mapper.OpenDestinations.ToList();
          foreach (var address in addressesList) {
-            if (!CouldBe(DataLayout, address, addressesList)) continue;
+            if (!DataTypes.CouldBe(_data, DataLayout, address, addressesList)) continue;
             SeekChildren(DataLayout, runs, address);
             _mapper.Claim(runs, address);
             matchingPointers.Add(_mapper.PointersFromDestination(address).First()); // can I do without the first?
@@ -311,52 +383,17 @@ namespace SorceryHex.Gba {
          if (term == "maps") yield return _masterMapAddress;
       }
 
-      bool CouldBe(Entry entry, int address, IList<int> addresses) {
-         int currentOffset = 0;
-         foreach (var child in entry.Children) {
-            if (IsPointerType(child)) {
-               if (child.DataType != @pointer && _data[address + currentOffset + 3] == 0x00) {
-                  // if it's nullable and null, make sure it's all null
-                  if (_data.ReadData(4, address + currentOffset) != 0) return false;
-               } else  {
-                  // it's a pointer and it's not null (or nullable)
-                  if (_data[address + currentOffset + 3] != 0x08) return false;
-                  if (child.Children != null && child.Children.Length > 0) {
-                     var childAddress = _data.ReadPointer(address + currentOffset);
-                     if (childAddress % 4 != 0) return false;
-                     if (child.DataType == @pointerToArray) {
-                        int elementCount = _data.ReadData(entry[child.ArrayLengthEntry].DataType.Length, address + entry.ChildOffset(child.ArrayLengthEntry));
-                        int elementLength = child.Children.Sum(c => c.DataType.Length);
-                        for (int i = 0; i < elementCount; i++) {
-                           if (!CouldBe(child, childAddress + elementLength * i, addresses)) return false;
-                        }
-                     } else {
-                        if (!CouldBe(child, childAddress, addresses)) return false;
-                     }
-                  }
-               }
-            }
-            if (child.DataType == @word) {
-               // words never use the 4th byte - they're just not big enough
-               if (_data[address + currentOffset + 3] != 0x00) return false;
-            }
-            currentOffset += child.DataType.Length;
-         }
-
-         return true;
-      }
-
       void SeekChildren(Entry entry, IRunStorage runs, int address) {
          int currentOffset = 0;
          foreach (var child in entry.Children) {
-            if (IsPointerType(child)) {
-               if (child.DataType != @pointer && _data[address + currentOffset + 3] == 0x00) {
+            if (DataTypes.IsPointerType(child)) {
+               if (child.DataType != DataTypes.@pointer && _data[address + currentOffset + 3] == 0x00) {
                   currentOffset += child.DataType.Length;
                   continue;
                } else {
                   var next = _data.ReadPointer(address + currentOffset);
 
-                  if (child.DataType == @pointerToArray) {
+                  if (child.DataType == DataTypes.@pointerToArray) {
                      int elementCount = _data.ReadData(entry[child.ArrayLengthEntry].DataType.Length, address + entry.ChildOffset(child.ArrayLengthEntry));
                      int elementLength = child.Children.Sum(c => c.DataType.Length);
                      for (int i = 0; i < elementCount; i++) {
@@ -370,15 +407,62 @@ namespace SorceryHex.Gba {
                   _allSubsetAddresses.Add(next);
                }
             } else {
-               runs.AddRun(address + currentOffset, MediaRun(child.DataType.Length, child.Name));
+               runs.AddRun(address + currentOffset, DataTypes.MediaRun(child.DataType.Length, child.Name));
             }
             currentOffset += child.DataType.Length;
          }
       }
+   }
 
-      readonly DataType[] pointerTypes = new[] { @pointer, @nullablepointer, @pointerToArray };
-      bool IsPointerType(Entry child) {
-         return pointerTypes.Contains(child.DataType);
+   class WildData : IRunParser {
+      static readonly Entry DataLayout = new Entry("wild", "+FF",
+         new Entry("bank_map", DataTypes.@short), new Entry("_", DataTypes.@short),
+         new Entry("grass", DataTypes.@nullablepointer,
+            new Entry("rate", DataTypes.@word),
+            new Entry("encounters", "12",
+               new Entry("lowLevel", DataTypes.@byte), new Entry("highLevel", DataTypes.@byte), new Entry("species", DataTypes.@short)
+            )
+         ),
+         new Entry("surf", DataTypes.@nullablepointer,
+            new Entry("rate", DataTypes.@word),
+            new Entry("encounters", "5",
+               new Entry("lowLevel", DataTypes.@byte), new Entry("highLevel", DataTypes.@byte), new Entry("species", DataTypes.@short)
+            )
+         ),
+         new Entry("tree", DataTypes.@nullablepointer,
+            new Entry("rate", DataTypes.@word),
+            new Entry("encounters", "5",
+               new Entry("lowLevel", DataTypes.@byte), new Entry("highLevel", DataTypes.@byte), new Entry("species", DataTypes.@short)
+            )
+         ),
+         new Entry("fishing", DataTypes.@nullablepointer,
+            new Entry("rate", DataTypes.@word),
+            new Entry("encounters", "10",
+               new Entry("lowLevel", DataTypes.@byte), new Entry("highLevel", DataTypes.@byte), new Entry("species", DataTypes.@short)
+            )
+         )
+      );
+
+      readonly PointerMapper _mapper;
+
+      public WildData(PointerMapper mapper) { _mapper = mapper; }
+
+      public IEnumerable<int> Find(string term) { return null; }
+
+      public void Load(IRunStorage runs) {
+         var matchingLayouts = new List<int>();
+         var addressesList = _mapper.OpenDestinations.ToList();
+         foreach (var address in addressesList) {
+            if (runs.Data[address + 2] != 0) continue;
+            if (runs.Data[address + 3] != 0) continue;
+            if (!DataTypes.CouldBe(runs.Data, DataLayout, address, addressesList)) continue;
+            // SeekChildren(DataLayout, runs, address);
+            // _mapper.Claim(runs, address);
+            matchingLayouts.Add(address);
+         }
+
+         // we want only one matching layout.
+         // if there is more than one, find the one that is most likely to be correct.
       }
    }
 
