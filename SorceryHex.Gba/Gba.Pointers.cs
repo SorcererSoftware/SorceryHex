@@ -31,7 +31,7 @@ namespace SorceryHex.Gba {
       public List<int> MappedDestinations { get { lock (_destinations) return _destinations.Keys.ToList(); } }
 
       public PointerMapper(byte[] data) {
-         _pointerRun = new SimpleDataRun(4, Brush, Utils.ByteFlyweights) { Underlined = true, Interpret = InterpretPointer, Jump = JumpPointer };
+         _pointerRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, Brush, true), 4) { Interpret = InterpretPointer, Jump = JumpPointer };
 
          for (int i = 3; i < data.Length; i += 4) {
             if (data[i] != 0x08) continue;
@@ -263,5 +263,159 @@ namespace SorceryHex.Gba {
       }
 
       #endregion
+   }
+
+   class DataType {
+      public readonly int Length;
+      public readonly IDataRun DataRun;
+      public DataType(int length) { Length = length; }
+      public DataType(int length, IDataRun run) : this(length) { DataRun = run; }
+   }
+
+   static class DataTypes {
+      public static IDataRun MediaRun(int length, string text = null) { return new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, Solarized.Brushes.Cyan, false, text), length); }
+      public static readonly DataType @byte = new DataType(1);
+      public static readonly DataType @short = new DataType(2);
+      public static readonly DataType @word = new DataType(4);
+      public static readonly DataType @unknown4 = new DataType(4);
+      public static readonly DataType @pointer = new DataType(4);
+      public static readonly DataType @nullablepointer = new DataType(4);
+      public static readonly DataType @pointerToArray = new DataType(4);
+
+      public static readonly DataType[] pointerTypes = new[] { DataTypes.@pointer, DataTypes.@nullablepointer, DataTypes.@pointerToArray };
+      public static bool IsPointerType(Entry child) {
+         return pointerTypes.Contains(child.DataType);
+      }
+
+      public static int GetElementCount(byte[] data, Entry entry, int address, Entry parent, int parentAddress) {
+         int elementCount = 1;
+         int elementLength = entry.Children.Sum(c => c.DataType.Length);
+         if (entry.DataType == @pointerToArray) {
+            if (!int.TryParse(entry.ArrayLengthEntry, out elementCount)) {
+               if (entry.ArrayLengthEntry.StartsWith("+")) {
+                  elementCount = FindDynamicLength(data, address, entry);
+                  if (elementCount < 10) return -1;
+               } else {
+                  elementCount = data.ReadData(parent[entry.ArrayLengthEntry].DataType.Length, parentAddress + parent.ChildOffset(entry.ArrayLengthEntry));
+               }
+            }
+         }
+
+         return elementCount;
+      }
+
+      public static bool CouldBe(byte[] data, Entry entry, int address, IList<int> addresses, Entry parent = null, int parentAddress = -1) {
+         if (!IsPointerType(entry)) {
+            return entry.DataType != DataTypes.@word || data[address + 3] == 0x00;
+         }
+
+         // assume we've alread followed the pointer, so it's non-null
+         int elementCount = GetElementCount(data, entry, address, parent, parentAddress);
+         if (elementCount < 0) return false;
+
+         int childAddress = address;
+         for (int i = 0; i < elementCount; i++) {
+            for (int j = 0; j < entry.Children.Length; childAddress += entry.Children[j++].DataType.Length) {
+               var child = entry.Children[j];
+
+               // if it's not a pointer, check it here
+               if (!IsPointerType(child)) {
+                  if (!CouldBe(data, child, childAddress, addresses)) return false;
+                  continue;
+               }
+
+               // if it's nullable and looks null, make sure it's all null
+               if (child.DataType != DataTypes.@pointer && data[childAddress + 3] == 0x00) {
+                  if (data.ReadData(4, childAddress) != 0) return false;
+                  continue;
+               }
+
+               // check the pointer
+               if (data[childAddress + 3] != 0x08) return false;
+               if (child.Children != null && child.Children.Length > 0) {
+                  if (!CouldBe(data, child, data.ReadPointer(childAddress), addresses, entry, address)) return false;
+               }
+            }
+         }
+
+         return true;
+      }
+
+      public static void SeekChildren(IRunStorage runs, Entry entry, int address, PointerMapper mapper, Entry parent = null, int parentAddress = -1) {
+         if (!IsPointerType(entry)) {
+            if (entry.DataType.DataRun != null) runs.AddRun(address, entry.DataType.DataRun);
+            else runs.AddRun(address, DataTypes.MediaRun(entry.DataType.Length, entry.Name));
+            return;
+         }
+
+         int elementCount = GetElementCount(runs.Data, entry, address, parent, parentAddress);
+
+         int childAddress = address;
+         for (int i = 0; i < elementCount; i++) {
+            for (int j = 0; j < entry.Children.Length; childAddress += entry.Children[j++].DataType.Length) {
+               var child = entry.Children[j];
+
+               // if it's not a pointer, check it here
+               if (!IsPointerType(child)) {
+                  SeekChildren(runs, child, childAddress, mapper, entry, address);
+                  continue;
+               }
+
+               // if it's nullable and looks null, skip
+               if (child.DataType != DataTypes.@pointer && runs.Data[childAddress + 3] == 0x00) continue;
+
+               // check the pointer
+               var next = runs.Data.ReadPointer(childAddress);
+               mapper.Claim(runs, childAddress, next);
+               if (child.Children != null && child.Children.Length > 0) {
+                  SeekChildren(runs, child, next, mapper, entry, address);
+               }
+            }
+         }
+      }
+
+      public static int FindDynamicLength(byte[] data, int address, Entry entry) {
+         int stride = entry.Children.Sum(child => child.DataType.Length);
+         var endByte = (byte)entry.ArrayLengthEntry.Substring(1).ParseAsHex();
+         var unique = entry.Children.FirstOrDefault(child => child.ArrayUnique);
+         var ids = new HashSet<int>();
+         int elementCount = 0;
+         while (address + stride * elementCount < data.Length && data[address + stride * elementCount] != endByte) {
+            if (unique != null) {
+               int key = data.ReadData(unique.DataType.Length, address + stride * elementCount + entry.ChildOffset(unique.Name));
+               if (ids.Contains(key)) return -1;
+               ids.Add(key);
+            }
+            elementCount++;
+         }
+         if (address + stride * elementCount >= data.Length) return -1;
+         return elementCount;
+      }
+   }
+
+   class Entry {
+      public readonly string Name;
+      public readonly string ArrayLengthEntry;
+      public readonly DataType DataType;
+      public readonly Entry[] Children;
+      public bool ArrayUnique;
+
+      public int ChildOffset(string childName) {
+         return Children.TakeWhile(child => child.Name != childName).Sum(child => child.DataType.Length);
+      }
+
+      public Entry this[string childName] { get { return Children.First(child => child.Name == childName); } }
+
+      public Entry(string name, params Entry[] children) {
+         Name = name; DataType = DataTypes.@pointer; Children = children;
+      }
+
+      public Entry(string name, DataType type, params Entry[] children) {
+         Name = name; DataType = type; Children = children;
+      }
+
+      public Entry(string name, string arrayLength, params Entry[] children) {
+         Name = name; DataType = DataTypes.@pointerToArray; ArrayLengthEntry = arrayLength; Children = children;
+      }
    }
 }

@@ -120,9 +120,10 @@ namespace SorceryHex {
                int lengthInView = runEnd - loc;
                InterpretData(currentRun, dataIndex);
                for (int j = 0; j < lengthInView; j++) {
-                  if (currentRun.Parser[Data[loc + j]] == null) continue; // use the parents parser for this byte
+                  var element = currentRun.Provider.ProvideElement(Data, dataIndex, j, runEnd - dataIndex + 1);
+                  if (element == null) continue;
+                  element.Tag = currentRun.Provider;
 
-                  var element = UseTemplate(currentRun, dataIndex, loc + j);
                   if (_interpretations.ContainsKey(dataIndex)) {
                      _interpretationLinks.Add(element);
                      commander.LinkToInterpretation(element, _interpretations[dataIndex]);
@@ -151,8 +152,7 @@ namespace SorceryHex {
             _jumpLinks.Remove(element);
             commander.RemoveJumpCommand(element);
          }
-
-         _recycles.Enqueue((Border)element);
+         ((IElementProvider)element.Tag).Recycle(element);
       }
 
       public bool IsStartOfDataBlock(int location) {
@@ -223,10 +223,7 @@ namespace SorceryHex {
 
       bool RunsAreEquivalent(IDataRun run1, IDataRun run2, int location) {
          var conditions = new[] {
-            run1.Color.Equals(run2.Color),
-            run1.HoverText == run2.HoverText,
-            run1.Parser == run2.Parser,
-            run1.Underlined == run2.Underlined,
+            run1.Provider.IsEquivalent(run2.Provider),
             run1.Interpret == run2.Interpret,
             run1.Jump == run2.Jump,
             run1.GetLength(Data, location) == run2.GetLength(Data, location)
@@ -243,33 +240,6 @@ namespace SorceryHex {
          }
       }
 
-      FrameworkElement UseTemplate(IDataRun run, int dataIndex, int location) {
-         var geometry = run.Parser[Data[location]];
-
-         var element = _recycles.Count > 0 ? _recycles.Dequeue() : new Border {
-            Child = new Path {
-               HorizontalAlignment = HorizontalAlignment.Center,
-               VerticalAlignment = VerticalAlignment.Center,
-               Margin = new Thickness(3, 3, 3, 1),
-            },
-            Background = Brushes.Transparent,
-            BorderThickness = new Thickness(0, 0, 0, 1)
-         };
-         element.SetCreator(this);
-         ((Path)element.Child).Data = geometry;
-         ((Path)element.Child).Fill = run.Color;
-         element.BorderBrush = run.Color;
-
-         double leftBorder = dataIndex == location ? 2 : 0;
-         double rightBorder = dataIndex + run.GetLength(Data, dataIndex) - 1 == location ? 2 : 0;
-         element.Margin = new Thickness(leftBorder, 0, rightBorder, 1);
-         double bottom = run.Underlined ? 1 : 0;
-         element.BorderThickness = new Thickness(0, 0, 0, bottom);
-         element.ToolTip = run.HoverText;
-
-         return element;
-      }
-
       void UpdateList() {
          if (!_listNeedsUpdate) return;
          lock (_runs) _keys = _runs.Keys.ToList();
@@ -282,15 +252,71 @@ namespace SorceryHex {
    public delegate int[] JumpRule(byte[] data, int index);
    public delegate FrameworkElement InterpretationRule(byte[] data, int index);
 
-   public interface IDataRun {
-      Brush Color { get; }
-      Geometry[] Parser { get; }
+   public interface IElementProvider {
+      FrameworkElement ProvideElement(byte[] data, int runStart, int innerIndex, int runLength);
+      bool IsEquivalent(IElementProvider other);
+      void Recycle(FrameworkElement element);
+   }
 
-      string HoverText { get; }
-      bool Underlined { get; }
+   public class GeometryElementProvider : IElementProvider {
+      readonly Queue<Border> _recycles = new Queue<Border>();
+      readonly Geometry[] _parser;
+      readonly Brush _runColor;
+      readonly bool _underline;
+      readonly string _hoverText;
+
+      public GeometryElementProvider(Geometry[] parser, Brush runColor, bool underline = false, string hoverText = null) {
+         _parser = parser;
+         _runColor = runColor;
+         _underline = underline;
+         _hoverText = hoverText;
+      }
+
+      public FrameworkElement ProvideElement(byte[] data, int runStart, int innerIndex, int runLength) {
+         var geometry = _parser[data[runStart + innerIndex]];
+         if (geometry == null) return null;
+
+         var element = _recycles.Count > 0 ? _recycles.Dequeue() : new Border {
+            Child = new Path {
+               HorizontalAlignment = HorizontalAlignment.Center,
+               VerticalAlignment = VerticalAlignment.Center,
+               Margin = new Thickness(3, 3, 3, 1),
+            },
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0, 0, 0, 1)
+         };
+         ((Path)element.Child).Data = geometry;
+         ((Path)element.Child).Fill = _runColor;
+         element.BorderBrush = _runColor;
+
+         double leftBorder = innerIndex == 0 ? 2 : 0;
+         double rightBorder = innerIndex - 1 == runLength ? 2 : 0;
+         element.Margin = new Thickness(leftBorder, 0, rightBorder, 1);
+         double bottom = _underline ? 1 : 0;
+         element.BorderThickness = new Thickness(0, 0, 0, bottom);
+         element.ToolTip = _hoverText;
+
+         return element;
+      }
+
+      public bool IsEquivalent(IElementProvider other) {
+         var that = other as GeometryElementProvider;
+         if (that == null) return false;
+         if (this._parser != that._parser) return false;
+         if (this._runColor != that._runColor) return false;
+         if (this._underline != that._underline) return false;
+         if (this._hoverText != that._hoverText) return false;
+         return true;
+      }
+
+      public void Recycle(FrameworkElement element) { _recycles.Enqueue((Border)element); }
+   }
+
+   public interface IDataRun {
       InterpretationRule Interpret { get; }
       JumpRule Jump { get; }
       IEditor Editor { get; }
+      IElementProvider Provider { get; }
 
       int GetLength(byte[] data, int startPoint);
    }
@@ -299,19 +325,14 @@ namespace SorceryHex {
       static readonly IEditor DefaultEditor = new DisableEditor();
       readonly int _length;
 
-      public Brush Color { get; set; }
-      public Geometry[] Parser { get; set; }
-
-      public string HoverText { get; set; }
-      public bool Underlined { get; set; }
       public InterpretationRule Interpret { get; set; }
       public JumpRule Jump { get; set; }
       public IEditor Editor { get; set; }
+      public IElementProvider Provider { get; private set; }
 
-      public SimpleDataRun(int length, Brush color, Geometry[] parser) {
+      public SimpleDataRun(IElementProvider provider, int length) {
+         Provider = provider;
          _length = length;
-         Color = color;
-         Parser = parser;
          Editor = DefaultEditor;
       }
 

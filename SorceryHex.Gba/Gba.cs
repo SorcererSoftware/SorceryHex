@@ -14,13 +14,14 @@ namespace SorceryHex.Gba {
       public Brush Color { get; set; }
       public Geometry[] Parser { get; set; }
 
-      public string HoverText { get; set; }
-      public bool Underlined { get; set; }
       public InterpretationRule Interpret { get; set; }
       public JumpRule Jump { get; set; }
       public IEditor Editor { get; set; }
 
+      public IElementProvider Provider { get; private set; }
+
       public VariableLengthDataRun(byte endCharacter, int stride, Brush color, Geometry[] parser) {
+         Provider = new GeometryElementProvider(parser, color);
          _endCharacter = endCharacter; _stride = stride;
          Color = color; Parser = parser;
       }
@@ -62,7 +63,7 @@ namespace SorceryHex.Gba {
          return new string(Enumerable.Range(0, 4).Select(i => (char)rom[0xAC + i]).ToArray());
       }
 
-      static SimpleDataRun HeaderRun(int len, string text, Geometry[] converter) { return new SimpleDataRun(len, Solarized.Brushes.Violet, converter) { HoverText = text, Underlined = true }; }
+      static SimpleDataRun HeaderRun(int len, string text, Geometry[] converter) { return new SimpleDataRun(new GeometryElementProvider(converter, Solarized.Brushes.Violet, true, text), len); }
       static SimpleDataRun HeaderRun(int len, string text) { return HeaderRun(len, text, Utils.ByteFlyweights); }
 
       static readonly SimpleDataRun[] _headerRuns = new[] {
@@ -97,7 +98,7 @@ namespace SorceryHex.Gba {
    }
 
    class Lz : IRunParser {
-      static SimpleDataRun LzRun(int len, InterpretationRule interpret) { return new SimpleDataRun(len, Solarized.Brushes.Cyan, Utils.ByteFlyweights) { Interpret = interpret }; }
+      static SimpleDataRun LzRun(int len, InterpretationRule interpret) { return new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, Solarized.Brushes.Cyan), len) { Interpret = interpret }; }
 
       readonly PointerMapper _pointers;
 
