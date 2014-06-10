@@ -156,24 +156,31 @@ namespace SorceryHex.Gba {
          return pointerTypes.Contains(child.DataType);
       }
 
-      public static bool CouldBe(byte[] data, Entry entry, int address, IList<int> addresses, Entry parent = null, int parentAddress = -1) {
-         if (!IsPointerType(entry)) {
-            return entry.DataType != DataTypes.@word || data[address + 3] == 0x00;
-         }
-
-         // assume we've alread followed the pointer, so it's non-null
+      public static int GetElementCount(byte[] data, Entry entry, int address, Entry parent, int parentAddress) {
          int elementCount = 1;
          int elementLength = entry.Children.Sum(c => c.DataType.Length);
          if (entry.DataType == @pointerToArray) {
             if (!int.TryParse(entry.ArrayLengthEntry, out elementCount)) {
                if (entry.ArrayLengthEntry.StartsWith("+")) {
                   elementCount = FindDynamicLength(data, address, entry);
-                  if (elementCount < 10) return false;
+                  if (elementCount < 10) return -1;
                } else {
                   elementCount = data.ReadData(parent[entry.ArrayLengthEntry].DataType.Length, parentAddress + parent.ChildOffset(entry.ArrayLengthEntry));
                }
             }
          }
+
+         return elementCount;
+      }
+
+      public static bool CouldBe(byte[] data, Entry entry, int address, IList<int> addresses, Entry parent = null, int parentAddress = -1) {
+         if (!IsPointerType(entry)) {
+            return entry.DataType != DataTypes.@word || data[address + 3] == 0x00;
+         }
+
+         // assume we've alread followed the pointer, so it's non-null
+         int elementCount = GetElementCount(data, entry, address, parent, parentAddress);
+         if (elementCount < 0) return false;
 
          int childAddress = address;
          for (int i = 0; i < elementCount; i++) {
@@ -201,6 +208,38 @@ namespace SorceryHex.Gba {
          }
 
          return true;
+      }
+
+      public static void SeekChildren(IRunStorage runs, Entry entry, int address, PointerMapper mapper, Entry parent = null, int parentAddress = -1) {
+         if (!IsPointerType(entry)) {
+            runs.AddRun(address, DataTypes.MediaRun(entry.DataType.Length, entry.Name));
+            return;
+         }
+
+         int elementCount = GetElementCount(runs.Data, entry, address, parent, parentAddress);
+
+         int childAddress = address;
+         for (int i = 0; i < elementCount; i++) {
+            for (int j = 0; j < entry.Children.Length; childAddress += entry.Children[j++].DataType.Length) {
+               var child = entry.Children[j];
+
+               // if it's not a pointer, check it here
+               if (!IsPointerType(child)) {
+                  SeekChildren(runs, child, childAddress, mapper, entry, address);
+                  continue;
+               }
+
+               // if it's nullable and looks null, skip
+               if (child.DataType != DataTypes.@pointer && runs.Data[childAddress + 3] == 0x00) continue;
+
+               // check the pointer
+               var next = runs.Data.ReadPointer(childAddress);
+               mapper.Claim(runs, childAddress, next);
+               if (child.Children != null && child.Children.Length > 0) {
+                  SeekChildren(runs, child, next, mapper, entry, address);
+               }
+            }
+         }
       }
 
       public static int FindDynamicLength(byte[] data, int address, Entry entry) {
@@ -344,7 +383,7 @@ namespace SorceryHex.Gba {
          var addressesList = _mapper.OpenDestinations.ToList();
          foreach (var address in addressesList) {
             if (!DataTypes.CouldBe(_data, DataLayout, address, addressesList)) continue;
-            SeekChildren(DataLayout, runs, address);
+            DataTypes.SeekChildren(runs, DataLayout, address, _mapper);
             _mapper.Claim(runs, address);
             matchingPointers.Add(_mapper.PointersFromDestination(address).First()); // can I do without the first?
             matchingLayouts.Add(address);
@@ -379,42 +418,12 @@ namespace SorceryHex.Gba {
       }
       //*/
 
-      public IEnumerable<int> Find(string term) {
-         if (term == "maps") yield return _masterMapAddress;
-      }
-
-      void SeekChildren(Entry entry, IRunStorage runs, int address) {
-         int currentOffset = 0;
-         foreach (var child in entry.Children) {
-            if (DataTypes.IsPointerType(child)) {
-               if (child.DataType != DataTypes.@pointer && _data[address + currentOffset + 3] == 0x00) {
-                  currentOffset += child.DataType.Length;
-                  continue;
-               } else {
-                  var next = _data.ReadPointer(address + currentOffset);
-
-                  if (child.DataType == DataTypes.@pointerToArray) {
-                     int elementCount = _data.ReadData(entry[child.ArrayLengthEntry].DataType.Length, address + entry.ChildOffset(child.ArrayLengthEntry));
-                     int elementLength = child.Children.Sum(c => c.DataType.Length);
-                     for (int i = 0; i < elementCount; i++) {
-                        SeekChildren(child, runs, next + elementLength * i);
-                     }
-                  } else {
-                     if (child.Children != null && child.Children.Length > 0) SeekChildren(child, runs, next);
-                  }
-
-                  _mapper.Claim(runs, address + currentOffset, next);
-                  _allSubsetAddresses.Add(next);
-               }
-            } else {
-               runs.AddRun(address + currentOffset, DataTypes.MediaRun(child.DataType.Length, child.Name));
-            }
-            currentOffset += child.DataType.Length;
-         }
-      }
+      public IEnumerable<int> Find(string term) { if (term == "maps") yield return _masterMapAddress; }
    }
 
    class WildData : IRunParser {
+      #region Setup
+
       static readonly Entry DataLayout = new Entry("wild", "+FF",
          new Entry("bank_map", DataTypes.@short), new Entry("_", DataTypes.@short),
          new Entry("grass", DataTypes.@nullablepointer,
@@ -443,11 +452,14 @@ namespace SorceryHex.Gba {
          )
       );
 
+      #endregion
+
       readonly PointerMapper _mapper;
+      int _layout, _count;
 
       public WildData(PointerMapper mapper) { _mapper = mapper; }
 
-      public IEnumerable<int> Find(string term) { return null; }
+      public IEnumerable<int> Find(string term) { if (term == "wild") yield return _layout; }
 
       public void Load(IRunStorage runs) {
          var matchingLayouts = new List<int>();
@@ -456,13 +468,28 @@ namespace SorceryHex.Gba {
             if (runs.Data[address + 2] != 0) continue;
             if (runs.Data[address + 3] != 0) continue;
             if (!DataTypes.CouldBe(runs.Data, DataLayout, address, addressesList)) continue;
-            // SeekChildren(DataLayout, runs, address);
-            // _mapper.Claim(runs, address);
             matchingLayouts.Add(address);
          }
 
-         // we want only one matching layout.
-         // if there is more than one, find the one that is most likely to be correct.
+         var counts = new List<double>();
+         foreach (var layout in matchingLayouts) {
+            int repeatCount = 0;
+            int len = DataTypes.FindDynamicLength(runs.Data, layout, DataLayout);
+            byte prev = runs.Data[layout];
+            for (int i = 1; i < len; i++) {
+               var current = runs.Data[layout + i];
+               if (prev == current) repeatCount++;
+               prev = current;
+            }
+            counts.Add((double)repeatCount / len);
+         }
+
+         var least = counts.Min();
+         var index = counts.IndexOf(least);
+         _layout = matchingLayouts[index];
+         _count = DataTypes.FindDynamicLength(runs.Data, _layout, DataLayout);
+         DataTypes.SeekChildren(runs, DataLayout, _layout, _mapper);
+         _mapper.Claim(runs, _layout);
       }
    }
 
