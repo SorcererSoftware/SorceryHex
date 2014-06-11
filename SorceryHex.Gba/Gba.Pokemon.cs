@@ -271,45 +271,116 @@ namespace SorceryHex.Gba {
       //*/
 
       public IEnumerable<int> Find(string term) { if (term == "maps") yield return _masterMapAddress; }
+
+      public int this[byte bank, byte map] {
+         get {
+            int bankPointer = _masterMapAddress + bank * 4;
+            int mapPointer = _data.ReadPointer(bankPointer) + map * 4;
+            return _data.ReadPointer(mapPointer);
+         }
+      }
+   }
+
+   enum Offset { IconImage, IconPalette, IconPaletteIndex }
+
+   class SpeciesElementProvider : IElementProvider {
+      public static readonly IElementProvider Instance = new SpeciesElementProvider();
+      SpeciesElementProvider() { }
+
+      readonly Queue<Image> _recycles = new Queue<Image>();
+      readonly Queue<Rectangle> _empties = new Queue<Rectangle>();
+      readonly IDictionary<int, ImageSource> _cache = new Dictionary<int, ImageSource>();
+
+      public bool IsEquivalent(IElementProvider other) { return other == this; }
+
+      public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
+         if (innerIndex == 1) return ProvideEmpty();
+         int index = data.ReadShort(runStart);
+         var image = ProvideImage();
+         ImageSource source;
+         if (_cache.ContainsKey(index)) {
+            source = _cache[index];
+         } else {
+            source = Thumbnails.CropIcon(Thumbnails.GetIcon(data, data.ReadShort(runStart)));
+            source.Freeze();
+            _cache[index] = source;
+         }
+         image.Source = source;
+         return image;
+      }
+
+      public void Recycle(FrameworkElement element) {
+         if (element is Image) _recycles.Enqueue((Image)element);
+         else if (element is Rectangle) _empties.Enqueue((Rectangle)element);
+         else Debug.Fail("Cannot deal with this kind of element.");
+      }
+
+      FrameworkElement ProvideEmpty() {
+         if (_empties.Count > 0) return _empties.Dequeue();
+         return new Rectangle();
+      }
+
+      Image ProvideImage() {
+         if (_recycles.Count > 0) return _recycles.Dequeue();
+         var image = new Image { Width = MainWindow.ElementWidth, Height = MainWindow.ElementHeight };
+         Grid.SetColumnSpan(image, 2);
+         return image;
+      }
+   }
+
+   class MapElementProvider : IElementProvider {
+      readonly GeometryElementProvider _provider = new GeometryElementProvider(Utils.ByteFlyweights, Solarized.Brushes.Orange, true, "map reference");
+      readonly Maps _maps;
+      public MapElementProvider(Maps maps) { _maps = maps; }
+
+      public bool IsEquivalent(IElementProvider other) {
+         var that = other as MapElementProvider;
+         if (that == null) return false;
+         return that._maps == _maps;
+      }
+
+      public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
+         var element = _provider.ProvideElement(commandFactory, data, runStart, innerIndex, runLength);
+         byte bank = data[runStart];
+         byte map = data[runStart + 1];
+         commandFactory.CreateJumpCommand(element, _maps[bank, map]);
+         return element;
+      }
+
+      public void Recycle(FrameworkElement element) { _provider.Recycle(element); }
    }
 
    class WildData : IRunParser {
       #region Setup
 
-      static readonly Entry DataLayout = new Entry("wild", "+FF",
-         new Entry("bank_map", DataTypes.@short), new Entry("_", DataTypes.@short),
-         new Entry("grass", DataTypes.@nullablepointer,
-            new Entry("rate", DataTypes.@word),
-            new Entry("encounters", "12",
-               new Entry("lowLevel", DataTypes.@byte), new Entry("highLevel", DataTypes.@byte), new Entry("species", DataTypes.@short)
-            )
-         ),
-         new Entry("surf", DataTypes.@nullablepointer,
-            new Entry("rate", DataTypes.@word),
-            new Entry("encounters", "5",
-               new Entry("lowLevel", DataTypes.@byte), new Entry("highLevel", DataTypes.@byte), new Entry("species", DataTypes.@short)
-            )
-         ),
-         new Entry("tree", DataTypes.@nullablepointer,
-            new Entry("rate", DataTypes.@word),
-            new Entry("encounters", "5",
-               new Entry("lowLevel", DataTypes.@byte), new Entry("highLevel", DataTypes.@byte), new Entry("species", DataTypes.@short)
-            )
-         ),
-         new Entry("fishing", DataTypes.@nullablepointer,
-            new Entry("rate", DataTypes.@word),
-            new Entry("encounters", "10",
-               new Entry("lowLevel", DataTypes.@byte), new Entry("highLevel", DataTypes.@byte), new Entry("species", DataTypes.@short)
-            )
-         )
-      );
+      static readonly DataType _level = new DataType(1, new SimpleDataRun(new GeometryElementProvider(Utils.NumericFlyweights, Solarized.Brushes.Yellow), 1));
+      static readonly DataType _species = new DataType(2, new SimpleDataRun(SpeciesElementProvider.Instance, 2));
+
+      static readonly Entry[] _encounterChildren = new[] {
+         new Entry("lowLevel", _level), new Entry("highLevel", _level), new Entry("species", _species)
+      };
 
       #endregion
 
+      readonly Entry _dataLayout;
       readonly PointerMapper _mapper;
       int _layout, _count;
 
-      public WildData(PointerMapper mapper) { _mapper = mapper; }
+      public WildData(PointerMapper mapper, Maps maps) {
+         _mapper = mapper;
+         var names = new[] { "grass", "surf", "tree", "fishing" };
+         var lengths = new[] { 12, 5, 5, 10 };
+         var entryList = new List<Entry>();
+         var mapType = new DataType(2,new SimpleDataRun(new MapElementProvider(maps), 2));
+         entryList.Add(new Entry("bank_map", mapType));
+         entryList.Add(new Entry("_", DataTypes.@short));
+         for (int i = 0; i < names.Length; i++) {
+            entryList.Add(new Entry(names[i], DataTypes.@nullablepointer,
+               new Entry("rate", DataTypes.@word),
+               new Entry("encounters", lengths[i].ToString(), _encounterChildren)));
+         }
+         _dataLayout = new Entry("wild", "+FF", entryList.ToArray());
+      }
 
       public IEnumerable<int> Find(string term) { if (term == "wild") yield return _layout; }
 
@@ -319,14 +390,14 @@ namespace SorceryHex.Gba {
          foreach (var address in addressesList) {
             if (runs.Data[address + 2] != 0) continue;
             if (runs.Data[address + 3] != 0) continue;
-            if (!DataTypes.CouldBe(runs.Data, DataLayout, address, addressesList)) continue;
+            if (!DataTypes.CouldBe(runs.Data, _dataLayout, address, addressesList)) continue;
             matchingLayouts.Add(address);
          }
 
          var counts = new List<double>();
          foreach (var layout in matchingLayouts) {
             int repeatCount = 0;
-            int len = DataTypes.FindDynamicLength(runs.Data, layout, DataLayout);
+            int len = DataTypes.FindDynamicLength(runs.Data, layout, _dataLayout);
             byte prev = runs.Data[layout];
             for (int i = 1; i < len; i++) {
                var current = runs.Data[layout + i];
@@ -339,13 +410,11 @@ namespace SorceryHex.Gba {
          var least = counts.Min();
          var index = counts.IndexOf(least);
          _layout = matchingLayouts[index];
-         _count = DataTypes.FindDynamicLength(runs.Data, _layout, DataLayout);
-         DataTypes.SeekChildren(runs, DataLayout, _layout, _mapper);
+         _count = DataTypes.FindDynamicLength(runs.Data, _layout, _dataLayout);
+         DataTypes.SeekChildren(runs, _dataLayout, _layout, _mapper);
          _mapper.Claim(runs, _layout);
       }
    }
-
-   enum Offset { IconImage, IconPalette, IconPaletteIndex }
 
    class Thumbnails : IRunParser {
       #region Utils
@@ -372,7 +441,7 @@ namespace SorceryHex.Gba {
          { "BPGE", _fireredLeafgreen }
       };
 
-      public static FrameworkElement GetIcon(byte[] data, int index) {
+      public static BitmapSource GetIcon(byte[] data, int index) {
          var code = Header.GetCode(data);
          var table = _tables[code];
          int imageOffset = data.ReadPointer(table[Offset.IconImage]);
@@ -391,18 +460,14 @@ namespace SorceryHex.Gba {
          Array.Copy(data, paletteStart, paletteBytes, 0, 0x20);
          var palette = new ImageUtils.Palette(paletteBytes);
          int width = 32, height = 64;
-         var source = ImageUtils.Expand16bitImage(dataBytes, palette, width, height);
-         var image = new Image { Source = source, Width = width, Height = height };
-         return image;
+         return ImageUtils.Expand16bitImage(dataBytes, palette, width, height);
       }
 
-      public static void CropIcon(Image image) {
+      public static ImageSource CropIcon(BitmapSource source) {
          int newWidth = MainWindow.ElementWidth, newHeight = MainWindow.ElementHeight;
-         int oldWidth = (int)image.Width, oldHeight = (int)image.Height;
+         int oldWidth = (int)source.Width, oldHeight = (int)source.Height;
          int x = (oldWidth - newWidth) / 2, y = (oldHeight / 2 - newHeight) / 2 + 2;
-         image.Source = new CroppedBitmap((BitmapSource)image.Source, new Int32Rect(x, y, newWidth, newHeight));
-         image.Width = 24;
-         image.Height = 24;
+         return new CroppedBitmap((BitmapSource)source, new Int32Rect(x, y, newWidth, newHeight));
       }
 
       #endregion
@@ -425,7 +490,11 @@ namespace SorceryHex.Gba {
          while (data[imageOffset + 3] == 0x08) {
             int i = index; // closure
             var run = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, MediaBrush), 0x400) {
-               Interpret = (d, dex) => GetIcon(data, i)
+               Interpret = (d, dex) => {
+                  var source = GetIcon(data, i);
+                  var image = new Image { Source = source, Width = source.Width, Height = source.Height };
+                  return image;
+               }
             };
 
             _mapper.Claim(runs, run, data.ReadPointer(imageOffset));

@@ -187,7 +187,7 @@ namespace SorceryHex.Gba {
          width *= 0x08; height *= 0x08;
       }
 
-      public static ImageSource Expand16bitImage(byte[] image16bit, Palette palette32bit, int width, int height) {
+      public static BitmapSource Expand16bitImage(byte[] image16bit, Palette palette32bit, int width, int height) {
          // image16bit is organized as follows:
          // each byte contains 2 pixels, values 0-0xF
          // each set of 8x8 pixels is stored in a block
@@ -248,7 +248,7 @@ namespace SorceryHex.Gba {
          }
       }
 
-      static ImageSource Reorder(byte[] array, int width, int height) {
+      static BitmapSource Reorder(byte[] array, int width, int height) {
          // reorder data from blocks into single image
          int blockWrap = width / 8, pixelWrap = 8;
          var imageOutput = new byte[array.Length];

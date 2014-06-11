@@ -120,7 +120,7 @@ namespace SorceryHex {
                int lengthInView = runEnd - loc;
                InterpretData(currentRun, dataIndex);
                for (int j = 0; j < lengthInView; j++) {
-                  var element = currentRun.Provider.ProvideElement(Data, dataIndex, j, runEnd - dataIndex + 1);
+                  var element = currentRun.Provider.ProvideElement(commander, Data, dataIndex, loc - dataIndex + j, runEnd - dataIndex + 1);
                   if (element == null) continue;
                   element.Tag = currentRun.Provider;
 
@@ -253,7 +253,7 @@ namespace SorceryHex {
    public delegate FrameworkElement InterpretationRule(byte[] data, int index);
 
    public interface IElementProvider {
-      FrameworkElement ProvideElement(byte[] data, int runStart, int innerIndex, int runLength);
+      FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength);
       bool IsEquivalent(IElementProvider other);
       void Recycle(FrameworkElement element);
    }
@@ -272,7 +272,7 @@ namespace SorceryHex {
          _hoverText = hoverText;
       }
 
-      public FrameworkElement ProvideElement(byte[] data, int runStart, int innerIndex, int runLength) {
+      public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
          var geometry = _parser[data[runStart + innerIndex]];
          if (geometry == null) return null;
 

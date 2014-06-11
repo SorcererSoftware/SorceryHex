@@ -21,12 +21,13 @@ namespace SorceryHex.Gba {
 
       public IModel CreateModel(string name, byte[] data) {
          var pointerMapper = new PointerMapper(data);
+         var maps = new Maps(pointerMapper);
          var storage = new RunStorage(data
             , new Header(pointerMapper)
             , new Thumbnails(pointerMapper)
             , new Lz(pointerMapper)
-            , new Maps(pointerMapper)
-            , new WildData(pointerMapper)
+            , maps
+            , new WildData(pointerMapper, maps)
             , new PCS()
          );
          IModel model = new CompositeModel(data, storage);

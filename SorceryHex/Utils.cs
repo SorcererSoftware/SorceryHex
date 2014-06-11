@@ -65,6 +65,12 @@ namespace SorceryHex {
             geo.Freeze();
             return geo;
          }).ToArray();
+      public static readonly Geometry[] NumericFlyweights =
+         Enumerable.Range(0, 0x100).Select(i => {
+            var geo = i.ToString().ToGeometry();
+            geo.Freeze();
+            return geo;
+         }).ToArray();
       public static readonly Geometry[] UpperCaseFlyweights =
          Enumerable.Range(0, 'Z' - 'A' + 1).Select(i => {
             var geo = new string((char)('A' + i), 1).ToGeometry();
