@@ -520,4 +520,60 @@ namespace SorceryHex.Gba {
          _mapper.Claim(runs, data.ReadPointer(table[Offset.IconPalette]));
       }
    }
+
+   /*
+   class TrainerData : IRunParser {
+      public readonly DataType _string;
+      readonly PCS _pcs;
+
+      public TrainerData(PCS pcs) {
+         _pcs = pcs;
+         _string = new DataType(12, new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcs._pcsVisuals));
+         var children = new IEntry[] {
+            new SEntry("pokemonStructureType", DataTypes.@byte),
+            new SEntry("trainerClass", DataTypes.@byte),
+            new SEntry("introMusic", DataTypes.@byte),
+            new SEntry("sprite", DataTypes.@byte),
+            new SEntry("name", _string),
+            new SEntry("unknown", DataTypes.@unknown4),
+            new SEntry("unknown", DataTypes.@unknown4),
+            new SEntry("unknown", DataTypes.@unknown4),
+            new SEntry("unknown", DataTypes.@unknown4),
+            new SEntry("pokecount", DataTypes.@byte),
+            new SEntry("_", DataTypes.@byte),
+            new SEntry("_", DataTypes.@short),
+            null
+         };
+         _dataLayout = new SEntry("trainer", children);
+         children[children.Length - 1] = new VariableEntry(_dataLayout, "pokemonStructureType", _pokemon0.Children, _pokemon1.Children, _pokemon2.Children, _pokemon3.Children);
+      }
+
+      public IEnumerable<int> Find(string term) { return null; }
+
+   //   trainer: // there are 2E6 trainers, starting at 23EAF0
+   //.pokemonStructureType .trainerClass .introMusic .sprite // 0:none 1:attacks 2:items 3:both
+   //.12name
+   //? // gender, unknown
+   //? // money rate
+   //? // items
+   //?
+   //.pokeCount .? .? .?
+   //*opponentPokemon
+   //    opponentPokemon0: { -ivSpread -level -species -_ }
+   //    opponentPokemon1: { -ivSpread -level -species -attack -attack -attack -attack -_ }
+   //    opponentPokemon2: { -ivSpread -level -species -item }
+   //    opponentPokemon3: { -ivSpread -level -species -item -attack -attack -attack -attack }
+
+      readonly SEntry _pokemon0 = new SEntry("pokemon0", new SEntry("ivspread", DataTypes.@short), new SEntry("level", DataTypes.@short), new SEntry("species", WildData._species), new SEntry("_", DataTypes.@short));
+      readonly SEntry _pokemon1 = new SEntry("pokemon1", new SEntry("ivspread", DataTypes.@short), new SEntry("level", DataTypes.@short), new SEntry("species", WildData._species), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("_", DataTypes.@short));
+      readonly SEntry _pokemon2 = new SEntry("pokemon2", new SEntry("ivspread", DataTypes.@short), new SEntry("level", DataTypes.@short), new SEntry("species", WildData._species), new SEntry("item", DataTypes.@short));
+      readonly SEntry _pokemon3 = new SEntry("pokemon3", new SEntry("ivspread", DataTypes.@short), new SEntry("level", DataTypes.@short), new SEntry("species", WildData._species), new SEntry("item", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short));
+
+      readonly IEntry _dataLayout;
+
+      public void Load(IRunStorage runs) {
+
+      }
+   }
+   //*/
 }
