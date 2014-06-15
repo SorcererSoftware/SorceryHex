@@ -1,5 +1,8 @@
 ﻿
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Dynamic;
 
 namespace SorceryHex.Gba {
    [Export(typeof(IModelFactory))]
@@ -65,6 +68,153 @@ namespace SorceryHex.Gba {
          if (other is PokemonFactory) return -1;
          if (other is DefaultFactory) return 1;
          return 0;
+      }
+   }
+   
+   public delegate void ChildReader(IPokemonDatatypeBuilder factory);
+   public interface IPokemonDatatypeBuilder {
+      dynamic Result { get; }
+      byte ReadByte(string name);
+      short ReadShort(string name);
+      int ReadWord(string name);
+      dynamic ReadPointer(string name, ChildReader reader);
+      dynamic ReadNullablePointer(string name, ChildReader reader);
+      dynamic ReadArray(string name, int length, ChildReader reader);
+      dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader);
+   }
+
+   public class PokemonDataTypeParser : IPokemonDatatypeBuilder {
+      readonly IDictionary<string, object> _result = new ExpandoObject();
+      readonly RunStorage _runs;
+      int _location;
+
+      public bool IsFaulted { get; private set; }
+      public dynamic Result { get { return _result; } }
+
+      public PokemonDataTypeParser(RunStorage runs, int location) {
+         _runs = runs;
+         _location = location;
+      }
+
+      public byte ReadByte(string name) {
+         if (IsFaulted) return 0;
+         var result = _runs.Data[_location];
+         _location++;
+         _result[name] = result;
+         return result;
+      }
+
+      public short ReadShort(string name) {
+         if (IsFaulted) return 0;
+         var result = _runs.Data.ReadShort(_location);
+         _location += 2;
+         _result[name] = result;
+         return result;
+      }
+
+      public int ReadWord(string name) {
+         if (IsFaulted) return 0;
+         var result = _runs.Data.ReadData(4, _location);
+         _location += 4;
+         _result[name] = result;
+         return result;
+      }
+
+      public dynamic ReadPointer(string name, ChildReader reader) {
+         if (IsFaulted) return null;
+         var pointer = _runs.Data.ReadPointer(_location);
+         _location += 4;
+         if (pointer == -1) {
+            IsFaulted = true;
+            return null;
+         }
+         var child = new PokemonDataTypeParser(_runs, pointer);
+         reader(child);
+         IsFaulted |= child.IsFaulted;
+         if (IsFaulted) return null;
+         _result[name] = child.Result;
+         return child.Result;
+      }
+
+      public dynamic ReadNullablePointer(string name, ChildReader reader) {
+         if (IsFaulted) return null;
+         if (_runs.Data.ReadData(4, _location) == 0) {
+            _result[name] = null;
+            return null;
+         }
+         return ReadPointer(name, reader);
+      }
+
+      public dynamic ReadArray(string name, int length, ChildReader reader) {
+         throw new NotImplementedException();
+      }
+
+      public dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader) {
+         throw new NotImplementedException();
+      }
+   }
+
+   public class PokemonDatatypeFactory : IPokemonDatatypeBuilder {
+      static readonly IElementProvider _hex = new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number);
+      static readonly IElementProvider _nums = new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number);
+      readonly IDictionary<string, object> _result = new ExpandoObject();
+      readonly RunStorage _runs;
+      readonly PointerMapper _mapper;
+      int _location;
+
+      public dynamic Result { get { return _result; } }
+
+      public PokemonDatatypeFactory(RunStorage runs, PointerMapper mapper, int location) { _runs = runs; _mapper = mapper; _location = location; }
+
+      static readonly IDataRun _byteRun = new SimpleDataRun(_hex, 1);
+      public byte ReadByte(string name) {
+         _runs.AddRun(_location, _byteRun);
+         var value = _runs.Data[_location];
+         _location++;
+         return value;
+      }
+
+      static readonly IDataRun _shortRun = new SimpleDataRun(_hex, 2);
+      public short ReadShort(string name) {
+         _runs.AddRun(_location, _shortRun);
+         var value = _runs.Data.ReadShort(_location);
+         _location += 2;
+         return value;
+      }
+
+      static readonly IDataRun _wordRun = new SimpleDataRun(_hex, 4);
+      public int ReadShort(string name) {
+         _runs.AddRun(_location, _wordRun);
+         var value = _runs.Data.ReadData(4, _location);
+         _location += 4;
+         return value;
+      }
+
+      public dynamic ReadPointer(string name, ChildReader reader) {
+         var pointer = _runs.Data.ReadPointer(_location);
+         _mapper.Claim(_runs, _location, pointer);
+         _location += 4;
+         var child = new PokemonDatatypeFactory(_runs, _mapper, pointer);
+         reader(child);
+         _result[name] = child.Result;
+         return child.Result;
+      }
+
+      public dynamic ReadNullablePointer(string name, ChildReader reader) {
+         if (_runs.Data.ReadData(4, _location) == 0) {
+            _location += 4;
+            _result[name] = null;
+            return null;
+         }
+         return ReadPointer(name, reader);
+      }
+
+      public dynamic ReadArray(string name, int length, ChildReader reader) {
+         throw new NotImplementedException();
+      }
+
+      public dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader) {
+         throw new NotImplementedException();
       }
    }
 }

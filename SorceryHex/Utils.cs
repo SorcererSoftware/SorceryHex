@@ -89,8 +89,8 @@ namespace SorceryHex {
          return (memory[offset + 2] << 16) | (memory[offset + 1] << 8) | memory[offset + 0];
       }
 
-      public static int ReadShort(this byte[] memory, int offset) {
-         return (memory[offset + 1] << 8) | memory[offset + 0];
+      public static short ReadShort(this byte[] memory, int offset) {
+         return (short)((memory[offset + 1] << 8) | memory[offset + 0]);
       }
 
       public static int ReadData(this byte[] memory, int length, int offset) {

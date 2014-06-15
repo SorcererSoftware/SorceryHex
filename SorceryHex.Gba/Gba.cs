@@ -159,4 +159,15 @@ namespace SorceryHex.Gba {
          return grid;
       }
    }
+
+   static class GbaBrushes {
+      public static Brush Error = Solarized.Brushes.Red;      // not used to color data
+      public static Brush Pointer = Solarized.Brushes.Orange; // links. Not meant to be hand-edited
+      public static Brush Number = Solarized.Brushes.Yellow;  // short/simple intuitive in-line data
+      public static Brush Other = Solarized.Brushes.Green;    // 
+      public static Brush Media = Solarized.Brushes.Cyan;     // Complex/Long data, not meant to be hand-edited
+      public static Brush Code = Solarized.Brushes.Blue;      // scripts or assembly
+      public static Brush Strings = Solarized.Brushes.Violet; // variable length data with little to no internal structure
+      public static Brush BitField = Solarized.Brushes.Magenta;
+   }
 }
