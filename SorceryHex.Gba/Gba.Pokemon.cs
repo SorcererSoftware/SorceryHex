@@ -1,7 +1,8 @@
-﻿using System;
-using System.Collections;
+﻿using Microsoft.Scripting.Hosting;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -136,6 +137,36 @@ namespace SorceryHex.Gba {
             }
          }
          return new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
+      }
+   }
+
+   class ScriptedDataTypes : IRunParser {
+      readonly ScriptEngine _engine;
+      readonly ScriptScope _scope;
+      readonly string[] _scripts;
+
+      public ScriptedDataTypes(ScriptEngine engine, ScriptScope scope, params string[] scriptList) {
+         _engine = engine; _scope = scope; _scripts = scriptList;
+      }
+
+      public IEnumerable<int> Find(string term) { return null; }
+
+      public void Load(IRunStorage runs) {
+         var dir = AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/";
+         foreach (var script in _scripts) {
+            var source = _engine.CreateScriptSourceFromFile(dir + script);
+            // ???
+         }
+      }
+
+      int FindOne(ChildReader reader) {
+         // script can call this to find exactly one instance matching a pattern
+         return 0;
+      }
+
+      int[] FindMany(ChildReader reader) {
+         // script can call this to find many instances matching a pattern
+         return null;
       }
    }
 

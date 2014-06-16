@@ -44,9 +44,10 @@ namespace SorceryHex {
       #endregion
 
       readonly IEnumerable<IModelFactory> _factories;
+      readonly MultiBoxControl _multiBox;
+      readonly MainCommandFactory _commandFactory;
+      readonly CursorController _cursorController;
       IDictionary<Key, Action> KeyActions;
-      MainCommandFactory _commandFactory;
-      CursorController _cursorController;
 
       public int Offset { get; private set; }
       public IModel Holder { get; private set; }
@@ -60,8 +61,9 @@ namespace SorceryHex {
          Data = data;
          _commandFactory = new MainCommandFactory(this);
          InitializeComponent();
-         CommandBindings.AddRange(MultiBox.CommandBindings);
-         MultiBox.AppCommands = this;
+         _multiBox = new MultiBoxControl(this);
+         MenuDock.Children.Add(_multiBox);
+         CommandBindings.AddRange(_multiBox.CommandBindings);
          _cursorController = new CursorController(this, _commandFactory);
          ScrollBar.Minimum = -MaxColumnCount;
          InitializeKeyActions();
@@ -73,7 +75,7 @@ namespace SorceryHex {
 
       public event EventHandler JumpCompleted;
       public void JumpTo(int location, bool addToBreadcrumb = false) {
-         if (addToBreadcrumb) MultiBox.AddLocationToBreadCrumb();
+         if (addToBreadcrumb) _multiBox.AddLocationToBreadCrumb();
          location = Math.Min(Math.Max(-MaxColumnCount, location), Holder.Length);
 
          foreach (FrameworkElement element in Body.Children) Recycle(element);
@@ -254,7 +256,7 @@ namespace SorceryHex {
       void LoadParser(IModelFactory factory, string name, byte[] data) {
          Body.Children.Clear();
          if (Holder != null) Holder.MoveToNext -= _cursorController.HandleMoveNext;
-         Holder = factory.CreateModel(name, data);
+         Holder = factory.CreateModel(name, data, _multiBox.ScriptInfo);
          Holder.MoveToNext += _cursorController.HandleMoveNext;
          ScrollBar.Maximum = Holder.Length;
          JumpTo(0);

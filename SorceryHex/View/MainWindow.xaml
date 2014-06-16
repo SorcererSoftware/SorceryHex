@@ -22,7 +22,7 @@
         <DockPanel.ContextMenu>
             <ContextMenu Name="BodyContextMenu"/>
         </DockPanel.ContextMenu>
-        <DockPanel DockPanel.Dock="Top">
+        <DockPanel DockPanel.Dock="Top" Name="MenuDock">
             <Menu DockPanel.Dock="Left">
                 <MenuItem Header="_File">
                     <MenuItem Command="ApplicationCommands.Open" Header="_Open"/>
@@ -46,7 +46,6 @@
                     <MenuItem Header="About _Solarized" Click="AboutClick"/>
                 </MenuItem>
             </Menu>
-            <m:MultiBoxControl x:Name="MultiBox"/>
         </DockPanel>
         <UserControl Background="{Binding Backlight, Source={StaticResource Theme}}" DockPanel.Dock="Left">
             <Grid x:Name="Headers" HorizontalAlignment="Right" VerticalAlignment="Top" Width="70">

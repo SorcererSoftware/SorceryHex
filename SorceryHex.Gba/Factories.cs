@@ -22,15 +22,16 @@ namespace SorceryHex.Gba {
          return false;
       }
 
-      public IModel CreateModel(string name, byte[] data) {
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
          var pointerMapper = new PointerMapper(data);
-         var maps = new Maps(pointerMapper);
+         // var maps = new Maps(pointerMapper);
          var storage = new RunStorage(data
             , new Header(pointerMapper)
             , new Thumbnails(pointerMapper)
             , new Lz(pointerMapper)
-            , maps
-            , new WildData(pointerMapper, maps)
+            , new ScriptedDataTypes(scriptInfo.Engine, scriptInfo.Scope)
+            // , maps
+            // , new WildData(pointerMapper, maps)
             , new PCS()
          );
          IModel model = new CompositeModel(data, storage);
@@ -53,7 +54,7 @@ namespace SorceryHex.Gba {
          return name.ToLower().EndsWith("gba");
       }
 
-      public IModel CreateModel(string name, byte[] data) {
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
          var pointerMapper = new Gba.PointerMapper(data);
          var storage = new RunStorage(data
             , new Gba.Header(pointerMapper)
@@ -77,13 +78,14 @@ namespace SorceryHex.Gba {
       byte ReadByte(string name);
       short ReadShort(string name);
       int ReadWord(string name);
+      void ReadPointer(string name);
       dynamic ReadPointer(string name, ChildReader reader);
       dynamic ReadNullablePointer(string name, ChildReader reader);
       dynamic ReadArray(string name, int length, ChildReader reader);
       dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader);
    }
 
-   public class PokemonDataTypeParser : IPokemonDatatypeBuilder {
+   class PokemonDataTypeParser : IPokemonDatatypeBuilder {
       readonly IDictionary<string, object> _result = new ExpandoObject();
       readonly RunStorage _runs;
       int _location;
@@ -120,6 +122,17 @@ namespace SorceryHex.Gba {
          return result;
       }
 
+      public void ReadPointer(string name) {
+         if (IsFaulted) return;
+         var pointer = _runs.Data.ReadPointer(_location);
+         _location += 4;
+         if (pointer == -1) {
+            IsFaulted = true;
+            return;
+         }
+         _result[name] = null;
+      }
+
       public dynamic ReadPointer(string name, ChildReader reader) {
          if (IsFaulted) return null;
          var pointer = _runs.Data.ReadPointer(_location);
@@ -154,7 +167,7 @@ namespace SorceryHex.Gba {
       }
    }
 
-   public class PokemonDatatypeFactory : IPokemonDatatypeBuilder {
+   class PokemonDatatypeFactory : IPokemonDatatypeBuilder {
       static readonly IElementProvider _hex = new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number);
       static readonly IElementProvider _nums = new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number);
       readonly IDictionary<string, object> _result = new ExpandoObject();
@@ -183,11 +196,18 @@ namespace SorceryHex.Gba {
       }
 
       static readonly IDataRun _wordRun = new SimpleDataRun(_hex, 4);
-      public int ReadShort(string name) {
+      public int ReadWord(string name) {
          _runs.AddRun(_location, _wordRun);
          var value = _runs.Data.ReadData(4, _location);
          _location += 4;
          return value;
+      }
+
+      public void ReadPointer(string name) {
+         var pointer = _runs.Data.ReadPointer(_location);
+         _mapper.Claim(_runs, _location, pointer);
+         _location += 4;
+         _result[name] = null;
       }
 
       public dynamic ReadPointer(string name, ChildReader reader) {

@@ -44,14 +44,14 @@ namespace SorceryHex {
    public interface IModelFactory : IComparable<IModelFactory> {
       string DisplayName { get; }
       bool CanCreateModel(string name, byte[] data);
-      IModel CreateModel(string name, byte[] data);
+      IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo);
    }
 
    [Export(typeof(IModelFactory))]
    public class SimpleFactory : IModelFactory, IModel {
       public string DisplayName { get { return "Simple"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
-      public IModel CreateModel(string name, byte[] data) { _data = data; return this; }
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { _data = data; return this; }
       public int CompareTo(IModelFactory other) { return -1; }
 
       byte[] _data;
@@ -102,7 +102,7 @@ namespace SorceryHex {
    public class DefaultFactory : IModelFactory {
       public string DisplayName { get { return "Default"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
-      public IModel CreateModel(string name, byte[] data) { return new CompositeModel(data); }
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(data); }
       public int CompareTo(IModelFactory other) { return (other is SimpleFactory) ? 1 : -1; }
    }
 }
