@@ -1,4 +1,4 @@
-﻿using IronRuby;
+﻿using IronPython.Hosting;
 using Microsoft.Scripting;
 using Microsoft.Scripting.Hosting;
 using System;
@@ -36,7 +36,7 @@ namespace SorceryHex {
    /// </summary>
    public partial class MultiBoxControl : UserControl {
       readonly IAppCommands _appCommands;
-      readonly ScriptEngine _engine = Ruby.CreateEngine();
+      readonly ScriptEngine _engine = Python.CreateEngine();
       readonly ScriptScope _scope;
       readonly Popup _popup;
       readonly TextBlock _outputText;
@@ -199,8 +199,8 @@ namespace SorceryHex {
 
       #region Commands
 
-      void RubyExecuted(object sender, EventArgs e) {
-         MultiBoxLabel.Text = "Ruby";
+      void PythonExecuted(object sender, EventArgs e) {
+         MultiBoxLabel.Text = "Python";
          UpdateVisibility(ScriptContainer);
       }
 

@@ -39,7 +39,7 @@
                     <MenuItem Command="NavigationCommands.PreviousPage" Header="Find _Previous" InputGestureText="Shift+F3"/>
                     <MenuItem Command="NavigationCommands.GoToPage" Header="_Go To" InputGestureText="Ctrl+G" />
                     <MenuItem Command="NavigationCommands.BrowseBack" Header="_Back" InputGestureText="Alt+Left, Ctrl+-, Backspace" />
-                    <MenuItem Command="MediaCommands.Select" InputGestureText="Ctrl+R" Header="_Ruby"/>
+                    <MenuItem Command="MediaCommands.Select" InputGestureText="Ctrl+R" Header="P_ython"/>
                 </MenuItem>
                 <MenuItem Header="_Help">
                     <MenuItem Header="_About" Click="AboutClick"/>

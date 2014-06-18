@@ -14,7 +14,7 @@
         <CommandBinding Command="NavigationCommands.NextPage" Executed="FindPreviousExecuted" CanExecute="FindNavigationCanExecute"/>
         <CommandBinding Command="NavigationCommands.PreviousPage" Executed="FindNextExecuted" CanExecute="FindNavigationCanExecute"/>
         <CommandBinding Command="NavigationCommands.BrowseBack" Executed="BackExecuted" CanExecute="BackCanExecute" />
-        <CommandBinding Command="MediaCommands.Select" Executed="RubyExecuted" CanExecute="Always" />
+        <CommandBinding Command="MediaCommands.Select" Executed="PythonExecuted" CanExecute="Always" />
     </UserControl.CommandBindings>
     <UserControl.Resources>
         <Style TargetType="Button">
@@ -49,7 +49,7 @@
             <Button x:Name="Close" Content="X" Click="CloseClick"/>
         </StackPanel>
         <DockPanel Name="ScriptContainer" Visibility="Hidden">
-            <TextBlock Text="Ruby" VerticalAlignment="Center" Padding="4,2" Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
+            <TextBlock Text="Python" VerticalAlignment="Center" Padding="4,2" Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
             <TextBox x:Name="ScriptBox" Margin="2" KeyDown="HandleScriptKey"/>
         </DockPanel>
     </Grid>

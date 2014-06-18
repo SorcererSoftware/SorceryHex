@@ -29,7 +29,7 @@ namespace SorceryHex.Gba {
             , new Header(pointerMapper)
             , new Thumbnails(pointerMapper)
             , new Lz(pointerMapper)
-            , new ScriptedDataTypes(scriptInfo.Engine, scriptInfo.Scope)
+            , new ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope, "maps.py")
             // , maps
             // , new WildData(pointerMapper, maps)
             , new PCS()
@@ -42,6 +42,7 @@ namespace SorceryHex.Gba {
       public int CompareTo(IModelFactory other) {
          if (other is GbaFactory) return 1;
          if (other is DefaultFactory) return 1;
+         if (other is SimpleFactory) return 1;
          return 0;
       }
    }
@@ -68,11 +69,19 @@ namespace SorceryHex.Gba {
       public int CompareTo(IModelFactory other) {
          if (other is PokemonFactory) return -1;
          if (other is DefaultFactory) return 1;
+         if (other is SimpleFactory) return 1;
          return 0;
       }
    }
    
    public delegate void ChildReader(IPokemonDatatypeBuilder factory);
+
+   public interface IDataTypeFinder {
+      int FindOne(ChildReader reader);
+      int[][] FindMany(ChildReader reader);
+      void TestMethod(int input);
+   }
+
    public interface IPokemonDatatypeBuilder {
       dynamic Result { get; }
       byte ReadByte(string name);
@@ -87,13 +96,13 @@ namespace SorceryHex.Gba {
 
    class PokemonDataTypeParser : IPokemonDatatypeBuilder {
       readonly IDictionary<string, object> _result = new ExpandoObject();
-      readonly RunStorage _runs;
+      readonly IRunStorage _runs;
       int _location;
 
       public bool IsFaulted { get; private set; }
       public dynamic Result { get { return _result; } }
 
-      public PokemonDataTypeParser(RunStorage runs, int location) {
+      public PokemonDataTypeParser(IRunStorage runs, int location) {
          _runs = runs;
          _location = location;
       }
@@ -171,13 +180,13 @@ namespace SorceryHex.Gba {
       static readonly IElementProvider _hex = new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number);
       static readonly IElementProvider _nums = new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number);
       readonly IDictionary<string, object> _result = new ExpandoObject();
-      readonly RunStorage _runs;
+      readonly IRunStorage _runs;
       readonly PointerMapper _mapper;
       int _location;
 
       public dynamic Result { get { return _result; } }
 
-      public PokemonDatatypeFactory(RunStorage runs, PointerMapper mapper, int location) { _runs = runs; _mapper = mapper; _location = location; }
+      public PokemonDatatypeFactory(IRunStorage runs, PointerMapper mapper, int location) { _runs = runs; _mapper = mapper; _location = location; }
 
       static readonly IDataRun _byteRun = new SimpleDataRun(_hex, 1);
       public byte ReadByte(string name) {

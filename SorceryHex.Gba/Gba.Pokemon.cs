@@ -140,33 +140,52 @@ namespace SorceryHex.Gba {
       }
    }
 
-   class ScriptedDataTypes : IRunParser {
+   class ScriptedDataTypes : IRunParser, IDataTypeFinder {
+      readonly PointerMapper _mapper;
       readonly ScriptEngine _engine;
       readonly ScriptScope _scope;
       readonly string[] _scripts;
 
-      public ScriptedDataTypes(ScriptEngine engine, ScriptScope scope, params string[] scriptList) {
-         _engine = engine; _scope = scope; _scripts = scriptList;
+      public ScriptedDataTypes(PointerMapper mapper, ScriptEngine engine, ScriptScope scope, params string[] scriptList) {
+         _mapper = mapper; _engine = engine; _scope = scope; _scripts = scriptList;
       }
 
       public IEnumerable<int> Find(string term) { return null; }
 
+      IRunStorage _runs;
       public void Load(IRunStorage runs) {
+         _runs = runs;
+         _scope.SetVariable("types", this);
          var dir = AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/";
          foreach (var script in _scripts) {
             var source = _engine.CreateScriptSourceFromFile(dir + script);
-            // ???
+            source.Execute(_scope);
          }
       }
 
-      int FindOne(ChildReader reader) {
+      public void TestMethod(int input) {
+         MessageBox.Show("Word");
+      }
+
+      public int FindOne(ChildReader reader) {
          // script can call this to find exactly one instance matching a pattern
          return 0;
       }
 
-      int[] FindMany(ChildReader reader) {
-         // script can call this to find many instances matching a pattern
-         return null;
+      public int[][] FindMany(ChildReader reader) {
+         var matchingLayouts = new List<int>();
+         var matchingPointers = new List<int>();
+         var addressesList = _mapper.OpenDestinations.ToList();
+         foreach (var address in addressesList) {
+            var parser = new PokemonDataTypeParser(_runs, address);
+            reader(parser);
+            if(parser.IsFaulted)continue;
+            var factory = new PokemonDatatypeFactory(_runs,_mapper,address);
+            reader(factory);
+            matchingPointers.Add(_mapper.PointersFromDestination(address).First()); // can I do without the first?
+            matchingLayouts.Add(address);
+         }
+         return new int[][] { matchingPointers.ToArray(), matchingLayouts.ToArray() };
       }
    }
 
