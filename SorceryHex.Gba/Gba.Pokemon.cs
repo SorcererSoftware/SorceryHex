@@ -163,10 +163,6 @@ namespace SorceryHex.Gba {
          }
       }
 
-      public void TestMethod(int input) {
-         MessageBox.Show("Word");
-      }
-
       public int FindOne(ChildReader reader) {
          // script can call this to find exactly one instance matching a pattern
          return 0;

@@ -73,13 +73,12 @@ namespace SorceryHex.Gba {
          return 0;
       }
    }
-   
+
    public delegate void ChildReader(IPokemonDatatypeBuilder factory);
 
    public interface IDataTypeFinder {
       int FindOne(ChildReader reader);
       int[][] FindMany(ChildReader reader);
-      void TestMethod(int input);
    }
 
    public interface IPokemonDatatypeBuilder {
@@ -89,6 +88,7 @@ namespace SorceryHex.Gba {
       int ReadWord(string name);
       void ReadPointer(string name);
       dynamic ReadPointer(string name, ChildReader reader);
+      void ReadNullablePointer(string name);
       dynamic ReadNullablePointer(string name, ChildReader reader);
       dynamic ReadArray(string name, int length, ChildReader reader);
       dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader);
@@ -158,6 +158,15 @@ namespace SorceryHex.Gba {
          return child.Result;
       }
 
+      public void ReadNullablePointer(string name) {
+         if (IsFaulted) return;
+         if (_runs.Data.ReadData(4, _location) == 0) {
+            _result[name] = null;
+            return;
+         }
+         ReadPointer(name);
+      }
+
       public dynamic ReadNullablePointer(string name, ChildReader reader) {
          if (IsFaulted) return null;
          if (_runs.Data.ReadData(4, _location) == 0) {
@@ -168,7 +177,27 @@ namespace SorceryHex.Gba {
       }
 
       public dynamic ReadArray(string name, int length, ChildReader reader) {
-         throw new NotImplementedException();
+         if (IsFaulted) return null;
+         if (_runs.Data.ReadData(4, _location) == 0) {
+            _result[name] = null;
+            return null;
+         }
+         var pointer = _runs.Data.ReadPointer(_location);
+         _location += 4;
+         if (pointer == -1) {
+            IsFaulted = true;
+            return null;
+         }
+         var child = new PokemonDataTypeParser(_runs, pointer);
+         var array = new dynamic[length];
+         for (int i = 0; i < array.Length; i++) {
+            reader(child);
+            IsFaulted |= child.IsFaulted;
+            if (IsFaulted) return null;
+            array[i] = child.Result;
+         }
+         _result[name] = array;
+         return array;
       }
 
       public dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader) {
@@ -229,6 +258,15 @@ namespace SorceryHex.Gba {
          return child.Result;
       }
 
+      public void ReadNullablePointer(string name) {
+         if (_runs.Data.ReadData(4, _location) == 0) {
+            _location += 4;
+            _result[name] = null;
+            return;
+         }
+         ReadPointer(name);
+      }
+
       public dynamic ReadNullablePointer(string name, ChildReader reader) {
          if (_runs.Data.ReadData(4, _location) == 0) {
             _location += 4;
@@ -239,7 +277,21 @@ namespace SorceryHex.Gba {
       }
 
       public dynamic ReadArray(string name, int length, ChildReader reader) {
-         throw new NotImplementedException();
+         if (_runs.Data.ReadData(4, _location) == 0) {
+            _result[name] = null;
+            return null;
+         }
+         var pointer = _runs.Data.ReadPointer(_location);
+         _mapper.Claim(_runs, _location, pointer);
+         _location += 4;
+         var child = new PokemonDataTypeParser(_runs, pointer);
+         var array = new dynamic[length];
+         for (int i = 0; i < array.Length; i++) {
+            reader(child);
+            array[i] = child.Result;
+         }
+         _result[name] = array;
+         return array;
       }
 
       public dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader) {

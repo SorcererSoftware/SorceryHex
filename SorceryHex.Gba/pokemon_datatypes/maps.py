@@ -40,31 +40,91 @@ static readonly Entry DataLayout = new Entry("map",
 '''
 
 def mapLayout(b):
-    b.ReadPointer("mapTileData", mapTileData)
-    b.ReadPointer("mapEventData")
+    b.ReadPointer("mapTileData", mapTileLayout)
+    b.ReadPointer("mapEventData", eventLayout)
     b.ReadNullablePointer("script")
     b.ReadNullablePointer("connections")
+
     b.ReadShort("song")
     b.ReadShort("map")
-    b.ReadByte("label_id")
+
+    b.ReadByte("labelid")
     b.ReadByte("flash")
     b.ReadByte("weather")
     b.ReadByte("type")
+
     b.ReadShort("_")
     b.ReadByte("labelToggle")
     b.ReadByte("_")
 
-def mapTileData(b):
+def mapTileLayout(b):
     b.ReadWord("width")
     b.ReadWord("height")
     b.ReadPointer("borderTile")
-    b.ReadPointer("tile")
+    b.ReadPointer("tiles")
     b.ReadPointer("tileset1")
     b.ReadPointer("tileset2")
-    b.ReadByte("borderWidth")
+    b.ReadByte("borderWidth") # TODO only if FR / LG
     b.ReadByte("borderHeight")
     b.ReadShort("_")
 
+def eventLayout(b):
+    persons = b.ReadByte("personCount")
+    warps = b.ReadByte("warpCount")
+    scripts = b.ReadByte("scriptCount")
+    signposts = b.ReadByte("signpostCount")
+    b.ReadArray("persons", persons, personLayout)
+    b.ReadArray("warps", warps, warpLayout)
+    b.ReadArray("scripts", scripts, scriptLayout)
+    b.ReadArray("signposts", signposts, signpostLayout)
+
+def personLayout(b):
+    b.ReadByte("?")
+    b.ReadByte("picture")
+    b.ReadShort("?")
+
+    b.ReadShort("x")
+    b.ReadShort("y")
+    
+    b.ReadByte("?")
+    b.ReadByte("movementType")
+    b.ReadByte("movement")
+    b.ReadByte("?")
+
+    b.ReadByte("isTrainer")
+    b.ReadByte("?")
+    b.ReadShort("viewRadius")
+    
+    b.ReadNullablePointer("script")
+    b.ReadShort("id")
+    b.ReadShort("?")
+
+def warpLayout(b):
+    b.ReadShort("x")
+    b.ReadShort("y")
+    b.ReadByte("?") # TODO add a link here
+    b.ReadByte("warp")
+    b.ReadByte("map")
+    b.ReadByte("bank")
+
+def scriptLayout(b):
+    b.ReadShort("x")
+    b.ReadShort("y")
+    b.ReadShort("?")
+    b.ReadShort("scriptVariable")
+    b.ReadShort("scriptVariableValue")
+    b.ReadShort("?")
+    b.ReadNullablePointer("script")
+
+def signpostLayout(b):
+    b.ReadShort("x")
+    b.ReadShort("y")
+    b.ReadByte("talkingLevel")
+    b.ReadByte("signpostType")
+    b.ReadShort("?")
+    b.ReadWord("?") # TODO script || -itemID .hiddenID .amount
+
 matchingMapLayouts = types.FindMany(mapLayout)
+
 
 # TODO do something with the matching map layouts. Find their root pointer or something.
