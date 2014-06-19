@@ -1,4 +1,5 @@
 ﻿using Microsoft.Scripting.Hosting;
+using SorceryHex.Gba.Pokemon.DataTypes;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -140,7 +141,7 @@ namespace SorceryHex.Gba {
       }
    }
 
-   class ScriptedDataTypes : IRunParser, IDataTypeFinder {
+   class ScriptedDataTypes : IRunParser, ITypes {
       readonly PointerMapper _mapper;
       readonly ScriptEngine _engine;
       readonly ScriptScope _scope;
@@ -165,7 +166,7 @@ namespace SorceryHex.Gba {
       }
 
       public int FindVariableArray(byte ender, ChildReader reader) {
-         var lengthFinder = new DataTypeLengthFinder();
+         var lengthFinder = new LengthFinder();
          reader(lengthFinder);
          int stride = lengthFinder.Length;
 
@@ -181,7 +182,7 @@ namespace SorceryHex.Gba {
             if (address + stride * elementCount >= _runs.Data.Length) continue;
             if (elementCount < 10) continue;
 
-            var parser = new PokemonDataTypeParser(_runs, address);
+            var parser = new Parser(_runs, address);
             for (int i = 0; i < elementCount; i++) {
                reader(parser);
                if (parser.FaultReason != null) break;
@@ -208,24 +209,24 @@ namespace SorceryHex.Gba {
          var least = counts.Min();
          var index = counts.IndexOf(least);
 
-         var factory = new PokemonDatatypeFactory(_runs, _mapper, matchingLayouts[index]);
+         var factory = new Factory(_runs, _mapper, matchingLayouts[index]);
          for (int i = 0; i < matchingLengths[index]; i++) {
             reader(factory);
          }
          return matchingLayouts[index];
       }
 
-      public GbaPointer[] FindMany(ChildReader reader) {
-         var matchingPointers = new List<GbaPointer>();
+      public Pointer[] FindMany(ChildReader reader) {
+         var matchingPointers = new List<Pointer>();
          var addressesList = _mapper.OpenDestinations.ToList();
          foreach (var address in addressesList) {
-            var parser = new PokemonDataTypeParser(_runs, address);
+            var parser = new Parser(_runs, address);
             reader(parser);
             if (parser.FaultReason != null) continue;
-            var factory = new PokemonDatatypeFactory(_runs, _mapper, address);
+            var factory = new Factory(_runs, _mapper, address);
             reader(factory);
 
-            matchingPointers.Add(new GbaPointer { source = _mapper.PointersFromDestination(address).First(), destination = address });
+            matchingPointers.Add(new Pointer { source = _mapper.PointersFromDestination(address).First(), destination = address });
          }
          return matchingPointers.ToArray();
       }
@@ -234,12 +235,12 @@ namespace SorceryHex.Gba {
       /// Given a list of pointers, finds the ones that are pointed to.
       /// Returns the pointers pointing to the list.
       /// </summary>
-      public GbaPointer[] FollowPointersUp(GbaPointer[] locations) {
-         var pointerSet = new List<GbaPointer>();
+      public Pointer[] FollowPointersUp(Pointer[] locations) {
+         var pointerSet = new List<Pointer>();
          foreach (var destination in locations) {
             var pointers = _mapper.PointersFromDestination(destination.source);
             if (pointers == null || pointers.Length == 0) continue;
-            pointerSet.Add(new GbaPointer { source = pointers.First(), destination = destination.source }); // can I do without the first?
+            pointerSet.Add(new Pointer { source = pointers.First(), destination = destination.source }); // can I do without the first?
          }
          return pointerSet.ToArray();
       }
