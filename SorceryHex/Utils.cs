@@ -117,6 +117,12 @@ namespace SorceryHex {
          return ToHexString(value / 16) + Hex.Substring(value % 16, 1);
       }
 
+      public static string ToHexString(this int value, int minLength) {
+         var result = value.ToHexString();
+         while (result.Length < minLength) result = "0" + result;
+         return result;
+      }
+
       public static int ParseAsHex(this string value) {
          value = value.ToUpper();
          Debug.Assert(value.All(c => Hex.Contains(c)));

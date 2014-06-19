@@ -43,7 +43,7 @@ def mapLayout(b):
     b.ReadPointer("mapTileData", mapTileLayout)
     b.ReadPointer("mapEventData", eventLayout)
     b.ReadNullablePointer("script")
-    b.ReadNullablePointer("connections")
+    b.ReadNullablePointer("connections", connectionLayout)
 
     b.ReadShort("song")
     b.ReadShort("map")
@@ -77,6 +77,10 @@ def eventLayout(b):
     b.ReadArray("warps", warps, warpLayout)
     b.ReadArray("scripts", scripts, scriptLayout)
     b.ReadArray("signposts", signposts, signpostLayout)
+
+def connectionLayout(b):
+    b.ReadWord("count")
+    b.ReadNullablePointer("data")
 
 def personLayout(b):
     b.ReadByte("?")

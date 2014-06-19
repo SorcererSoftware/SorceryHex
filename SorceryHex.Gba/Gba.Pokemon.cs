@@ -159,6 +159,7 @@ namespace SorceryHex.Gba {
          var dir = AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/";
          foreach (var script in _scripts) {
             var source = _engine.CreateScriptSourceFromFile(dir + script);
+            // var code = source.Compile();
             source.Execute(_scope);
          }
       }
@@ -168,20 +169,33 @@ namespace SorceryHex.Gba {
          return 0;
       }
 
-      public int[][] FindMany(ChildReader reader) {
-         var matchingLayouts = new List<int>();
-         var matchingPointers = new List<int>();
+      public GbaPointer[] FindMany(ChildReader reader) {
+         var matchingPointers = new List<GbaPointer>();
          var addressesList = _mapper.OpenDestinations.ToList();
          foreach (var address in addressesList) {
             var parser = new PokemonDataTypeParser(_runs, address);
             reader(parser);
-            if(parser.IsFaulted)continue;
-            var factory = new PokemonDatatypeFactory(_runs,_mapper,address);
+            if (parser.FaultReason != null) continue;
+            var factory = new PokemonDatatypeFactory(_runs, _mapper, address);
             reader(factory);
-            matchingPointers.Add(_mapper.PointersFromDestination(address).First()); // can I do without the first?
-            matchingLayouts.Add(address);
+
+            matchingPointers.Add(new GbaPointer{ source= _mapper.PointersFromDestination(address).First(), destination=address});
          }
-         return new int[][] { matchingPointers.ToArray(), matchingLayouts.ToArray() };
+         return matchingPointers.ToArray();
+      }
+
+      /// <summary>
+      /// Given a list of pointers, finds the ones that are pointed to.
+      /// Returns the pointers pointing to the list.
+      /// </summary>
+      public GbaPointer[] FollowPointersUp(GbaPointer[] locations) {
+         var pointerSet = new List<GbaPointer>();
+         foreach (var destination in locations) {
+            var pointers = _mapper.PointersFromDestination(destination.source);
+            if (pointers == null || pointers.Length == 0) continue;
+            pointerSet.Add(new GbaPointer{ source= pointers.First(), destination=destination.source}); // can I do without the first?
+         }
+         return pointerSet.ToArray();
       }
    }
 

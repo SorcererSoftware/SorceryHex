@@ -29,7 +29,7 @@ namespace SorceryHex.Gba {
             , new Header(pointerMapper)
             , new Thumbnails(pointerMapper)
             , new Lz(pointerMapper)
-            , new ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope, "maps.py")
+            , new ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope, "maps.rb")
             // , maps
             // , new WildData(pointerMapper, maps)
             , new PCS()
@@ -76,9 +76,18 @@ namespace SorceryHex.Gba {
 
    public delegate void ChildReader(IPokemonDatatypeBuilder factory);
 
+   public class GbaPointer {
+      public int source;
+      public int destination;
+      public override string ToString() {
+         return source.ToHexString(6) + " -> " + destination.ToHexString(6);
+      }
+   }
+
    public interface IDataTypeFinder {
       int FindOne(ChildReader reader);
-      int[][] FindMany(ChildReader reader);
+      GbaPointer[] FindMany(ChildReader reader);
+      GbaPointer[] FollowPointersUp(GbaPointer[] locations);
    }
 
    public interface IPokemonDatatypeBuilder {
@@ -99,7 +108,7 @@ namespace SorceryHex.Gba {
       readonly IRunStorage _runs;
       int _location;
 
-      public bool IsFaulted { get; private set; }
+      public string FaultReason { get; private set; }
       public dynamic Result { get { return _result; } }
 
       public PokemonDataTypeParser(IRunStorage runs, int location) {
@@ -108,7 +117,7 @@ namespace SorceryHex.Gba {
       }
 
       public byte ReadByte(string name) {
-         if (IsFaulted) return 0;
+         if (FaultReason != null) return 0;
          var result = _runs.Data[_location];
          _location++;
          _result[name] = result;
@@ -116,7 +125,7 @@ namespace SorceryHex.Gba {
       }
 
       public short ReadShort(string name) {
-         if (IsFaulted) return 0;
+         if (FaultReason != null) return 0;
          var result = _runs.Data.ReadShort(_location);
          _location += 2;
          _result[name] = result;
@@ -124,7 +133,7 @@ namespace SorceryHex.Gba {
       }
 
       public int ReadWord(string name) {
-         if (IsFaulted) return 0;
+         if (FaultReason != null) return 0;
          var result = _runs.Data.ReadData(4, _location);
          _location += 4;
          _result[name] = result;
@@ -132,35 +141,36 @@ namespace SorceryHex.Gba {
       }
 
       public void ReadPointer(string name) {
-         if (IsFaulted) return;
+         if (FaultReason != null) return;
          var pointer = _runs.Data.ReadPointer(_location);
          _location += 4;
          if (pointer == -1) {
-            IsFaulted = true;
+            FaultReason = name + ": not a pointer";
             return;
          }
          _result[name] = null;
       }
 
       public dynamic ReadPointer(string name, ChildReader reader) {
-         if (IsFaulted) return null;
+         if (FaultReason != null) return null;
          var pointer = _runs.Data.ReadPointer(_location);
          _location += 4;
          if (pointer == -1) {
-            IsFaulted = true;
+            FaultReason = name + ": not a pointer";
             return null;
          }
          var child = new PokemonDataTypeParser(_runs, pointer);
          reader(child);
-         IsFaulted |= child.IsFaulted;
-         if (IsFaulted) return null;
+         FaultReason = child.FaultReason;
+         if (FaultReason != null) return null;
          _result[name] = child.Result;
          return child.Result;
       }
 
       public void ReadNullablePointer(string name) {
-         if (IsFaulted) return;
+         if (FaultReason != null) return;
          if (_runs.Data.ReadData(4, _location) == 0) {
+            _location += 4;
             _result[name] = null;
             return;
          }
@@ -168,8 +178,9 @@ namespace SorceryHex.Gba {
       }
 
       public dynamic ReadNullablePointer(string name, ChildReader reader) {
-         if (IsFaulted) return null;
+         if (FaultReason != null) return null;
          if (_runs.Data.ReadData(4, _location) == 0) {
+            _location += 4;
             _result[name] = null;
             return null;
          }
@@ -177,23 +188,24 @@ namespace SorceryHex.Gba {
       }
 
       public dynamic ReadArray(string name, int length, ChildReader reader) {
-         if (IsFaulted) return null;
+         if (FaultReason != null) return null;
          if (_runs.Data.ReadData(4, _location) == 0) {
+            _location += 4;
             _result[name] = null;
             return null;
          }
          var pointer = _runs.Data.ReadPointer(_location);
          _location += 4;
          if (pointer == -1) {
-            IsFaulted = true;
+            FaultReason = name + ": not a pointer";
             return null;
          }
          var child = new PokemonDataTypeParser(_runs, pointer);
          var array = new dynamic[length];
          for (int i = 0; i < array.Length; i++) {
             reader(child);
-            IsFaulted |= child.IsFaulted;
-            if (IsFaulted) return null;
+            FaultReason = child.FaultReason;
+            if (FaultReason != null) return null;
             array[i] = child.Result;
          }
          _result[name] = array;
@@ -278,13 +290,14 @@ namespace SorceryHex.Gba {
 
       public dynamic ReadArray(string name, int length, ChildReader reader) {
          if (_runs.Data.ReadData(4, _location) == 0) {
+            _location += 4;
             _result[name] = null;
             return null;
          }
          var pointer = _runs.Data.ReadPointer(_location);
          _mapper.Claim(_runs, _location, pointer);
          _location += 4;
-         var child = new PokemonDataTypeParser(_runs, pointer);
+         var child = new PokemonDatatypeFactory(_runs, _mapper, pointer);
          var array = new dynamic[length];
          for (int i = 0; i < array.Length; i++) {
             reader(child);
