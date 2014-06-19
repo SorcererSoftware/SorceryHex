@@ -164,9 +164,55 @@ namespace SorceryHex.Gba {
          }
       }
 
-      public int FindOne(ChildReader reader) {
-         // script can call this to find exactly one instance matching a pattern
-         return 0;
+      public int FindVariableArray(byte ender, ChildReader reader) {
+         var lengthFinder = new DataTypeLengthFinder();
+         reader(lengthFinder);
+         int stride = lengthFinder.Length;
+
+         var addressesList = _mapper.OpenDestinations.ToList();
+         var matchingLayouts = new List<int>();
+         var matchingLengths = new List<int>();
+         foreach (var address in addressesList) {
+
+            int elementCount = 0;
+            while (address + stride * elementCount < _runs.Data.Length && _runs.Data[address + stride * elementCount] != ender) {
+               elementCount++;
+            }
+            if (address + stride * elementCount >= _runs.Data.Length) continue;
+            if (elementCount < 10) continue;
+
+            var parser = new PokemonDataTypeParser(_runs, address);
+            for (int i = 0; i < elementCount; i++) {
+               reader(parser);
+               if (parser.FaultReason != null) break;
+            }
+            if (parser.FaultReason != null) continue;
+            matchingLayouts.Add(address);
+            matchingLengths.Add(elementCount);
+         }
+
+         var counts = new List<double>();
+         for (int i = 0; i < matchingLayouts.Count; i++) {
+            var layout = matchingLayouts[i];
+            var length = matchingLengths[i];
+            int repeatCount = 0;
+            byte prev = _runs.Data[layout];
+            for (int j = 1; j < length; j++) {
+               var current = _runs.Data[layout + j];
+               if (prev == current) repeatCount++;
+               prev = current;
+            }
+            counts.Add((double)repeatCount / length);
+         }
+
+         var least = counts.Min();
+         var index = counts.IndexOf(least);
+
+         var factory = new PokemonDatatypeFactory(_runs, _mapper, matchingLayouts[index]);
+         for (int i = 0; i < matchingLengths[index]; i++) {
+            reader(factory);
+         }
+         return matchingLayouts[index];
       }
 
       public GbaPointer[] FindMany(ChildReader reader) {
@@ -179,7 +225,7 @@ namespace SorceryHex.Gba {
             var factory = new PokemonDatatypeFactory(_runs, _mapper, address);
             reader(factory);
 
-            matchingPointers.Add(new GbaPointer{ source= _mapper.PointersFromDestination(address).First(), destination=address});
+            matchingPointers.Add(new GbaPointer { source = _mapper.PointersFromDestination(address).First(), destination = address });
          }
          return matchingPointers.ToArray();
       }
@@ -193,7 +239,7 @@ namespace SorceryHex.Gba {
          foreach (var destination in locations) {
             var pointers = _mapper.PointersFromDestination(destination.source);
             if (pointers == null || pointers.Length == 0) continue;
-            pointerSet.Add(new GbaPointer{ source= pointers.First(), destination=destination.source}); // can I do without the first?
+            pointerSet.Add(new GbaPointer { source = pointers.First(), destination = destination.source }); // can I do without the first?
          }
          return pointerSet.ToArray();
       }
@@ -207,7 +253,7 @@ namespace SorceryHex.Gba {
          new Entry("mapEventData",
             new Entry("personCount", DataTypes.@byte), new Entry("warpCount", DataTypes.@byte), new Entry("scriptCount", DataTypes.@byte), new Entry("signpostCount", DataTypes.@byte),
             new Entry("persons", "personCount"
-               //*
+         //*
                ,
                new Entry("?", DataTypes.@byte), new Entry("picture", DataTypes.@byte), new Entry("?", DataTypes.@byte), new Entry("?", DataTypes.@byte),
                new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
@@ -215,32 +261,32 @@ namespace SorceryHex.Gba {
                new Entry("isTrainer", DataTypes.@byte), new Entry("?", DataTypes.@byte), new Entry("viewRadius", DataTypes.@short),
                new Entry("script", DataTypes.@nullablepointer),
                new Entry("id", DataTypes.@short), new Entry("?", DataTypes.@byte), new Entry("?", DataTypes.@byte)
-               //*/
+         //*/
             ),
             new Entry("warps", "warpCount"
-               //*
+         //*
                ,
                new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
                new Entry("?", DataTypes.@byte), new Entry("warp", DataTypes.@byte), new Entry("map", DataTypes.@byte), new Entry("bank", DataTypes.@byte)
-               //*/
+         //*/
             ),
             new Entry("scripts", "scriptCount"
-               //*
+         //*
                ,
                new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
                new Entry("?", DataTypes.@short), new Entry("scriptVariable", DataTypes.@short),
                new Entry("scriptVariableValue", DataTypes.@short), new Entry("?", DataTypes.@short),
                new Entry("script", DataTypes.@nullablepointer)
-               //*/
+         //*/
             ),
             new Entry("signposts", "signpostCount"
-               //*
+         //*
                ,
                new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
                new Entry("talkingLevel", DataTypes.@byte), new Entry("signpostType", DataTypes.@byte), new Entry("?", DataTypes.@short),
                new Entry("?", DataTypes.@unknown4)
-               // new Entry("dynamic", new DataType(4)) // *script || -itemID .hiddenID .amount || <missing>? //*/
-               //*/
+         // new Entry("dynamic", new DataType(4)) // *script || -itemID .hiddenID .amount || <missing>? //*/
+         //*/
             )
          ),
          new Entry("script", DataTypes.@nullablepointer),
@@ -431,7 +477,7 @@ namespace SorceryHex.Gba {
          var names = new[] { "grass", "surf", "tree", "fishing" };
          var lengths = new[] { 12, 5, 5, 10 };
          var entryList = new List<Entry>();
-         var mapType = new DataType(2,new SimpleDataRun(new MapElementProvider(maps), 2));
+         var mapType = new DataType(2, new SimpleDataRun(new MapElementProvider(maps), 2));
          entryList.Add(new Entry("bank_map", mapType));
          entryList.Add(new Entry("_", DataTypes.@short));
          for (int i = 0; i < names.Length; i++) {

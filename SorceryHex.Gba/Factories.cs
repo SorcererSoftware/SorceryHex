@@ -29,7 +29,7 @@ namespace SorceryHex.Gba {
             , new Header(pointerMapper)
             , new Thumbnails(pointerMapper)
             , new Lz(pointerMapper)
-            , new ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope, "maps.rb")
+            , new ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope, "maps.rb", "wild.rb")
             // , maps
             // , new WildData(pointerMapper, maps)
             , new PCS()
@@ -85,7 +85,7 @@ namespace SorceryHex.Gba {
    }
 
    public interface IDataTypeFinder {
-      int FindOne(ChildReader reader);
+      int FindVariableArray(byte ender, ChildReader reader);
       GbaPointer[] FindMany(ChildReader reader);
       GbaPointer[] FollowPointersUp(GbaPointer[] locations);
    }
@@ -100,7 +100,40 @@ namespace SorceryHex.Gba {
       void ReadNullablePointer(string name);
       dynamic ReadNullablePointer(string name, ChildReader reader);
       dynamic ReadArray(string name, int length, ChildReader reader);
-      dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader);
+   }
+
+   class DataTypeLengthFinder : IPokemonDatatypeBuilder {
+      public int Length { get; private set; }
+
+
+      public dynamic Result { get { return null; } }
+      public byte ReadByte(string name) { Length++; return 0; }
+      public short ReadShort(string name) { Length += 2; return 0; }
+
+      public int ReadWord(string name) { Length += 4; return 0; }
+
+      public void ReadPointer(string name) {
+         Length += 4;
+      }
+
+      public dynamic ReadPointer(string name, ChildReader reader) {
+         Length += 4;
+         return null;
+      }
+
+      public void ReadNullablePointer(string name) {
+         Length += 4;
+      }
+
+      public dynamic ReadNullablePointer(string name, ChildReader reader) {
+         Length += 4;
+         return null;
+      }
+
+      public dynamic ReadArray(string name, int length, ChildReader reader) {
+         Length += 4;
+         return null;
+      }
    }
 
    class PokemonDataTypeParser : IPokemonDatatypeBuilder {
@@ -211,10 +244,6 @@ namespace SorceryHex.Gba {
          _result[name] = array;
          return array;
       }
-
-      public dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader) {
-         throw new NotImplementedException();
-      }
    }
 
    class PokemonDatatypeFactory : IPokemonDatatypeBuilder {
@@ -305,10 +334,6 @@ namespace SorceryHex.Gba {
          }
          _result[name] = array;
          return array;
-      }
-
-      public dynamic ReadDynamicArray(string name, int stride, byte ender, ChildReader reader) {
-         throw new NotImplementedException();
       }
    }
 }
