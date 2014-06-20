@@ -77,6 +77,7 @@ namespace SorceryHex.Gba {
    public class Pointer {
       public int source;
       public int destination;
+      public dynamic data;
       public override string ToString() {
          return source.ToHexString(6) + " -> " + destination.ToHexString(6);
       }
@@ -86,13 +87,12 @@ namespace SorceryHex.Gba {
       public delegate void ChildReader(IBuilder builder);
 
       public interface ITypes {
-         int FindVariableArray(byte ender, ChildReader reader);
+         Pointer FindVariableArray(byte ender, ChildReader reader);
          Pointer[] FindMany(ChildReader reader);
          Pointer[] FollowPointersUp(Pointer[] locations);
       }
 
       public interface IBuilder {
-         dynamic Result { get; }
          byte ReadByte(string name);
          short ReadShort(string name);
          int ReadWord(string name);
@@ -243,6 +243,7 @@ namespace SorceryHex.Gba {
             _runs.AddRun(_location, _byteRun);
             var value = _runs.Data[_location];
             _location++;
+            _result[name] = value;
             return value;
          }
 
@@ -251,6 +252,7 @@ namespace SorceryHex.Gba {
             _runs.AddRun(_location, _shortRun);
             var value = _runs.Data.ReadShort(_location);
             _location += 2;
+            _result[name] = value;
             return value;
          }
 
@@ -259,6 +261,7 @@ namespace SorceryHex.Gba {
             _runs.AddRun(_location, _wordRun);
             var value = _runs.Data.ReadData(4, _location);
             _location += 4;
+            _result[name] = value;
             return value;
          }
 

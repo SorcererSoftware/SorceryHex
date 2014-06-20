@@ -168,7 +168,10 @@ namespace SorceryHex {
             try {
                SetupScope();
                var result = _engine.CreateScriptSourceFromString(ScriptBox.Text, SourceCodeKind.SingleStatement).Execute(_scope);
-               if (result == null) return;
+               if (result == null) {
+                  _popup.IsOpen = false;
+                  return;
+               }
                _outputText.Foreground = Solarized.Theme.Instance.Primary;
                _outputText.Text = Parse(result);
             } catch (Exception e1) {

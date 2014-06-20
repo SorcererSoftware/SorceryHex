@@ -95,11 +95,9 @@ namespace SorceryHex {
 
       public static int ReadData(this byte[] memory, int length, int offset) {
          int value = 0;
-         while (length > 0) {
-            length--;
+         for (int i = length - 1; i >= 0; i--) {
             value <<= 8;
-            value |= memory[offset];
-            offset++;
+            value |= memory[offset + i];
          }
          return value;
       }

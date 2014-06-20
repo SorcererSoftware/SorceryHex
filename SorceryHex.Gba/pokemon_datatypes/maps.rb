@@ -50,5 +50,7 @@
 })
 
 banks = types.FollowPointersUp maps
-mapData = types.FollowPointersUp banks
-mapData = mapData[0].destination
+_map = types.FollowPointersUp banks
+mapdata = _map[0].data
+mapbank = _map[0].destination
+

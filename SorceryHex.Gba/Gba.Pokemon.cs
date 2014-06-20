@@ -165,16 +165,16 @@ namespace SorceryHex.Gba {
          }
       }
 
-      public int FindVariableArray(byte ender, ChildReader reader) {
+      public Pointer FindVariableArray(byte ender, ChildReader reader) {
          var lengthFinder = new LengthFinder();
          reader(lengthFinder);
          int stride = lengthFinder.Length;
 
          var addressesList = _mapper.OpenDestinations.ToList();
+         var matchingPointers = new List<int>();
          var matchingLayouts = new List<int>();
          var matchingLengths = new List<int>();
          foreach (var address in addressesList) {
-
             int elementCount = 0;
             while (address + stride * elementCount < _runs.Data.Length && _runs.Data[address + stride * elementCount] != ender) {
                elementCount++;
@@ -190,6 +190,7 @@ namespace SorceryHex.Gba {
             if (parser.FaultReason != null) continue;
             matchingLayouts.Add(address);
             matchingLengths.Add(elementCount);
+            matchingPointers.Add(_mapper.PointersFromDestination(address).First());
          }
 
          var counts = new List<double>();
@@ -210,10 +211,13 @@ namespace SorceryHex.Gba {
          var index = counts.IndexOf(least);
 
          var factory = new Factory(_runs, _mapper, matchingLayouts[index]);
+         var data = new dynamic[matchingLengths[index]];
          for (int i = 0; i < matchingLengths[index]; i++) {
             reader(factory);
+            data[i] = factory.Result;
          }
-         return matchingLayouts[index];
+
+         return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = data };
       }
 
       public Pointer[] FindMany(ChildReader reader) {
@@ -226,7 +230,12 @@ namespace SorceryHex.Gba {
             var factory = new Factory(_runs, _mapper, address);
             reader(factory);
 
-            matchingPointers.Add(new Pointer { source = _mapper.PointersFromDestination(address).First(), destination = address });
+            var p = new Pointer {
+               source = _mapper.PointersFromDestination(address).First(),
+               destination = address,
+               data = factory.Result
+            };
+            matchingPointers.Add(p);
          }
          return matchingPointers.ToArray();
       }
@@ -240,9 +249,29 @@ namespace SorceryHex.Gba {
          foreach (var destination in locations) {
             var pointers = _mapper.PointersFromDestination(destination.source);
             if (pointers == null || pointers.Length == 0) continue;
-            pointerSet.Add(new Pointer { source = pointers.First(), destination = destination.source }); // can I do without the first?
+            var p = new Pointer {
+               source = pointers.First(),
+               destination = destination.source,
+               data = new AutoArray(_runs.Data, locations, destination.source)
+            };
+            pointerSet.Add(p);
          }
          return pointerSet.ToArray();
+      }
+   }
+
+   public class AutoArray {
+      readonly byte[] _data;
+      readonly IList<Pointer> _pointers;
+      readonly int _location;
+      public AutoArray(byte[] data, IList<Pointer> pointers, int location) { _data = data; _pointers = pointers; _location = location; }
+      public dynamic this[int i] {
+         get {
+            var loc = _location + i * 4;
+            var r = _pointers.FirstOrDefault(p => p.destination == _data.ReadPointer(loc));
+            if (r != null) return r.data;
+            return null;
+         }
       }
    }
 
