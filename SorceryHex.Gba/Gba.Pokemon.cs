@@ -263,11 +263,11 @@ namespace SorceryHex.Gba {
    public class AutoArray {
       readonly byte[] _data;
       readonly IList<Pointer> _pointers;
-      readonly int _location;
-      public AutoArray(byte[] data, IList<Pointer> pointers, int location) { _data = data; _pointers = pointers; _location = location; }
+      public readonly int destination;
+      public AutoArray(byte[] data, IList<Pointer> pointers, int loc) { _data = data; _pointers = pointers; destination = loc; }
       public dynamic this[int i] {
          get {
-            var loc = _location + i * 4;
+            var loc = destination + i * 4;
             var r = _pointers.FirstOrDefault(p => p.destination == _data.ReadPointer(loc));
             if (r != null) return r.data;
             return null;
