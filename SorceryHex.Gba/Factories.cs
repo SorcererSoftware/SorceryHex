@@ -93,27 +93,27 @@ namespace SorceryHex.Gba {
       }
 
       public interface IBuilder {
-         byte ReadByte(string name);
-         short ReadShort(string name);
-         int ReadWord(string name);
-         void ReadPointer(string name);
-         dynamic ReadPointer(string name, ChildReader reader);
-         void ReadNullablePointer(string name);
-         dynamic ReadNullablePointer(string name, ChildReader reader);
-         dynamic ReadArray(string name, int length, ChildReader reader);
+         byte Byte(string name);
+         short Short(string name);
+         int Word(string name);
+         void Pointer(string name);
+         dynamic Pointer(string name, ChildReader reader);
+         void NullablePointer(string name);
+         dynamic NullablePointer(string name, ChildReader reader);
+         dynamic Array(string name, int length, ChildReader reader);
       }
 
       class LengthFinder : IBuilder {
          public int Length { get; private set; }
          public dynamic Result { get { return null; } }
-         public byte ReadByte(string name) { Length++; return 0; }
-         public short ReadShort(string name) { Length += 2; return 0; }
-         public int ReadWord(string name) { Length += 4; return 0; }
-         public void ReadPointer(string name) { Length += 4; }
-         public dynamic ReadPointer(string name, ChildReader reader) { Length += 4; return null; }
-         public void ReadNullablePointer(string name) { Length += 4; }
-         public dynamic ReadNullablePointer(string name, ChildReader reader) { Length += 4; return null; }
-         public dynamic ReadArray(string name, int length, ChildReader reader) { Length += 4; return null; }
+         public byte Byte(string name) { Length++; return 0; }
+         public short Short(string name) { Length += 2; return 0; }
+         public int Word(string name) { Length += 4; return 0; }
+         public void Pointer(string name) { Length += 4; }
+         public dynamic Pointer(string name, ChildReader reader) { Length += 4; return null; }
+         public void NullablePointer(string name) { Length += 4; }
+         public dynamic NullablePointer(string name, ChildReader reader) { Length += 4; return null; }
+         public dynamic Array(string name, int length, ChildReader reader) { Length += 4; return null; }
       }
 
       class Parser : IBuilder {
@@ -129,7 +129,7 @@ namespace SorceryHex.Gba {
             _location = location;
          }
 
-         public byte ReadByte(string name) {
+         public byte Byte(string name) {
             if (FaultReason != null) return 0;
             var result = _runs.Data[_location];
             _location++;
@@ -137,7 +137,7 @@ namespace SorceryHex.Gba {
             return result;
          }
 
-         public short ReadShort(string name) {
+         public short Short(string name) {
             if (FaultReason != null) return 0;
             var result = _runs.Data.ReadShort(_location);
             _location += 2;
@@ -145,7 +145,7 @@ namespace SorceryHex.Gba {
             return result;
          }
 
-         public int ReadWord(string name) {
+         public int Word(string name) {
             if (FaultReason != null) return 0;
             var result = _runs.Data.ReadData(4, _location);
             _location += 4;
@@ -153,7 +153,7 @@ namespace SorceryHex.Gba {
             return result;
          }
 
-         public void ReadPointer(string name) {
+         public void Pointer(string name) {
             if (FaultReason != null) return;
             var pointer = _runs.Data.ReadPointer(_location);
             _location += 4;
@@ -164,7 +164,7 @@ namespace SorceryHex.Gba {
             _result[name] = null;
          }
 
-         public dynamic ReadPointer(string name, ChildReader reader) {
+         public dynamic Pointer(string name, ChildReader reader) {
             if (FaultReason != null) return null;
             var pointer = _runs.Data.ReadPointer(_location);
             _location += 4;
@@ -180,27 +180,27 @@ namespace SorceryHex.Gba {
             return child.Result;
          }
 
-         public void ReadNullablePointer(string name) {
+         public void NullablePointer(string name) {
             if (FaultReason != null) return;
             if (_runs.Data.ReadData(4, _location) == 0) {
                _location += 4;
                _result[name] = null;
                return;
             }
-            ReadPointer(name);
+            Pointer(name);
          }
 
-         public dynamic ReadNullablePointer(string name, ChildReader reader) {
+         public dynamic NullablePointer(string name, ChildReader reader) {
             if (FaultReason != null) return null;
             if (_runs.Data.ReadData(4, _location) == 0) {
                _location += 4;
                _result[name] = null;
                return null;
             }
-            return ReadPointer(name, reader);
+            return Pointer(name, reader);
          }
 
-         public dynamic ReadArray(string name, int length, ChildReader reader) {
+         public dynamic Array(string name, int length, ChildReader reader) {
             if (FaultReason != null) return null;
             if (_runs.Data.ReadData(4, _location) == 0) {
                _location += 4;
@@ -239,7 +239,7 @@ namespace SorceryHex.Gba {
          public Factory(IRunStorage runs, PointerMapper mapper, int location) { _runs = runs; _mapper = mapper; _location = location; }
 
          static readonly IDataRun _byteRun = new SimpleDataRun(_hex, 1);
-         public byte ReadByte(string name) {
+         public byte Byte(string name) {
             _runs.AddRun(_location, _byteRun);
             var value = _runs.Data[_location];
             _location++;
@@ -248,7 +248,7 @@ namespace SorceryHex.Gba {
          }
 
          static readonly IDataRun _shortRun = new SimpleDataRun(_hex, 2);
-         public short ReadShort(string name) {
+         public short Short(string name) {
             _runs.AddRun(_location, _shortRun);
             var value = _runs.Data.ReadShort(_location);
             _location += 2;
@@ -257,7 +257,7 @@ namespace SorceryHex.Gba {
          }
 
          static readonly IDataRun _wordRun = new SimpleDataRun(_hex, 4);
-         public int ReadWord(string name) {
+         public int Word(string name) {
             _runs.AddRun(_location, _wordRun);
             var value = _runs.Data.ReadData(4, _location);
             _location += 4;
@@ -265,14 +265,14 @@ namespace SorceryHex.Gba {
             return value;
          }
 
-         public void ReadPointer(string name) {
+         public void Pointer(string name) {
             var pointer = _runs.Data.ReadPointer(_location);
             _mapper.Claim(_runs, _location, pointer);
             _location += 4;
             _result[name] = null;
          }
 
-         public dynamic ReadPointer(string name, ChildReader reader) {
+         public dynamic Pointer(string name, ChildReader reader) {
             var pointer = _runs.Data.ReadPointer(_location);
             _mapper.Claim(_runs, _location, pointer);
             _location += 4;
@@ -282,25 +282,25 @@ namespace SorceryHex.Gba {
             return child.Result;
          }
 
-         public void ReadNullablePointer(string name) {
+         public void NullablePointer(string name) {
             if (_runs.Data.ReadData(4, _location) == 0) {
                _location += 4;
                _result[name] = null;
                return;
             }
-            ReadPointer(name);
+            Pointer(name);
          }
 
-         public dynamic ReadNullablePointer(string name, ChildReader reader) {
+         public dynamic NullablePointer(string name, ChildReader reader) {
             if (_runs.Data.ReadData(4, _location) == 0) {
                _location += 4;
                _result[name] = null;
                return null;
             }
-            return ReadPointer(name, reader);
+            return Pointer(name, reader);
          }
 
-         public dynamic ReadArray(string name, int length, ChildReader reader) {
+         public dynamic Array(string name, int length, ChildReader reader) {
             if (_runs.Data.ReadData(4, _location) == 0) {
                _location += 4;
                _result[name] = null;
