@@ -20,7 +20,7 @@ namespace SorceryHex {
    }
 
    public class RunStorage : IPartialModel, IRunStorage, IEditor {
-      readonly SortedList<int, IDataRun> _runs = new SortedList<int, IDataRun>();
+      readonly IDictionary<int, IDataRun> _runs = new Dictionary<int, IDataRun>();
       readonly Queue<Border> _recycles = new Queue<Border>();
       readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();
       readonly HashSet<FrameworkElement> _interpretationLinks = new HashSet<FrameworkElement>();
@@ -87,7 +87,7 @@ namespace SorceryHex {
 
 #if DEBUG
          int prevEnd = 0;
-         foreach (var key in _runs.Keys) {
+         foreach (var key in _keys) {
             var run = _runs[key];
             Debug.Assert(key >= prevEnd);
             prevEnd = key + _runs[key].GetLength(Data, key);
@@ -246,6 +246,7 @@ namespace SorceryHex {
       void UpdateList() {
          if (!_listNeedsUpdate) return;
          lock (_runs) _keys = _runs.Keys.ToList();
+         _keys.Sort();
          _listNeedsUpdate = false;
       }
 
