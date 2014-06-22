@@ -174,13 +174,15 @@ namespace SorceryHex.Gba {
       public void Load() {
          _loaded = false;
          _base.Load();
-         _mapper.FilterPointer(dest => !_storage.IsWithinDataBlock(dest));
-         _mapper.ClaimRemainder(_storage);
-         _loaded = true;
+         using (AutoTimer.Time("Gba.PointerParser-post_base_load")) {
+            _mapper.FilterPointer(dest => !_storage.IsWithinDataBlock(dest));
+            _mapper.ClaimRemainder(_storage);
+            _loaded = true;
+         }
       }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
-         var elements =_base.CreateElements(commander, start, length);
+         var elements = _base.CreateElements(commander, start, length);
          if (!_loaded) return elements;
 
          var destinations = _mapper.MappedDestinations;

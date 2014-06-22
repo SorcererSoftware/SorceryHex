@@ -100,26 +100,44 @@ namespace SorceryHex.Gba {
 
       void FindStrings() {
          int currentLength = 0;
+         int currentSkip;
          for (int i = 0x200; i < _runs.Data.Length; i++) {
-            if (_pcs[_runs.Data[i]] != null) {
-               currentLength++;
-               continue;
+
+            // phase one: quickly find something that looks string-like
+            currentSkip = 0;
+            while (currentLength == 0 && i < _runs.Data.Length && _pcs[_runs.Data[i]] == null) {
+               currentSkip = Math.Min(currentSkip + 1, 0x10);
+               i += currentSkip;
             }
-            if (_runs.Data[i] == 0x00 && currentLength > 0) { // accept 0x00 if we've already started
-               currentLength++;
-               continue;
-            } else if (_runs.Data[i] == 0xFD) { // accept 0xFD as the escape character
-               i++;
-               currentLength += 2;
-               continue;
-            } else if (_runs.Data[i] == 0xFF && currentLength >= 3) {
-               // if all the characters are the same, don't add the run.
-               int startLoc = i - currentLength;
-               if (!Enumerable.Range(1, currentLength).All(j => _runs.Data[startLoc + j] == _runs.Data[startLoc])) {
-                  if (_runs.IsFree(startLoc)) {
-                     _runs.AddRun(startLoc, _stringRun);
+            if (currentSkip > 0) i -= currentSkip - 1;
+
+            // phase two: read to see if it's a string
+            while (i < _runs.Data.Length) {
+               if (_pcs[_runs.Data[i]] != null) {
+                  currentLength++;
+                  i++;
+                  continue;
+               }
+               if (_runs.Data[i] == 0x00 && currentLength > 0) { // accept 0x00 if we've already started
+                  currentLength++;
+                  i++;
+                  continue;
+               }
+               if (_runs.Data[i] == 0xFD) { // accept 0xFD as the escape character
+                  i += 2;
+                  currentLength += 2;
+                  continue;
+               }
+               if (_runs.Data[i] == 0xFF && currentLength >= 3) {
+                  // if all the characters are the same, don't add the run.
+                  int startLoc = i - currentLength;
+                  if (!Enumerable.Range(1, currentLength).All(j => _runs.Data[startLoc + j] == _runs.Data[startLoc])) {
+                     if (_runs.IsFree(startLoc)) {
+                        _runs.AddRun(startLoc, _stringRun);
+                     }
                   }
                }
+               break;
             }
             currentLength = 0;
          }
@@ -159,9 +177,11 @@ namespace SorceryHex.Gba {
          _scope.SetVariable("types", this);
          var dir = AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/";
          foreach (var script in _scripts) {
-            var source = _engine.CreateScriptSourceFromFile(dir + script);
-            // var code = source.Compile();
-            source.Execute(_scope);
+            using (AutoTimer.Time("ScriptedDataTypes-" + script)) {
+               var source = _engine.CreateScriptSourceFromFile(dir + script);
+               // var code = source.Compile();
+               source.Execute(_scope);
+            }
          }
       }
 

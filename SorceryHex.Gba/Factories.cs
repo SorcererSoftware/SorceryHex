@@ -83,7 +83,7 @@ namespace SorceryHex.Gba {
       }
    }
 
-   namespace Pokemon.DataTypes { 
+   namespace Pokemon.DataTypes {
       public delegate void ChildReader(IBuilder builder);
 
       public interface ITypes {

@@ -75,6 +75,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="AutoTimer.cs" />
     <Compile Include="View\CursorController.cs" />
     <Compile Include="View\MultiBoxControl.xaml.cs">
       <DependentUpon>MultiBoxControl.xaml</DependentUpon>

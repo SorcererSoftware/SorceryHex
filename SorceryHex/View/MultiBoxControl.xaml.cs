@@ -29,6 +29,7 @@ namespace SorceryHex {
       public int[] find(string term) { return app.Find(term); }
       public byte[] data { get { return app.Data; } }
       public void @goto(int offset) { app.JumpTo(offset, true); }
+      public string[] performance() { return AutoTimer.Report.ToArray(); }
    }
 
    public class ScriptInfo { public ScriptEngine Engine; public ScriptScope Scope; }
@@ -184,7 +185,9 @@ namespace SorceryHex {
 
       string Parse(dynamic result) {
          string output = "";
-         if (result is IEnumerable) {
+         if (result is string) {
+            output += result + Environment.NewLine;
+         } else if (result is IEnumerable) {
             foreach (var element in result) {
                output += Parse(element) + Environment.NewLine;
             }

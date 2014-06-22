@@ -261,12 +261,16 @@ namespace SorceryHex {
          ScrollBar.Maximum = Holder.Length;
          JumpTo(0);
          Parser.IsEnabled = false;
+         _loadTimer = AutoTimer.Time("Full Load Time");
          Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(LoadComplete));
       }
 
+      AutoTimer _loadTimer;
       void LoadComplete() {
          Parser.IsEnabled = true;
          JumpTo(Offset);
+         _loadTimer.Dispose();
+         _loadTimer = null;
       }
 
       #endregion

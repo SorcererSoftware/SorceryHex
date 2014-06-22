@@ -69,7 +69,11 @@ namespace SorceryHex {
 
       public void Load() {
          _loaded = false;
-         foreach (var child in _children) child.Load();
+         foreach (var child in _children) {
+            using (AutoTimer.Time(child.GetType().ToString().Split('.').Last())) {
+               child.Load();
+            }
+         }
          _loaded = true;
       }
 

@@ -78,8 +78,11 @@ namespace SorceryHex {
 
       public void Load() {
          foreach (var parser in _runParsers) {
-            parser.Load(this);
-            UpdateList();
+            var type = parser.GetType().ToString().Split('.').Last();
+            using (AutoTimer.Time(type)) {
+               parser.Load(this);
+               UpdateList();
+            }
          }
 
 #if DEBUG
