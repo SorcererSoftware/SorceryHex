@@ -201,7 +201,7 @@ namespace SorceryHex.Gba {
             }
             if (address + stride * elementCount >= _runs.Data.Length) continue;
             if (elementCount < 10) continue;
-            if (Enumerable.Range(0,elementCount).Any(i=> !GeneralMatch(address + i * stride, generalLayout))) continue;
+            if (Enumerable.Range(0, elementCount).Any(i => !GeneralMatch(address + i * stride, generalLayout))) continue;
 
             var parser = new Parser(_runs, address);
             for (int i = 0; i < elementCount; i++) {
@@ -282,7 +282,9 @@ namespace SorceryHex.Gba {
       }
 
       bool GeneralMatch(int address, string layout) {
+         layout = layout.ToLower();
          for (int i = 0; i < layout.Length; i++) {
+            Debug.Assert(layout[i] == 'p' || layout[i] == 'w');
             if (layout[i] != 'p') continue;
             int value = _runs.Data.ReadData(4, address + i * 4);
             int pointer = _runs.Data.ReadPointer(address + i * 4);
