@@ -1,4 +1,4 @@
-﻿maps = types.FindMany ->(b){
+﻿maps = types.FindMany "ppppwww", ->(b){
    b.Pointer "mapTileData", ->(b){
       b.Word "width" 
       b.Word "height" 

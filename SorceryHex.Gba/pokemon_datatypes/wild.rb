@@ -4,7 +4,7 @@
    b.Short "species"
 }
 
-wild = types.FindVariableArray 0xFF, ->(b){
+wild = types.FindVariableArray 0xFF, "wpppp", ->(b){
    b.Short "bankmap"
    b.Short "_"
    b.NullablePointer "grass", ->(b){

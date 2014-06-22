@@ -185,7 +185,7 @@ namespace SorceryHex.Gba {
          }
       }
 
-      public Pointer FindVariableArray(byte ender, ChildReader reader) {
+      public Pointer FindVariableArray(byte ender, string generalLayout, ChildReader reader) {
          var lengthFinder = new LengthFinder();
          reader(lengthFinder);
          int stride = lengthFinder.Length;
@@ -201,6 +201,7 @@ namespace SorceryHex.Gba {
             }
             if (address + stride * elementCount >= _runs.Data.Length) continue;
             if (elementCount < 10) continue;
+            if (Enumerable.Range(0,elementCount).Any(i=> !GeneralMatch(address + i * stride, generalLayout))) continue;
 
             var parser = new Parser(_runs, address);
             for (int i = 0; i < elementCount; i++) {
@@ -240,10 +241,11 @@ namespace SorceryHex.Gba {
          return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = data };
       }
 
-      public Pointer[] FindMany(ChildReader reader) {
+      public Pointer[] FindMany(string generalLayout, ChildReader reader) {
          var matchingPointers = new List<Pointer>();
          var addressesList = _mapper.OpenDestinations.ToList();
          foreach (var address in addressesList) {
+            if (!GeneralMatch(address, generalLayout)) continue;
             var parser = new Parser(_runs, address);
             reader(parser);
             if (parser.FaultReason != null) continue;
@@ -277,6 +279,16 @@ namespace SorceryHex.Gba {
             pointerSet.Add(p);
          }
          return pointerSet.ToArray();
+      }
+
+      bool GeneralMatch(int address, string layout) {
+         for (int i = 0; i < layout.Length; i++) {
+            if (layout[i] != 'p') continue;
+            int value = _runs.Data.ReadData(4, address + i * 4);
+            int pointer = _runs.Data.ReadPointer(address + i * 4);
+            if (pointer == -1 && value != 0) return false;
+         }
+         return true;
       }
    }
 
