@@ -185,6 +185,8 @@ namespace SorceryHex.Gba {
          }
       }
 
+      string Version { get { return Header.GetCode(_runs.Data); } }
+
       public Pointer FindVariableArray(byte ender, string generalLayout, ChildReader reader) {
          var lengthFinder = new LengthFinder();
          reader(lengthFinder);
@@ -606,7 +608,7 @@ namespace SorceryHex.Gba {
       static readonly IDictionary<string, IDictionary<Offset, int>> _tables = new Dictionary<string, IDictionary<Offset, int>> {
          { "AXVE", _rubySapphire },
          { "AXPE", _rubySapphire },
-         { "BPEE", _fireredLeafgreen },
+         { "BPEE", _fireredLeafgreen }, // emerald
          { "BPRE", _fireredLeafgreen },
          { "BPGE", _fireredLeafgreen }
       };

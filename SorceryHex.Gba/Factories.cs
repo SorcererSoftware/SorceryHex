@@ -87,6 +87,7 @@ namespace SorceryHex.Gba {
       public delegate void ChildReader(IBuilder builder);
 
       public interface ITypes {
+         string Version { get; }
          Pointer FindVariableArray(byte ender, string generalLayout, ChildReader reader);
          Pointer[] FindMany(string generalLayout, ChildReader reader);
          Pointer[] FollowPointersUp(Pointer[] locations);

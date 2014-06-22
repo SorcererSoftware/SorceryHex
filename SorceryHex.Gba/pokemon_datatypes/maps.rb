@@ -6,9 +6,11 @@
       b.Pointer "tiles" 
       b.Pointer "tileset1" 
       b.Pointer "tileset2" 
-      b.Byte "borderWidth" # TODO only if FR / LG
-      b.Byte "borderHeight"
-      b.Short "_"
+      if types.Version == "BPRE" || types.Version == "BPGE" # FR / LG
+        b.Byte "borderWidth"
+        b.Byte "borderHeight"
+        b.Short "_"
+      end
    }
    b.Pointer "mapEventData", ->(b){
       persons = b.Byte "personCount"
