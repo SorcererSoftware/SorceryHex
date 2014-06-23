@@ -97,6 +97,7 @@ namespace SorceryHex.Gba {
          byte Byte(string name);
          short Short(string name);
          int Word(string name);
+         short Species();
          void Pointer(string name);
          dynamic Pointer(string name, ChildReader reader);
          void NullablePointer(string name);
@@ -110,6 +111,8 @@ namespace SorceryHex.Gba {
          public byte Byte(string name) { Length++; return 0; }
          public short Short(string name) { Length += 2; return 0; }
          public int Word(string name) { Length += 4; return 0; }
+         public byte ByteNum(string name) { return Byte(name); }
+         public short Species() { Length += 2; return 0; }
          public void Pointer(string name) { Length += 4; }
          public dynamic Pointer(string name, ChildReader reader) { Length += 4; return null; }
          public void NullablePointer(string name) { Length += 4; }
@@ -153,6 +156,9 @@ namespace SorceryHex.Gba {
             _result[name] = result;
             return result;
          }
+
+         public byte ByteNum(string name) { return Byte(name); }
+         public short Species() { return Short("species"); }
 
          public void Pointer(string name) {
             if (FaultReason != null) return;
@@ -263,6 +269,24 @@ namespace SorceryHex.Gba {
             var value = _runs.Data.ReadData(4, _location);
             _location += 4;
             _result[name] = value;
+            return value;
+         }
+
+         static readonly IDataRun _byteNum = new SimpleDataRun(_nums, 1);
+         public short ByteNum(string name) {
+            _runs.AddRun(_location, _byteNum);
+            var value = _runs.Data[_location];
+            _location++;
+            _result[name] = value;
+            return value;
+         }
+
+         static readonly IDataRun _speciesRun = new SimpleDataRun(SpeciesElementProvider.Instance, 2);
+         public short Species() {
+            _runs.AddRun(_location, _speciesRun);
+            var value = _runs.Data.ReadShort(_location);
+            _location += 2;
+            _result["species"] = value;
             return value;
          }
 

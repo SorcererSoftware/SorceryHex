@@ -185,7 +185,7 @@ namespace SorceryHex.Gba {
          }
       }
 
-      string Version { get { return Header.GetCode(_runs.Data); } }
+      public string Version { get { return Header.GetCode(_runs.Data); } }
 
       public Pointer FindVariableArray(byte ender, string generalLayout, ChildReader reader) {
          var lengthFinder = new LengthFinder();

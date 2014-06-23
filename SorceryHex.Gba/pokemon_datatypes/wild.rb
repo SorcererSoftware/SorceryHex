@@ -1,7 +1,7 @@
 ﻿encounter = ->(b){
-   b.Byte "low"
-   b.Byte "high"
-   b.Short "species"
+   b.ByteNum "low"
+   b.ByteNum "high"
+   b.Species
 }
 
 wild = types.FindVariableArray 0xFF, "wpppp", ->(b){
