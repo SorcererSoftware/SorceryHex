@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Diagnostics;
 using System.Dynamic;
 
 namespace SorceryHex.Gba {
@@ -29,7 +30,7 @@ namespace SorceryHex.Gba {
             , new Header(pointerMapper)
             , new Thumbnails(pointerMapper)
             , new Lz(pointerMapper)
-            , new ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope, "maps.rb", "wild.rb")
+            , new ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope, "maps.rb", "wild.rb", "trainer.rb")
             // , maps
             // , new WildData(pointerMapper, maps)
             , new PCS()
@@ -88,12 +89,14 @@ namespace SorceryHex.Gba {
 
       public interface ITypes {
          string Version { get; }
+         Pointer FindVariableArray(string generalLayout, ChildReader reader);
          Pointer FindVariableArray(byte ender, string generalLayout, ChildReader reader);
          Pointer[] FindMany(string generalLayout, ChildReader reader);
          Pointer[] FollowPointersUp(Pointer[] locations);
       }
 
       public interface IBuilder {
+         bool Assert(bool value, string message);
          byte Byte(string name);
          short Short(string name);
          int Word(string name);
@@ -103,21 +106,7 @@ namespace SorceryHex.Gba {
          void NullablePointer(string name);
          dynamic NullablePointer(string name, ChildReader reader);
          dynamic Array(string name, int length, ChildReader reader);
-      }
-
-      class LengthFinder : IBuilder {
-         public int Length { get; private set; }
-         public dynamic Result { get { return null; } }
-         public byte Byte(string name) { Length++; return 0; }
-         public short Short(string name) { Length += 2; return 0; }
-         public int Word(string name) { Length += 4; return 0; }
-         public byte ByteNum(string name) { return Byte(name); }
-         public short Species() { Length += 2; return 0; }
-         public void Pointer(string name) { Length += 4; }
-         public dynamic Pointer(string name, ChildReader reader) { Length += 4; return null; }
-         public void NullablePointer(string name) { Length += 4; }
-         public dynamic NullablePointer(string name, ChildReader reader) { Length += 4; return null; }
-         public dynamic Array(string name, int length, ChildReader reader) { Length += 4; return null; }
+         string String(int len, string name);
       }
 
       class Parser : IBuilder {
@@ -131,6 +120,12 @@ namespace SorceryHex.Gba {
          public Parser(IRunStorage runs, int location) {
             _runs = runs;
             _location = location;
+         }
+
+         public bool Assert(bool value, string message) {
+            if (FaultReason != null) return false;
+            if (!value) FaultReason = "Assertion Failed: " + message;
+            return value;
          }
 
          public byte Byte(string name) {
@@ -231,6 +226,18 @@ namespace SorceryHex.Gba {
             _result[name] = array;
             return array;
          }
+
+         public string String(int len, string name) {
+            if (FaultReason != null) return null;
+            string result = PCS.ReadString(_runs.Data, _location);
+            _location += len;
+            if (result.Length >= len) {
+               FaultReason = name + " : " + result + ": longer than " + len;
+               return null;
+            }
+            _result[name] = result;
+            return result;
+         }
       }
 
       class Factory : IBuilder {
@@ -244,6 +251,11 @@ namespace SorceryHex.Gba {
          public dynamic Result { get { return _result; } }
 
          public Factory(IRunStorage runs, PointerMapper mapper, int location) { _runs = runs; _mapper = mapper; _location = location; }
+
+         public bool Assert(bool value, string message) {
+            Debug.Assert(value, message);
+            return value;
+         }
 
          static readonly IDataRun _byteRun = new SimpleDataRun(_hex, 1);
          public byte Byte(string name) {
@@ -342,6 +354,14 @@ namespace SorceryHex.Gba {
             }
             _result[name] = array;
             return array;
+         }
+
+         public string String(int len, string name) {
+            _runs.AddRun(_location, PCS.StringRun);
+            string result = PCS.ReadString(_runs.Data, _location);
+            _location += len;
+            _result[name] = result;
+            return result;
          }
       }
    }

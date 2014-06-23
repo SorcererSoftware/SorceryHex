@@ -13,21 +13,17 @@ using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
    class PCS : IRunParser, IEditor {
-      readonly string[] _pcs = new string[0x100];
-      readonly Geometry[] _pcsVisuals = new Geometry[0x100]; // leaving it null makes it use the default color and visualization
-      readonly IDataRun _stringRun;
+      static readonly string[] _pcs = new string[0x100];
+      static readonly Geometry[] _pcsVisuals = new Geometry[0x100]; // leaving it null makes it use the default color and visualization
+      static readonly IDataRun _stringRun;
 
-      IRunStorage _runs;
-
-      public PCS() {
+      static PCS() {
+         Instance = new PCS();
          _stringRun = new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcsVisuals) {
             Interpret = GetInterpretation,
-            Editor = this
+            Editor = PCS.Instance
          };
-      }
 
-      public void Load(IRunStorage runs) {
-         _runs = runs;
          foreach (var line in System.IO.File.ReadAllLines("data\\PCS3-W.ini")) {
             var sanitized = line.Trim();
             if (sanitized.StartsWith("#") || sanitized.Length == 0) continue;
@@ -40,6 +36,15 @@ namespace SorceryHex.Gba {
          }
          _pcsVisuals[0x00] = "".ToGeometry();
          _pcsVisuals[0xFD] = "\\x".ToGeometry();
+      }
+
+      public static IDataRun StringRun { get { return _stringRun; } }
+      public static PCS Instance { get; private set; }
+
+      IRunStorage _runs;
+
+      public void Load(IRunStorage runs) {
+         _runs = runs;
          FindStrings();
       }
 
@@ -143,7 +148,7 @@ namespace SorceryHex.Gba {
          }
       }
 
-      FrameworkElement GetInterpretation(byte[] data, int location) {
+      public static string ReadString(byte[] data, int location) {
          string result = string.Empty;
          for (int j = 0; data[location + j] != 0xFF; j++) {
             if (data[location + j] == 0x00) {
@@ -155,6 +160,11 @@ namespace SorceryHex.Gba {
                result += _pcs[data[location + j]];
             }
          }
+         return result;
+      }
+
+      static FrameworkElement GetInterpretation(byte[] data, int location) {
+         var result = ReadString(data, location);
          return new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
       }
    }
@@ -187,10 +197,45 @@ namespace SorceryHex.Gba {
 
       public string Version { get { return Header.GetCode(_runs.Data); } }
 
+      const int MinVariableLength = 10;
+      public Pointer FindVariableArray(string generalLayout, ChildReader reader) {
+         int stride = generalLayout.Length * 4;
+
+         var addressesList = _mapper.OpenDestinations.ToList();
+         var matchingPointers = new List<int>();
+         var matchingLayouts = new List<int>();
+         var matchingLengths = new List<int>();
+         foreach (var address in addressesList) {
+            if (address == 0x23EAC8) {
+               int x = 7;
+            }
+            int elementCount1 = 0, elementCount2 = 0;
+            while (GeneralMatch(address + elementCount1 * stride, generalLayout)) elementCount1++;
+            if (address + stride * elementCount1 >= _runs.Data.Length) continue;
+            if (elementCount1 < MinVariableLength) continue;
+
+            var parser = new Parser(_runs, address);
+            for (int i = 0; true; i++) {
+               reader(parser);
+               if (parser.FaultReason != null) break;
+               elementCount2++;
+            }
+            if (elementCount2 < MinVariableLength) continue;
+            matchingLayouts.Add(address);
+            matchingLengths.Add(elementCount2);
+            matchingPointers.Add(_mapper.PointersFromDestination(address).First());
+         }
+
+         if (matchingLayouts.Count == 0) {
+            Debug.Fail("No layouts matching " + generalLayout);
+            return null;
+         }
+
+         return FindVariableArray(reader, stride, matchingPointers, matchingLayouts, matchingLengths);
+      }
+
       public Pointer FindVariableArray(byte ender, string generalLayout, ChildReader reader) {
-         var lengthFinder = new LengthFinder();
-         reader(lengthFinder);
-         int stride = lengthFinder.Length;
+         int stride = generalLayout.Length * 4;
 
          var addressesList = _mapper.OpenDestinations.ToList();
          var matchingPointers = new List<int>();
@@ -202,7 +247,7 @@ namespace SorceryHex.Gba {
                elementCount++;
             }
             if (address + stride * elementCount >= _runs.Data.Length) continue;
-            if (elementCount < 10) continue;
+            if (elementCount < MinVariableLength) continue;
             if (Enumerable.Range(0, elementCount).Any(i => !GeneralMatch(address + i * stride, generalLayout))) continue;
 
             var parser = new Parser(_runs, address);
@@ -216,6 +261,15 @@ namespace SorceryHex.Gba {
             matchingPointers.Add(_mapper.PointersFromDestination(address).First());
          }
 
+         if (matchingLayouts.Count == 0) {
+            Debug.Fail("No layouts matching " + generalLayout);
+            return null;
+         }
+
+         return FindVariableArray(reader, stride, matchingPointers, matchingLayouts, matchingLengths);
+      }
+
+      Pointer FindVariableArray(ChildReader reader, int stride, IList<int> matchingPointers, IList<int> matchingLayouts, IList<int> matchingLengths) {
          var counts = new List<double>();
          for (int i = 0; i < matchingLayouts.Count; i++) {
             var layout = matchingLayouts[i];
@@ -240,6 +294,8 @@ namespace SorceryHex.Gba {
             data[i] = factory.Result;
          }
 
+         int start = matchingLayouts[index], end = matchingLayouts[index] + matchingLengths[index] * stride;
+         _mapper.FilterPointer(i => i <= start || i >= end);
          return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = data };
       }
 
@@ -285,6 +341,7 @@ namespace SorceryHex.Gba {
 
       bool GeneralMatch(int address, string layout) {
          layout = layout.ToLower();
+         if (address + layout.Length * 4 > _runs.Data.Length) return false;
          for (int i = 0; i < layout.Length; i++) {
             Debug.Assert(layout[i] == 'p' || layout[i] == 'w');
             if (layout[i] != 'p') continue;
@@ -307,148 +364,6 @@ namespace SorceryHex.Gba {
             var r = _pointers.FirstOrDefault(p => p.destination == _data.ReadPointer(loc));
             if (r != null) return r.data;
             return null;
-         }
-      }
-   }
-
-   class Maps : IRunParser {
-      #region Setup
-
-      static readonly Entry DataLayout = new Entry("map",
-         new Entry("mapTileData", DataTypes.@pointer),
-         new Entry("mapEventData",
-            new Entry("personCount", DataTypes.@byte), new Entry("warpCount", DataTypes.@byte), new Entry("scriptCount", DataTypes.@byte), new Entry("signpostCount", DataTypes.@byte),
-            new Entry("persons", "personCount"
-         //*
-               ,
-               new Entry("?", DataTypes.@byte), new Entry("picture", DataTypes.@byte), new Entry("?", DataTypes.@byte), new Entry("?", DataTypes.@byte),
-               new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
-               new Entry("?", DataTypes.@byte), new Entry("movementType", DataTypes.@byte), new Entry("movement", DataTypes.@byte), new Entry("?", DataTypes.@byte),
-               new Entry("isTrainer", DataTypes.@byte), new Entry("?", DataTypes.@byte), new Entry("viewRadius", DataTypes.@short),
-               new Entry("script", DataTypes.@nullablepointer),
-               new Entry("id", DataTypes.@short), new Entry("?", DataTypes.@byte), new Entry("?", DataTypes.@byte)
-         //*/
-            ),
-            new Entry("warps", "warpCount"
-         //*
-               ,
-               new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
-               new Entry("?", DataTypes.@byte), new Entry("warp", DataTypes.@byte), new Entry("map", DataTypes.@byte), new Entry("bank", DataTypes.@byte)
-         //*/
-            ),
-            new Entry("scripts", "scriptCount"
-         //*
-               ,
-               new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
-               new Entry("?", DataTypes.@short), new Entry("scriptVariable", DataTypes.@short),
-               new Entry("scriptVariableValue", DataTypes.@short), new Entry("?", DataTypes.@short),
-               new Entry("script", DataTypes.@nullablepointer)
-         //*/
-            ),
-            new Entry("signposts", "signpostCount"
-         //*
-               ,
-               new Entry("x", DataTypes.@short), new Entry("y", DataTypes.@short),
-               new Entry("talkingLevel", DataTypes.@byte), new Entry("signpostType", DataTypes.@byte), new Entry("?", DataTypes.@short),
-               new Entry("?", DataTypes.@unknown4)
-         // new Entry("dynamic", new DataType(4)) // *script || -itemID .hiddenID .amount || <missing>? //*/
-         //*/
-            )
-         ),
-         new Entry("script", DataTypes.@nullablepointer),
-         new Entry("connections", DataTypes.@nullablepointer,
-            new Entry("count", DataTypes.@word),
-            new Entry("data", DataTypes.@pointer)
-         ),
-         new Entry("song", DataTypes.@short), new Entry("map", DataTypes.@short),
-         new Entry("label_id", DataTypes.@byte), new Entry("flash", DataTypes.@byte), new Entry("weather", DataTypes.@byte), new Entry("type", DataTypes.@byte),
-         new Entry("_", DataTypes.@short), new Entry("labelToggle", DataTypes.@byte), new Entry("_", DataTypes.@byte)
-      );
-
-      #endregion
-
-      readonly PointerMapper _mapper;
-      byte[] _data;
-      SortedSet<int> _mapLocations;
-      SortedSet<int> _mapBankAddress;
-      SortedSet<int> _allSubsetAddresses;
-      int _masterMapAddress;
-
-      public Maps(PointerMapper mapper) { _mapper = mapper; }
-
-      public void Load(IRunStorage runs) {
-         _data = runs.Data;
-         var code = Header.GetCode(_data);
-
-         //           ruby            sapphire          emerald
-         if (code == "AXVE" || code == "AXPE" || code == "BPEE") {
-            DataLayout.Children[0] = new Entry("mapTileData",
-               new Entry("width", DataTypes.@word), new Entry("height", DataTypes.@word),
-               new Entry("borderTile", DataTypes.@pointer),
-               new Entry("tiles", DataTypes.@pointer),
-               new Entry("tileset", DataTypes.@pointer),
-               new Entry("tileset", DataTypes.@pointer)
-            );
-         } else { // FR / LG
-            DataLayout.Children[0] = new Entry("mapTileData",
-               new Entry("width", DataTypes.@word), new Entry("height", DataTypes.@word),
-               new Entry("borderTile", DataTypes.@pointer),
-               new Entry("tiles", DataTypes.@pointer),
-               new Entry("tileset", DataTypes.@pointer),
-               new Entry("tileset", DataTypes.@pointer),
-               new Entry("borderWidth", DataTypes.@byte), new Entry("borderHeight", DataTypes.@byte), new Entry("_", DataTypes.@byte), new Entry("_", DataTypes.@byte)
-            );
-         }
-
-         // match the nested layout
-         _allSubsetAddresses = new SortedSet<int>();
-         var matchingLayouts = new List<int>();
-         var matchingPointers = new List<int>();
-         var addressesList = _mapper.OpenDestinations.ToList();
-         foreach (var address in addressesList) {
-            if (!DataTypes.CouldBe(_data, DataLayout, address, addressesList)) continue;
-            DataTypes.SeekChildren(runs, DataLayout, address, _mapper);
-            _mapper.Claim(runs, address);
-            matchingPointers.Add(_mapper.PointersFromDestination(address).First()); // can I do without the first?
-            matchingLayouts.Add(address);
-         }
-
-         // third pass: find which of the pointers in matchingPointers have references to them (those are the heads of the lists)
-         _mapBankAddress = new SortedSet<int>();
-         var mapBankPointers = new List<int>();
-         foreach (var mapPointer in matchingPointers) {
-            var bankPointer = _mapper.PointersFromDestination(mapPointer);
-            if (bankPointer == null || bankPointer.Length == 0) continue;
-            _mapBankAddress.Add(mapPointer);
-            mapBankPointers.Add(bankPointer.First()); // can I do without the first?
-         }
-
-         _masterMapAddress = _mapper.OpenDestinations.First(mapBankPointers.Contains);
-         _mapLocations = new SortedSet<int>(matchingLayouts);
-         foreach (var location in matchingLayouts) _allSubsetAddresses.Add(location);
-         foreach (var location in _mapBankAddress) _allSubsetAddresses.Add(location);
-      }
-
-      /*
-      FrameworkElement GetInterpretation(int location) {
-         if (_mapBankAddress.Contains(location)) {
-            if (!_interpretations.ContainsKey(location)) _interpretations[location] = new TextBlock { Text = "MapBank", Foreground = Solarized.Theme.Instance.Emphasis };
-            return _interpretations[location];
-         }
-
-         if (!_mapLocations.Contains(location)) return null;
-         if (!_interpretations.ContainsKey(location)) _interpretations[location] = new TextBlock { Text = "Map", Foreground = Solarized.Theme.Instance.Emphasis };
-         return _interpretations[location];
-      }
-      //*/
-
-      public IEnumerable<int> Find(string term) { if (term == "maps") yield return _masterMapAddress; }
-
-      public int this[byte bank, byte map] {
-         get {
-            int bankPointer = _masterMapAddress + bank * 4;
-            int mapPointer = _data.ReadPointer(bankPointer) + map * 4;
-            return _data.ReadPointer(mapPointer);
          }
       }
    }
@@ -500,6 +415,7 @@ namespace SorceryHex.Gba {
       }
    }
 
+   /*
    class MapElementProvider : IElementProvider {
       readonly GeometryElementProvider _provider = new GeometryElementProvider(Utils.ByteFlyweights, Solarized.Brushes.Orange, true, "map reference");
       readonly Maps _maps;
@@ -521,7 +437,9 @@ namespace SorceryHex.Gba {
 
       public void Recycle(FrameworkElement element) { _provider.Recycle(element); }
    }
+   //*/
 
+   /*
    class WildData : IRunParser {
       #region Setup
 
@@ -587,6 +505,7 @@ namespace SorceryHex.Gba {
          _mapper.Claim(runs, _layout);
       }
    }
+   //*/
 
    class Thumbnails : IRunParser {
       #region Utils
@@ -692,60 +611,4 @@ namespace SorceryHex.Gba {
          _mapper.Claim(runs, data.ReadPointer(table[Offset.IconPalette]));
       }
    }
-
-   /*
-   class TrainerData : IRunParser {
-      public readonly DataType _string;
-      readonly PCS _pcs;
-
-      public TrainerData(PCS pcs) {
-         _pcs = pcs;
-         _string = new DataType(12, new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcs._pcsVisuals));
-         var children = new IEntry[] {
-            new SEntry("pokemonStructureType", DataTypes.@byte),
-            new SEntry("trainerClass", DataTypes.@byte),
-            new SEntry("introMusic", DataTypes.@byte),
-            new SEntry("sprite", DataTypes.@byte),
-            new SEntry("name", _string),
-            new SEntry("unknown", DataTypes.@unknown4),
-            new SEntry("unknown", DataTypes.@unknown4),
-            new SEntry("unknown", DataTypes.@unknown4),
-            new SEntry("unknown", DataTypes.@unknown4),
-            new SEntry("pokecount", DataTypes.@byte),
-            new SEntry("_", DataTypes.@byte),
-            new SEntry("_", DataTypes.@short),
-            null
-         };
-         _dataLayout = new SEntry("trainer", children);
-         children[children.Length - 1] = new VariableEntry(_dataLayout, "pokemonStructureType", _pokemon0.Children, _pokemon1.Children, _pokemon2.Children, _pokemon3.Children);
-      }
-
-      public IEnumerable<int> Find(string term) { return null; }
-
-   //   trainer: // there are 2E6 trainers, starting at 23EAF0
-   //.pokemonStructureType .trainerClass .introMusic .sprite // 0:none 1:attacks 2:items 3:both
-   //.12name
-   //? // gender, unknown
-   //? // money rate
-   //? // items
-   //?
-   //.pokeCount .? .? .?
-   //*opponentPokemon
-   //    opponentPokemon0: { -ivSpread -level -species -_ }
-   //    opponentPokemon1: { -ivSpread -level -species -attack -attack -attack -attack -_ }
-   //    opponentPokemon2: { -ivSpread -level -species -item }
-   //    opponentPokemon3: { -ivSpread -level -species -item -attack -attack -attack -attack }
-
-      readonly SEntry _pokemon0 = new SEntry("pokemon0", new SEntry("ivspread", DataTypes.@short), new SEntry("level", DataTypes.@short), new SEntry("species", WildData._species), new SEntry("_", DataTypes.@short));
-      readonly SEntry _pokemon1 = new SEntry("pokemon1", new SEntry("ivspread", DataTypes.@short), new SEntry("level", DataTypes.@short), new SEntry("species", WildData._species), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("_", DataTypes.@short));
-      readonly SEntry _pokemon2 = new SEntry("pokemon2", new SEntry("ivspread", DataTypes.@short), new SEntry("level", DataTypes.@short), new SEntry("species", WildData._species), new SEntry("item", DataTypes.@short));
-      readonly SEntry _pokemon3 = new SEntry("pokemon3", new SEntry("ivspread", DataTypes.@short), new SEntry("level", DataTypes.@short), new SEntry("species", WildData._species), new SEntry("item", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short), new SEntry("attack", DataTypes.@short));
-
-      readonly IEntry _dataLayout;
-
-      public void Load(IRunStorage runs) {
-
-      }
-   }
-   //*/
 }

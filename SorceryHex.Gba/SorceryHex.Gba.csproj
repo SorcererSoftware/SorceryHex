@@ -73,6 +73,9 @@
     <None Include="PCS3-W.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="pokemon_datatypes\trainer.rb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="pokemon_datatypes\wild.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
