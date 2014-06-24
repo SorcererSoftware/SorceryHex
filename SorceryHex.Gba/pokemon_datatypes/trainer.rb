@@ -1,6 +1,7 @@
 ﻿def sharedStruct(b)
    b.Short "ivSpread"
-   b.ByteNum "level"
+   level = b.ByteNum "level"
+   b.Assert (level<=100), "pokemon levels range from 1-100"
    b.Byte "unused"
    b.Species
 end
