@@ -169,5 +169,6 @@ namespace SorceryHex.Gba {
       public static Brush Code = Solarized.Brushes.Blue;      // scripts or assembly
       public static Brush Strings = Solarized.Brushes.Violet; // variable length data with little to no internal structure
       public static Brush BitField = Solarized.Brushes.Magenta;
+      public static Brush Unused = Solarized.Theme.Instance.Secondary;
    }
 }

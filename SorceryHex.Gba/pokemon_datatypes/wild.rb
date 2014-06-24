@@ -5,9 +5,9 @@
    b.Species
 }
 
-wild = types.FindVariableArray 0xFF, "wpppp", ->(b){
+self.wild = types.FindVariableArray 0xFF, "wpppp", ->(b){
    b.Short "bankmap"
-   b.Short "_"
+   b.Unused 2
    b.NullablePointer "grass", ->(b){
       b.Word "rate"
       b.Array "encounters", 12, encounter

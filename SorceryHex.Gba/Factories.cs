@@ -107,6 +107,7 @@ namespace SorceryHex.Gba {
          dynamic NullablePointer(string name, ChildReader reader);
          dynamic Array(string name, int length, ChildReader reader);
          string String(int len, string name);
+         void Unused(int count);
       }
 
       class Parser : IBuilder {
@@ -238,11 +239,24 @@ namespace SorceryHex.Gba {
             _result[name] = result;
             return result;
          }
+
+         public void Unused(int len) {
+            if (FaultReason != null) return;
+            _location += len;
+         }
       }
 
       class Factory : IBuilder {
-         static readonly IElementProvider _hex = new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number);
-         static readonly IElementProvider _nums = new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number);
+         static IElementProvider hex(string hoverText = null) { return new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number, hoverText: hoverText); }
+         static IElementProvider nums(string hoverText = null) { return new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number, hoverText: hoverText); }
+
+         static IDataRun Build(IDictionary<string, IDataRun> dict, Func<string, IElementProvider> func, int len, string hoverText = "") {
+            if (dict.ContainsKey(hoverText)) return dict[hoverText];
+            var run = new SimpleDataRun(func(hoverText == "" ? null : hoverText), len);
+            dict[hoverText] = run;
+            return run;
+         }
+
          readonly IDictionary<string, object> _result = new ExpandoObject();
          readonly IRunStorage _runs;
          readonly PointerMapper _mapper;
@@ -257,38 +271,38 @@ namespace SorceryHex.Gba {
             return value;
          }
 
-         static readonly IDataRun _byteRun = new SimpleDataRun(_hex, 1);
+         static readonly IDictionary<string, IDataRun> _byteRuns = new Dictionary<string, IDataRun>();
          public byte Byte(string name) {
-            _runs.AddRun(_location, _byteRun);
+            _runs.AddRun(_location, Build(_byteRuns, hex, 1, name));
             var value = _runs.Data[_location];
             _location++;
             _result[name] = value;
             return value;
          }
 
-         static readonly IDataRun _shortRun = new SimpleDataRun(_hex, 2);
+         static readonly IDictionary<string, IDataRun> _byteNumRuns = new Dictionary<string, IDataRun>();
+         public short ByteNum(string name) {
+            _runs.AddRun(_location, Build(_byteNumRuns, nums, 1, name));
+            var value = _runs.Data[_location];
+            _location++;
+            _result[name] = value;
+            return value;
+         }
+
+         static readonly IDictionary<string, IDataRun> _shortRuns = new Dictionary<string, IDataRun>();
          public short Short(string name) {
-            _runs.AddRun(_location, _shortRun);
+            _runs.AddRun(_location, Build(_shortRuns, hex, 2, name));
             var value = _runs.Data.ReadShort(_location);
             _location += 2;
             _result[name] = value;
             return value;
          }
 
-         static readonly IDataRun _wordRun = new SimpleDataRun(_hex, 4);
+         static readonly IDictionary<string, IDataRun> _wordRuns = new Dictionary<string, IDataRun>();
          public int Word(string name) {
-            _runs.AddRun(_location, _wordRun);
+            _runs.AddRun(_location, Build(_wordRuns, hex, 4, name));
             var value = _runs.Data.ReadData(4, _location);
             _location += 4;
-            _result[name] = value;
-            return value;
-         }
-
-         static readonly IDataRun _byteNum = new SimpleDataRun(_nums, 1);
-         public short ByteNum(string name) {
-            _runs.AddRun(_location, _byteNum);
-            var value = _runs.Data[_location];
-            _location++;
             _result[name] = value;
             return value;
          }
@@ -362,6 +376,15 @@ namespace SorceryHex.Gba {
             _location += len;
             _result[name] = result;
             return result;
+         }
+
+         static readonly IDataRun _unusedRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Unused), 1);
+         public void Unused(int len) {
+            while (len > 0) {
+               _runs.AddRun(_location, _unusedRun);
+               _location++;
+               len--;
+            }
          }
       }
    }

@@ -23,13 +23,15 @@ namespace SorceryHex {
    }
 
    public class ScriptCommands {
-      readonly IAppCommands app;
-      public ScriptCommands(IAppCommands commands) { app = commands; }
-      public int offset { get { return app.Offset; } }
-      public int[] find(string term) { return app.Find(term); }
-      public byte[] data { get { return app.Data; } }
-      public void @goto(int offset) { app.JumpTo(offset, true); }
+      readonly IAppCommands _app;
+      readonly ScriptScope _scope;
+      public ScriptCommands(IAppCommands commands, ScriptScope scope) { _app = commands; _scope = scope; }
+      public int offset { get { return _app.Offset; } }
+      public int[] find(string term) { return _app.Find(term); }
+      public byte[] data { get { return _app.Data; } }
+      public void @goto(int offset) { _app.JumpTo(offset, true); }
       public string[] performance() { return AutoTimer.Report.ToArray(); }
+      public IEnumerable<string> vars() { return _scope.GetVariableNames(); }
    }
 
    public class ScriptInfo { public ScriptEngine Engine; public ScriptScope Scope; }
@@ -100,7 +102,7 @@ namespace SorceryHex {
       void SetupScope() {
          if (!_scopeNeedsSetup) return;
          _scopeNeedsSetup = false;
-         _scope.SetVariable("app", new ScriptCommands(_appCommands));
+         _scope.SetVariable("app", new ScriptCommands(_appCommands, _scope));
       }
 
       #endregion

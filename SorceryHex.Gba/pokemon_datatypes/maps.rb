@@ -1,4 +1,4 @@
-﻿maps = types.FindMany "ppppwww", ->(b){
+﻿mapPointers = types.FindMany "ppppwww", ->(b){
    b.Pointer "mapTileData", ->(b){
       b.Word "width" 
       b.Word "height" 
@@ -9,7 +9,7 @@
       if types.Version == "BPRE" || types.Version == "BPGE" # FR / LG
         b.Byte "borderWidth"
         b.Byte "borderHeight"
-        b.Short "_"
+        b.Unused 2
       end
    }
    b.Pointer "mapEventData", ->(b){
@@ -51,8 +51,7 @@
    b.Short "_"; b.Byte "labelToggle"; b.Byte "_"
 }
 
-banks = types.FollowPointersUp maps
-_map = types.FollowPointersUp banks
-mapdata = _map[0].data
-mapbank = _map[0].destination
-
+bankPointers = types.FollowPointersUp mapPointers
+leadPointer = types.FollowPointersUp bankPointers
+self.maps = leadPointer[0].destination
+self.mapdata = leadPointer[0].data

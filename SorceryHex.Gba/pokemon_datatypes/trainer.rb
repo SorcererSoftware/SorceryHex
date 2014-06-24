@@ -1,27 +1,27 @@
-﻿def sharedStruct(b)
+﻿sharedStruct = ->(b) {
    b.Short "ivSpread"
    level = b.ByteNum "level"
    b.Assert (level<=100), "pokemon levels range from 1-100"
-   b.Byte "unused"
+   b.Unused 1
    b.Species
-end
+}
 
-def sharedAttacks(b)
+sharedAttacks = ->(b) {
    b.Short "attack1"; b.Short "attack2"
    b.Short "attack3"; b.Short "attack4"
-end
+}
 
 trainerStruct0 = ->(b) {
-   sharedStruct(b); b.Short "unused"
+   sharedStruct.call(b); b.Unused 2
 }
 trainerStruct1 = ->(b) {
-   sharedStruct(b); sharedAttacks(b); b.Short "unused"
+   sharedStruct.call(b); sharedAttacks.call(b); b.Unused 2
 }
 trainerStruct2 = ->(b) {
-   sharedStruct(b); b.Short "item"
+   sharedStruct.call(b); b.Short "item"
 }
 trainerStruct3 = ->(b) {
-   sharedStruct(b); sharedAttacks(b); b.Short "item"
+   sharedStruct.call(b); sharedAttacks.call(b); b.Short "item"
 }
 
 trainers = types.FindVariableArray "wwwwwwwwwp", ->(b){
@@ -40,7 +40,7 @@ trainers = types.FindVariableArray "wwwwwwwwwp", ->(b){
 
    count = b.ByteNum "pokeCount"
    b.Assert (count < 7), "trainers can't have more than 6 pokemon"
-   b.Byte "unused"
+   b.Unused 1
    b.Short "_"
 
    if pokeStructType == 0
@@ -53,3 +53,5 @@ trainers = types.FindVariableArray "wwwwwwwwwp", ->(b){
       b.Array "opponentPokemon", count, trainerStruct3
    end
 }
+
+self.trainer = trainers.destination
