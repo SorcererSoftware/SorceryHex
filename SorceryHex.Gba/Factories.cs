@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
 using System.Dynamic;
+using System.Windows;
 
 namespace SorceryHex.Gba {
    [Export(typeof(IModelFactory))]
@@ -86,6 +87,7 @@ namespace SorceryHex.Gba {
 
    namespace Pokemon.DataTypes {
       public delegate void ChildReader(IBuilder builder);
+      public delegate int ChildJump(IBuilder builder);
 
       public interface ITypes {
          string Version { get; }
@@ -108,6 +110,8 @@ namespace SorceryHex.Gba {
          dynamic Array(string name, int length, ChildReader reader);
          string String(int len, string name);
          void Unused(int count);
+         void Link(int len, string name, ChildJump jump);
+         void WriteDebug(object o);
       }
 
       class Parser : IBuilder {
@@ -244,6 +248,13 @@ namespace SorceryHex.Gba {
             if (FaultReason != null) return;
             _location += len;
          }
+
+         public void Link(int len, string name, ChildJump jump) {
+            if (FaultReason != null) return;
+            _location += len;
+         }
+
+         public void WriteDebug(object o) { MessageBox.Show(MultiBoxControl.Parse(o)); }
       }
 
       class Factory : IBuilder {
@@ -386,6 +397,35 @@ namespace SorceryHex.Gba {
                len--;
             }
          }
+
+         public void Link(int len, string name, ChildJump jump) {
+            var run = new SimpleDataRun(new JumpElementProvider(jump), len);
+            _runs.AddRun(_location, run);
+            _location += len;
+         }
+
+         public void WriteDebug(object o) { MessageBox.Show(MultiBoxControl.Parse(o)); }
+      }
+
+      class Reader : IBuilder {
+         readonly byte[] _data;
+         int _location;
+         public Reader(byte[] data, int location) { _data = data; _location = location; }
+
+         public bool Assert(bool value, string message) { return true; }
+         public byte Byte(string name) { return _data[_location++]; }
+         public short Short(string name) { return _data.ReadShort(_location += 2); }
+         public int Word(string name) { return _data.ReadData(4, _location += 4); }
+         public short Species() { return Short(null); }
+         public void Pointer(string name) { throw new NotImplementedException(); }
+         public dynamic Pointer(string name, ChildReader reader) { throw new NotImplementedException(); }
+         public void NullablePointer(string name) { throw new NotImplementedException(); }
+         public dynamic NullablePointer(string name, ChildReader reader) { throw new NotImplementedException(); }
+         public dynamic Array(string name, int length, ChildReader reader) { throw new NotImplementedException(); }
+         public string String(int len, string name) { throw new NotImplementedException(); }
+         public void Unused(int count) { _location += count; }
+         public void Link(int len, string name, ChildJump jump) { throw new NotImplementedException(); }
+         public void WriteDebug(object o) { MessageBox.Show(MultiBoxControl.Parse(o)); }
       }
    }
 }

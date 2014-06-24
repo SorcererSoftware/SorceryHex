@@ -366,6 +366,11 @@ namespace SorceryHex.Gba {
             return null;
          }
       }
+      public int destinationof(int i) {
+         var loc = destination + i * 4;
+         var r = _pointers.FirstOrDefault(p => p.destination == _data.ReadPointer(loc));
+         return r.destination;
+      }
    }
 
    enum Offset { IconImage, IconPalette, IconPaletteIndex }
@@ -415,97 +420,27 @@ namespace SorceryHex.Gba {
       }
    }
 
-   /*
-   class MapElementProvider : IElementProvider {
-      readonly GeometryElementProvider _provider = new GeometryElementProvider(Utils.ByteFlyweights, Solarized.Brushes.Orange, true, "map reference");
-      readonly Maps _maps;
-      public MapElementProvider(Maps maps) { _maps = maps; }
+   class JumpElementProvider : IElementProvider {
+      readonly GeometryElementProvider _provider = new GeometryElementProvider(Utils.ByteFlyweights, Solarized.Brushes.Orange, true);
+      readonly ChildJump _jump;
+      public JumpElementProvider(ChildJump jump) { _jump = jump; }
 
       public bool IsEquivalent(IElementProvider other) {
-         var that = other as MapElementProvider;
+         var that = other as JumpElementProvider;
          if (that == null) return false;
-         return that._maps == _maps;
+         return _jump == that._jump;
       }
 
       public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
          var element = _provider.ProvideElement(commandFactory, data, runStart, innerIndex, runLength);
-         byte bank = data[runStart];
-         byte map = data[runStart + 1];
-         commandFactory.CreateJumpCommand(element, _maps[bank, map]);
+         var reader = new Reader(data,runStart);
+         int jump = _jump(reader);
+         commandFactory.CreateJumpCommand(element, jump);
          return element;
       }
 
       public void Recycle(FrameworkElement element) { _provider.Recycle(element); }
    }
-   //*/
-
-   /*
-   class WildData : IRunParser {
-      #region Setup
-
-      static readonly DataType _level = new DataType(1, new SimpleDataRun(new GeometryElementProvider(Utils.NumericFlyweights, Solarized.Brushes.Yellow), 1));
-      static readonly DataType _species = new DataType(2, new SimpleDataRun(SpeciesElementProvider.Instance, 2));
-
-      static readonly Entry[] _encounterChildren = new[] {
-         new Entry("lowLevel", _level), new Entry("highLevel", _level), new Entry("species", _species)
-      };
-
-      #endregion
-
-      readonly Entry _dataLayout;
-      readonly PointerMapper _mapper;
-      int _layout, _count;
-
-      public WildData(PointerMapper mapper, Maps maps) {
-         _mapper = mapper;
-         var names = new[] { "grass", "surf", "tree", "fishing" };
-         var lengths = new[] { 12, 5, 5, 10 };
-         var entryList = new List<Entry>();
-         var mapType = new DataType(2, new SimpleDataRun(new MapElementProvider(maps), 2));
-         entryList.Add(new Entry("bank_map", mapType));
-         entryList.Add(new Entry("_", DataTypes.@short));
-         for (int i = 0; i < names.Length; i++) {
-            entryList.Add(new Entry(names[i], DataTypes.@nullablepointer,
-               new Entry("rate", DataTypes.@word),
-               new Entry("encounters", lengths[i].ToString(), _encounterChildren)));
-         }
-         _dataLayout = new Entry("wild", "+FF", entryList.ToArray());
-      }
-
-      public IEnumerable<int> Find(string term) { if (term == "wild") yield return _layout; }
-
-      public void Load(IRunStorage runs) {
-         var matchingLayouts = new List<int>();
-         var addressesList = _mapper.OpenDestinations.ToList();
-         foreach (var address in addressesList) {
-            if (runs.Data[address + 2] != 0) continue;
-            if (runs.Data[address + 3] != 0) continue;
-            if (!DataTypes.CouldBe(runs.Data, _dataLayout, address, addressesList)) continue;
-            matchingLayouts.Add(address);
-         }
-
-         var counts = new List<double>();
-         foreach (var layout in matchingLayouts) {
-            int repeatCount = 0;
-            int len = DataTypes.FindDynamicLength(runs.Data, layout, _dataLayout);
-            byte prev = runs.Data[layout];
-            for (int i = 1; i < len; i++) {
-               var current = runs.Data[layout + i];
-               if (prev == current) repeatCount++;
-               prev = current;
-            }
-            counts.Add((double)repeatCount / len);
-         }
-
-         var least = counts.Min();
-         var index = counts.IndexOf(least);
-         _layout = matchingLayouts[index];
-         _count = DataTypes.FindDynamicLength(runs.Data, _layout, _dataLayout);
-         DataTypes.SeekChildren(runs, _dataLayout, _layout, _mapper);
-         _mapper.Claim(runs, _layout);
-      }
-   }
-   //*/
 
    class Thumbnails : IRunParser {
       #region Utils

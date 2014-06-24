@@ -185,12 +185,12 @@ namespace SorceryHex {
          }
       }
 
-      string Parse(dynamic result) {
+      public static string Parse(object result) {
          string output = "";
          if (result is string) {
             output += result + Environment.NewLine;
          } else if (result is IEnumerable) {
-            foreach (var element in result) {
+            foreach (var element in (IEnumerable)result) {
                output += Parse(element) + Environment.NewLine;
             }
             return output;

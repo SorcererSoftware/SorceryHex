@@ -6,7 +6,11 @@
 }
 
 self.wild = types.FindVariableArray 0xFF, "wpppp", ->(b){
-   b.Short "bankmap"
+   b.Link 2, "bankmap", ->(b){
+      bank = b.Byte "bank"
+      map  = b.Byte "map"
+      return mapdata[bank].destinationof map
+   }
    b.Unused 2
    b.NullablePointer "grass", ->(b){
       b.Word "rate"
