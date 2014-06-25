@@ -48,7 +48,6 @@
             </Setter>
         </Style>
 
-
         <Style TargetType="{x:Type TextBox}">
             <Setter Property="Foreground" Value="{Binding Source={StaticResource Theme}, Path=Primary}"/>
             <Setter Property="Background" Value="{Binding Source={StaticResource Theme}, Path=Background}"/>

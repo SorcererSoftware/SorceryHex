@@ -32,6 +32,14 @@ namespace SorceryHex {
       public void @goto(int offset) { _app.JumpTo(offset, true); }
       public string[] performance() { return AutoTimer.Report.ToArray(); }
       public IEnumerable<string> vars() { return _scope.GetVariableNames(); }
+      public IEnumerable<string> help() {
+         yield return "app.help - show this document.";
+         yield return "app.vars - show a list of available varibales.";
+         yield return "app.find 'searchstring' - find a specific piece of data or text in the file and show the locations in a list.";
+         yield return "app.goto <location> - jump to a specific location in the data. Location can be a number in decimal or hex, or a variable.";
+         yield return "app.offset - list the current app location in hex.";
+         yield return "app.performance - list performance metrics. Useful for debugging / finding slow scripts";
+      }
    }
 
    public class ScriptInfo { public ScriptEngine Engine; public ScriptScope Scope; }

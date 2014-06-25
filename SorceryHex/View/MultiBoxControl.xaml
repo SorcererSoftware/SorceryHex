@@ -50,7 +50,29 @@
         </StackPanel>
         <DockPanel Name="ScriptContainer" Visibility="Hidden">
             <TextBlock Text="Script" VerticalAlignment="Center" Padding="4,2" Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
-            <TextBox x:Name="ScriptBox" Margin="2" KeyDown="HandleScriptKey"/>
+            <Grid Background="{Binding Source={StaticResource Theme}, Path=Background}">
+                <TextBox x:Name="ScriptBox" Margin="2" KeyDown="HandleScriptKey" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                            <Style.Resources>
+                                <VisualBrush AlignmentX="Left" AlignmentY="Center" Stretch="None" x:Key="EmptyBrush">
+                                    <VisualBrush.Visual>
+                                        <Label Content="type 'app.help' for help" Foreground="{Binding Source={StaticResource Theme}, Path=Secondary}" />
+                                    </VisualBrush.Visual>
+                                </VisualBrush>
+                            </Style.Resources>
+                            <Style.Triggers>
+                                <Trigger Property="Text" Value="{x:Static sys:String.Empty}">
+                                    <Setter Property="Background" Value="{StaticResource EmptyBrush}"/>
+                                </Trigger>
+                                <Trigger Property="Text" Value="{x:Null}">
+                                    <Setter Property="Background" Value="{StaticResource EmptyBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
+            </Grid>
         </DockPanel>
     </Grid>
 </UserControl>

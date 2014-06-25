@@ -55,3 +55,4 @@ trainers = types.FindVariableArray "wwwwwwwwwp", ->(b){
 }
 
 self.trainer = trainers.destination
+self.trainerdata = trainers.data

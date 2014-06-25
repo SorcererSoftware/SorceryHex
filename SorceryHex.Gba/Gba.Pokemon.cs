@@ -193,6 +193,7 @@ namespace SorceryHex.Gba {
                source.Execute(_scope);
             }
          }
+         _scope.RemoveVariable("types");
       }
 
       public string Version { get { return Header.GetCode(_runs.Data); } }
