@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -48,6 +49,11 @@ namespace SorceryHex {
       readonly MainCommandFactory _commandFactory;
       readonly CursorController _cursorController;
       IDictionary<Key, Action> KeyActions;
+
+      string _filename;
+      DateTime _filestamp;
+      bool _fileedit;
+      byte[] _filehash;
 
       public int Offset { get; private set; }
       public IModel Holder { get; private set; }
@@ -239,6 +245,9 @@ namespace SorceryHex {
       }
 
       void LoadBestMatch(string filename, byte[] data) {
+         _filename = filename;
+         _filestamp = File.GetLastWriteTime(filename);
+         _filehash = new Hashing.Murmur3().ComputeHash(data);
          Title = filename.Split('\\').Last();
          var array = _factories.Where(f => f.CanCreateModel(filename, data)).ToArray();
          Array.Sort(array);
@@ -380,6 +389,29 @@ namespace SorceryHex {
          }
       }
 
+      void LoadData(object sender, EventArgs e) {
+         var newstamp = File.GetLastWriteTime(_filename);
+         if (newstamp == _filestamp) return;
+         _filestamp = newstamp;
+         Data = Utils.LoadFile(out _filename, new[] { _filename });
+         _filehash = new Hashing.Murmur3().ComputeHash(Data);
+         _fileedit = false;
+         IModelFactory factory = null;
+         foreach (MenuItem item in Parser.Items) if (item.IsChecked) factory = (IModelFactory)item.Tag;
+         LoadParser(factory, Title, Data);
+      }
+
+      void SaveData(object sender, EventArgs e) {
+         Hashing.Murmur3 hasher = new Hashing.Murmur3();
+         byte[] hash = hasher.ComputeHash(Data);
+         _fileedit = !Enumerable.SequenceEqual(hash, _filehash);
+         if (!_fileedit) return;
+         File.WriteAllBytes(_filename, Data);
+         _filestamp = File.GetLastWriteTime(_filename);
+         _fileedit = false;
+         _filehash = hash;
+      }
+
       #endregion
 
       #region Menu
@@ -426,7 +458,7 @@ namespace SorceryHex {
          var element = (FrameworkElement)sender;
          var factory = (IModelFactory)element.Tag;
          foreach (MenuItem item in Parser.Items) item.IsChecked = element == item;
-         LoadParser(factory, this.Title, Data);
+         LoadParser(factory, Title, Data);
       }
 
       void CloseExecuted(object sender, RoutedEventArgs e) { Close(); }
