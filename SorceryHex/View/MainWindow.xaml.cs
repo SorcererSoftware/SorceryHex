@@ -154,6 +154,10 @@ namespace SorceryHex {
          Add(location - Offset, 1);
       }
 
+      public void WriteStatus(string status) {
+         Dispatcher.Invoke((Action)(() => { StatusBar.Text = status; }));
+      }
+
       #endregion
 
       #region Helper Methods

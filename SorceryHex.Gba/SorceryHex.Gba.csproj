@@ -70,6 +70,9 @@
     <None Include="datatype.conf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="exploud.rb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="PCS3-W.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -99,7 +102,8 @@ copy "$(ProjectDir)$(OutDir)datatype.conf" "$(SolutionDir)SorceryHex\$(OutDir)\d
 copy "$(ProjectDir)$(OutDir)PCS3-W.ini" "$(SolutionDir)SorceryHex\$(OutDir)\data"
 mkdir "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
 copy "$(ProjectDir)$(OutDir)pokemon_datatypes\*.py" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
-copy "$(ProjectDir)$(OutDir)pokemon_datatypes\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"</PostBuildEvent>
+copy "$(ProjectDir)$(OutDir)pokemon_datatypes\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
+copy "$(ProjectDir)$(OutDir)*.rb" "$(SolutionDir)SorceryHex\$(OutDir)"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -189,7 +189,6 @@ namespace SorceryHex.Gba {
          foreach (var script in _scripts) {
             using (AutoTimer.Time("ScriptedDataTypes-" + script)) {
                var source = _engine.CreateScriptSourceFromFile(dir + script);
-               // var code = source.Compile();
                source.Execute(_scope);
             }
          }

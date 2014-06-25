@@ -1,13 +1,13 @@
-﻿using IronPython.Hosting;
-using IronRuby;
+﻿using IronRuby;
 using Microsoft.Scripting;
 using Microsoft.Scripting.Hosting;
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -20,18 +20,43 @@ namespace SorceryHex {
       void MainFocus();
       void JumpTo(int location, bool addToBreadCrumbs = false);
       int[] Find(string term);
+      void WriteStatus(string status);
    }
 
    public class ScriptCommands {
+      readonly MultiBoxControl _box;
       readonly IAppCommands _app;
+      readonly ScriptEngine _engine;
       readonly ScriptScope _scope;
-      public ScriptCommands(IAppCommands commands, ScriptScope scope) { _app = commands; _scope = scope; }
+      public ScriptCommands(MultiBoxControl control, IAppCommands commands, ScriptEngine engine, ScriptScope scope) {
+         _box = control;
+         _app = commands;
+         _engine = engine;
+         _scope = scope;
+      }
       public int offset { get { return _app.Offset; } }
       public int[] find(string term) { return _app.Find(term); }
       public byte[] data { get { return _app.Data; } }
       public void @goto(int offset) { _app.JumpTo(offset, true); }
       public string[] performance() { return AutoTimer.Report.ToArray(); }
       public IEnumerable<string> vars() { return _scope.GetVariableNames(); }
+      public void status(string status) { _app.WriteStatus(status); }
+      public void run(string filename) {
+         if (!filename.Contains(".")) filename += ".rb";
+         var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+         foreach (var subdir in dir.EnumerateDirectories().Concat(new[] { dir })) {
+            var file = subdir.ToString() + Path.DirectorySeparatorChar + filename;
+            if (!File.Exists(file)) continue;
+            var source = _engine.CreateScriptSourceFromFile(file);
+            Task.Factory.StartNew(() => {
+               _app.WriteStatus("Executing " + file);
+               source.Execute(_scope);
+               _app.WriteStatus("Done");
+            });
+            return;
+         }
+         throw new FileNotFoundException("Couldn't find " + filename);
+      }
       public IEnumerable<string> help() {
          yield return "app.help - show this document.";
          yield return "app.vars - show a list of available varibales.";
@@ -76,6 +101,15 @@ namespace SorceryHex {
 
       #region Helpers
 
+      public void Show(dynamic result) {
+         if (result == null) {
+            _popup.IsOpen = false;
+            return;
+         }
+         _outputText.Foreground = Solarized.Theme.Instance.Primary;
+         _outputText.Text = Parse(result);
+      }
+
       public void AddLocationToBreadCrumb() {
          if (BreadCrumbBar.Children.Count >= 5) {
             ((Button)BreadCrumbBar.Children[0]).Click -= BackExecuted;
@@ -110,7 +144,7 @@ namespace SorceryHex {
       void SetupScope() {
          if (!_scopeNeedsSetup) return;
          _scopeNeedsSetup = false;
-         _scope.SetVariable("app", new ScriptCommands(_appCommands, _scope));
+         _scope.SetVariable("app", new ScriptCommands(this, _appCommands, _engine, _scope));
       }
 
       #endregion
@@ -179,12 +213,7 @@ namespace SorceryHex {
             try {
                SetupScope();
                var result = _engine.CreateScriptSourceFromString(ScriptBox.Text, SourceCodeKind.SingleStatement).Execute(_scope);
-               if (result == null) {
-                  _popup.IsOpen = false;
-                  return;
-               }
-               _outputText.Foreground = Solarized.Theme.Instance.Primary;
-               _outputText.Text = Parse(result);
+               Show(result);
             } catch (Exception e1) {
                _outputText.Foreground = Solarized.Brushes.Red;
                _outputText.Text = "error: " + e1.Message;

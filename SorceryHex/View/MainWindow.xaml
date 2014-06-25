@@ -4,7 +4,7 @@
         xmlns:m="clr-namespace:SorceryHex"
         xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
         x:Class="SorceryHex.MainWindow"
-        Title="SorceryHex" Height="400" Width="525"
+        Title="SorceryHex" Height="410" Width="525"
         MouseWheel="ScrollWheel" KeyDown="HandleWindowKey">
     <Window.InputBindings>
         <KeyBinding Key="OemMinus" Modifiers="Control" Command="NavigationCommands.BrowseBack" />
@@ -47,6 +47,7 @@
                 </MenuItem>
             </Menu>
         </DockPanel>
+        <TextBlock Name="StatusBar" DockPanel.Dock="Bottom" Foreground="{Binding Secondary, Source={StaticResource Theme}}" Background="{Binding Backlight, Source={StaticResource Theme}}"/>
         <UserControl Background="{Binding Backlight, Source={StaticResource Theme}}" DockPanel.Dock="Left">
             <Grid x:Name="Headers" HorizontalAlignment="Right" VerticalAlignment="Top" Width="70">
                 <Grid.Resources>
