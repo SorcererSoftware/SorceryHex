@@ -254,16 +254,17 @@ namespace SorceryHex {
             Parser.Visibility = Visibility.Visible;
             ((MenuItem)Parser.Items[Parser.Items.Count - 1]).IsChecked = true;
          }
-         LoadParser(array.Last(), filename, data);
+         LoadParser(array.Last(), filename, data, jump: true);
       }
 
-      void LoadParser(IModelFactory factory, string name, byte[] data) {
+      void LoadParser(IModelFactory factory, string name, byte[] data, bool jump = false) {
+         foreach (FrameworkElement element in Body.Children) Recycle(element);
          Body.Children.Clear();
          if (Holder != null) Holder.MoveToNext -= _cursorController.HandleMoveNext;
          Holder = factory.CreateModel(name, data, _multiBox.ScriptInfo);
          Holder.MoveToNext += _cursorController.HandleMoveNext;
          ScrollBar.Maximum = Holder.Length;
-         JumpTo(0);
+         if (jump) JumpTo(0);
          Parser.IsEnabled = false;
          _loadTimer = AutoTimer.Time("Full Load Time");
          Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(LoadComplete));
