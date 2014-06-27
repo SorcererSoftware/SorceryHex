@@ -52,7 +52,6 @@ namespace SorceryHex {
 
       string _filename;
       DateTime _filestamp;
-      bool _fileedit;
       byte[] _filehash;
 
       public int Offset { get; private set; }
@@ -74,7 +73,7 @@ namespace SorceryHex {
          ScrollBar.Minimum = -MaxColumnCount;
          InitializeKeyActions();
          MainFocus();
-         LoadBestMatch(fileName, data);
+         LoadBestMatch(fileName);
       }
 
       #region Public Methods
@@ -244,12 +243,12 @@ namespace SorceryHex {
          Holder.Recycle(_commandFactory, element);
       }
 
-      void LoadBestMatch(string filename, byte[] data) {
+      void LoadBestMatch(string filename) {
          _filename = filename;
          _filestamp = File.GetLastWriteTime(filename);
-         _filehash = new Hashing.Murmur3().ComputeHash(data);
+         _filehash = new Hashing.Murmur3().ComputeHash(Data);
          Title = filename.Split('\\').Last();
-         var array = _factories.Where(f => f.CanCreateModel(filename, data)).ToArray();
+         var array = _factories.Where(f => f.CanCreateModel(filename, Data)).ToArray();
          Array.Sort(array);
          foreach (MenuItem item in Parser.Items) item.Click -= SwitchParserClick;
          Parser.Items.Clear();
@@ -263,7 +262,7 @@ namespace SorceryHex {
             Parser.Visibility = Visibility.Visible;
             ((MenuItem)Parser.Items[Parser.Items.Count - 1]).IsChecked = true;
          }
-         LoadParser(array.Last(), filename, data, jump: true);
+         LoadParser(array.Last(), filename, Data, jump: true);
       }
 
       void LoadParser(IModelFactory factory, string name, byte[] data, bool jump = false) {
@@ -395,7 +394,6 @@ namespace SorceryHex {
          _filestamp = newstamp;
          Data = Utils.LoadFile(out _filename, new[] { _filename });
          _filehash = new Hashing.Murmur3().ComputeHash(Data);
-         _fileedit = false;
          IModelFactory factory = null;
          foreach (MenuItem item in Parser.Items) if (item.IsChecked) factory = (IModelFactory)item.Tag;
          LoadParser(factory, Title, Data);
@@ -404,11 +402,9 @@ namespace SorceryHex {
       void SaveData(object sender, EventArgs e) {
          Hashing.Murmur3 hasher = new Hashing.Murmur3();
          byte[] hash = hasher.ComputeHash(Data);
-         _fileedit = !Enumerable.SequenceEqual(hash, _filehash);
-         if (!_fileedit) return;
+         if (!Enumerable.SequenceEqual(hash, _filehash)) return;
          File.WriteAllBytes(_filename, Data);
          _filestamp = File.GetLastWriteTime(_filename);
-         _fileedit = false;
          _filehash = hash;
       }
 
@@ -451,7 +447,8 @@ namespace SorceryHex {
          string fileName;
          var data = Utils.LoadFile(out fileName);
          if (data == null) return;
-         LoadBestMatch(fileName, data);
+         Data = data;
+         LoadBestMatch(fileName);
       }
 
       void SwitchParserClick(object sender, EventArgs e) {
