@@ -19,7 +19,7 @@ namespace SorceryHex.Gba {
    //*/
 
    class PointerMapper {
-      public static Brush Brush = Solarized.Brushes.Orange;
+      public static Brush Brush = GbaBrushes.Pointer;
       readonly SortedList<int, int> _pointerSet = new SortedList<int, int>(); // unclaimed pointers
       readonly IDictionary<int, List<int>> _reversePointerSet = new Dictionary<int, List<int>>(); // unclaimed pointers helper
       readonly IDictionary<int, int[]> _destinations = new Dictionary<int, int[]>(); // claimed destinations (with pointers)
@@ -43,25 +43,46 @@ namespace SorceryHex.Gba {
          }
       }
 
+      readonly ISet<int> _deferredDestinations = new HashSet<int>();
+      readonly IDictionary<int, IDataRun> _deferredDestinationsWithRuns = new Dictionary<int, IDataRun>();
+      void Defer(int destination) { _deferredDestinations.Add(destination); }
+      void Defer(int destination, IDataRun run) { _deferredDestinationsWithRuns[destination] = run; }
+
+      public void ClaimDeferred(IRunStorage storage) {
+         foreach (var destination in _deferredDestinations) {
+            var keys = _reversePointerSet[destination].ToArray();
+            foreach (var key in keys) {
+               if (storage.IsFree(key)) storage.AddRun(key, _pointerRun);
+               _pointerSet.Remove(key);
+            }
+            _reversePointerSet.Remove(destination);
+         }
+
+         foreach (var destination in _deferredDestinationsWithRuns.Keys) {
+            var keys = _reversePointerSet[destination].ToArray();
+            foreach (var key in keys) {
+               if (storage.IsFree(key)) {
+                  storage.AddRun(key, _pointerRun);
+                  _pointedRuns[key] = _deferredDestinationsWithRuns[destination];
+               }
+               _pointerSet.Remove(key);
+            }
+            _reversePointerSet.Remove(destination);
+         }
+      }
+
       public void Claim(IRunStorage storage, IDataRun run, int destination) {
          // if it's already claimed, that's fine
          if (_destinations.ContainsKey(destination)) return;
          storage.AddRun(destination, run);
-
+         Defer(destination, run);
          var keys = _reversePointerSet[destination].ToArray();
-         foreach (var key in keys) {
-            storage.AddRun(key, _pointerRun);
-            _pointedRuns[key] = run;
-            _pointerSet.Remove(key);
-         }
-         _reversePointerSet.Remove(destination);
          lock (_destinations) _destinations[destination] = keys;
       }
 
       public void Claim(IRunStorage storage, int source, int destination) {
          // if it's already claimed, that's fine
          if (_destinations.ContainsKey(destination)) return;
-
          if (_reversePointerSet.ContainsKey(destination)) {
             Claim(storage, destination);
          } else {
@@ -73,13 +94,8 @@ namespace SorceryHex.Gba {
       public void Claim(IRunStorage storage, int destination) {
          // if it's already claimed, that's fine
          if (_destinations.ContainsKey(destination)) return;
-
+         Defer(destination);
          var keys = _reversePointerSet[destination].ToArray();
-         foreach (var key in keys) {
-            storage.AddRun(key, _pointerRun);
-            _pointerSet.Remove(key);
-         }
-         _reversePointerSet.Remove(destination);
          lock (_destinations) _destinations[destination] = keys;
       }
 
@@ -176,6 +192,7 @@ namespace SorceryHex.Gba {
          _base.Load();
          using (AutoTimer.Time("Gba.PointerParser-post_base_load")) {
             _mapper.FilterPointer(dest => !_storage.IsWithinDataBlock(dest));
+            _mapper.ClaimDeferred(_storage);
             _mapper.ClaimRemainder(_storage);
             _loaded = true;
          }

@@ -234,7 +234,11 @@ namespace SorceryHex.Gba {
 
          public string String(int len, string name) {
             if (FaultReason != null) return null;
-            string result = PCS.ReadString(_runs.Data, _location);
+            string result = PCS.ReadString(_runs.Data, _location, len);
+            if (result == null) {
+               FaultReason = name + " was not a string[" + len + "]";
+               return null;;
+            }
             _location += len;
             if (result.Length >= len) {
                FaultReason = name + " : " + result + ": longer than " + len;

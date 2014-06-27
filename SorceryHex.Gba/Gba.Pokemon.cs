@@ -3,7 +3,6 @@ using SorceryHex.Gba.Pokemon.DataTypes;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -138,7 +137,9 @@ namespace SorceryHex.Gba {
                   int startLoc = i - currentLength;
                   if (!Enumerable.Range(1, currentLength).All(j => _runs.Data[startLoc + j] == _runs.Data[startLoc])) {
                      if (_runs.IsFree(startLoc)) {
-                        _runs.AddRun(startLoc, _stringRun);
+                        if (_runs.NextUsed(startLoc) > startLoc + currentLength) {
+                           _runs.AddRun(startLoc, _stringRun);
+                        }
                      }
                   }
                }
@@ -148,9 +149,9 @@ namespace SorceryHex.Gba {
          }
       }
 
-      public static string ReadString(byte[] data, int location) {
+      public static string ReadString(byte[] data, int location, int maxLength = -1) {
          string result = string.Empty;
-         for (int j = 0; data[location + j] != 0xFF; j++) {
+         for (int j = 0; data[location + j] != 0xFF && (result.Length < maxLength || maxLength == -1); j++) {
             if (data[location + j] == 0x00) {
                result += " ";
             } else if (data[location + j] == 0xFD) {
@@ -160,6 +161,7 @@ namespace SorceryHex.Gba {
                result += _pcs[data[location + j]];
             }
          }
+         if (result.Length > maxLength) return null;
          return result;
       }
 
@@ -433,7 +435,7 @@ namespace SorceryHex.Gba {
 
       public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
          var element = _provider.ProvideElement(commandFactory, data, runStart, innerIndex, runLength);
-         var reader = new Reader(data,runStart);
+         var reader = new Reader(data, runStart);
          int jump = _jump(reader);
          commandFactory.CreateJumpCommand(element, jump);
          return element;

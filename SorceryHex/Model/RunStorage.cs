@@ -17,6 +17,7 @@ namespace SorceryHex {
       byte[] Data { get; }
       void AddRun(int location, IDataRun run);
       bool IsFree(int location);
+      int NextUsed(int location);
    }
 
    public class RunStorage : IPartialModel, IRunStorage, IEditor {
@@ -61,6 +62,11 @@ namespace SorceryHex {
          int prev = _keys[keyIndex];
          int prevEnd = prev + _runs[prev].GetLength(Data, prev);
          return prevEnd <= location;
+      }
+
+      public int NextUsed(int location) {
+         if (_runs.ContainsKey(location)) return location;
+         return _keys.BinarySearch(location);
       }
 
       #endregion
