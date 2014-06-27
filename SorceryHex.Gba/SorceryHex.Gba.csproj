@@ -55,11 +55,14 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Pokemon\Builder.cs" />
+    <Compile Include="Pokemon\ElementProvider.cs" />
     <Compile Include="Factories.cs" />
-    <Compile Include="Gba.cs" />
-    <Compile Include="Gba.Pointers.cs" />
-    <Compile Include="Gba.Pokemon.cs" />
-    <Compile Include="Gba.ImageUtils.cs" />
+    <Compile Include="RunParser.cs" />
+    <Compile Include="Pointers.cs" />
+    <Compile Include="Pokemon\RunParser.cs" />
+    <Compile Include="ImageUtils.cs" />
+    <Compile Include="Pokemon\ScriptedDataTypes.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -67,10 +70,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="datatype.conf">
+    <None Include="pokemon_datatypes\datatype.conf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="exploud.rb">
+    <None Include="pokemon_plugins\exploud.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="PCS3-W.ini">
@@ -95,6 +98,7 @@
       <Name>SorceryHex</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy "$(ProjectDir)$(OutDir)$(TargetFileName)" "$(SolutionDir)SorceryHex\$(OutDir)\data"
@@ -103,7 +107,7 @@ copy "$(ProjectDir)$(OutDir)PCS3-W.ini" "$(SolutionDir)SorceryHex\$(OutDir)\data
 mkdir "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
 copy "$(ProjectDir)$(OutDir)pokemon_datatypes\*.py" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
 copy "$(ProjectDir)$(OutDir)pokemon_datatypes\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
-copy "$(ProjectDir)$(OutDir)*.rb" "$(SolutionDir)SorceryHex\$(OutDir)"</PostBuildEvent>
+copy "$(ProjectDir)$(OutDir)pokemon_plugins\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_plugins"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
