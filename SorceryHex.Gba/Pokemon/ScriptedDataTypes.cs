@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,10 +32,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       readonly PointerMapper _mapper;
       readonly ScriptEngine _engine;
       readonly ScriptScope _scope;
-      readonly string[] _scripts;
 
-      public ScriptedDataTypes(PointerMapper mapper, ScriptEngine engine, ScriptScope scope, params string[] scriptList) {
-         _mapper = mapper; _engine = engine; _scope = scope; _scripts = scriptList;
+      public ScriptedDataTypes(PointerMapper mapper, ScriptEngine engine, ScriptScope scope) {
+         _mapper = mapper; _engine = engine; _scope = scope;
       }
 
       public IEnumerable<int> Find(string term) { return null; }
@@ -43,10 +43,10 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void Load(IRunStorage runs) {
          _runs = runs;
          _scope.SetVariable("types", this);
-         var dir = AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/";
-         foreach (var script in _scripts) {
-            using (AutoTimer.Time("ScriptedDataTypes-" + script)) {
-               var source = _engine.CreateScriptSourceFromFile(dir + script);
+         var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/");
+         foreach (var script in dir.EnumerateFiles("*.rb")) {
+            using (AutoTimer.Time("ScriptedDataTypes-" + script.Name)) {
+               var source = _engine.CreateScriptSourceFromFile(script.FullName);
                source.Execute(_scope);
             }
          }

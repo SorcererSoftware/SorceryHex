@@ -26,8 +26,7 @@ namespace SorceryHex.Gba {
                , new Header(pointerMapper)
                , new Thumbnails(pointerMapper)
                , new Lz(pointerMapper)
-               , new Pokemon.DataTypes.ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope,
-                  "maps.rb", "wild.rb", "trainer.rb", "stats.rb", "pokename.rb")
+               , new Pokemon.DataTypes.ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope)
                , new PCS()
             );
             IModel model = new CompositeModel(data, storage);
