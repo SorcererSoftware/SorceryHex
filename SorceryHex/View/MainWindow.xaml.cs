@@ -402,7 +402,7 @@ namespace SorceryHex {
       void SaveData(object sender, EventArgs e) {
          Hashing.Murmur3 hasher = new Hashing.Murmur3();
          byte[] hash = hasher.ComputeHash(Data);
-         if (!Enumerable.SequenceEqual(hash, _filehash)) return;
+         if (Enumerable.SequenceEqual(hash, _filehash)) return;
          File.WriteAllBytes(_filename, Data);
          _filestamp = File.GetLastWriteTime(_filename);
          _filehash = hash;
