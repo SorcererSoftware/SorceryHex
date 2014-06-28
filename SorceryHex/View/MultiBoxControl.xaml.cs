@@ -12,6 +12,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace SorceryHex {
    public interface IAppCommands {
@@ -89,7 +90,11 @@ namespace SorceryHex {
          _appCommands = appCommands;
          _scope = _engine.CreateScope();
 
-         _outputText = new TextBlock { Background = Solarized.Theme.Instance.Backlight };
+         _outputText = new TextBlock {
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 14,
+            Background = Solarized.Theme.Instance.Backlight
+         };
          _popup = new Popup {
             Child = _outputText,
             MinHeight = MainWindow.ElementHeight,
@@ -106,7 +111,7 @@ namespace SorceryHex {
             _popup.IsOpen = false;
             return;
          }
-         _outputText.Foreground = Solarized.Theme.Instance.Primary;
+         _outputText.Foreground = Solarized.Theme.Instance.Emphasis;
          _outputText.Text = Parse(result);
       }
 
