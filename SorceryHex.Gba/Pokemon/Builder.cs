@@ -300,6 +300,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _location += 4;
          var child = new Builder2(_runs, _mapper, pointer);
          for (int i = 0; i < length; i++) {
+            child.Clear();
             reader(child);
          }
          _result.AppendArray(name, length, child.Result);
@@ -334,7 +335,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void WriteDebug(object o) { MessageBox.Show(MultiBoxControl.Parse(o)); }
    }
 
-   class BuildableObject : DynamicObject {
+   public class BuildableObject : DynamicObject {
 
       readonly byte[] _data;
       readonly IList<string> _names = new List<string>();
@@ -343,6 +344,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       readonly IDictionary<string, BuildableObject> _children = new Dictionary<string, BuildableObject>();
       readonly IDictionary<string, int> _childrenLength = new Dictionary<string, int>();
       int _location;
+
+      public int Length { get { return _lengths.Sum(); } }
 
       public BuildableObject(byte[] data) { _data = data; }
 
@@ -394,6 +397,10 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       #endregion
+
+      public override string ToString() {
+         return "{ " + _names.Where(name => name != null).Aggregate((a, b) => a + ", " + b) + " }";
+      }
 
       public void Relocate(int location) { _location = location; }
 
@@ -448,21 +455,29 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       #endregion
 
-      class BuildableArray : DynamicObject {
-         readonly BuildableObject _member;
-         readonly int _location, _length;
-         public BuildableArray(BuildableObject member, int location, int length) { _member = member; _location = location; _length = length; }
-         public override bool TryGetIndex(GetIndexBinder binder, object[] indexes, out object result) {
-            if (indexes.Length != 1) return base.TryGetIndex(binder, indexes, out result);
-            try {
-               var index = (int)indexes[0];
-               if (index >= _length) return base.TryGetIndex(binder, indexes, out result);
-               int stride = _member._lengths.Sum();
-               _member.Relocate(_location + stride * index);
-               result = _member;
-               return true;
-            } catch { return base.TryGetIndex(binder, indexes, out result); }
-         }
+   }
+
+   public class BuildableArray : DynamicObject {
+      readonly BuildableObject _member;
+      readonly int _location, _length;
+      public BuildableArray(BuildableObject member, int location, int length) { _member = member; _location = location; _length = length; }
+      public override bool TryGetIndex(GetIndexBinder binder, object[] indexes, out object result) {
+         if (indexes.Length != 1) return base.TryGetIndex(binder, indexes, out result);
+         try {
+            var index = (int)indexes[0];
+            if (index >= _length) return base.TryGetIndex(binder, indexes, out result);
+            int stride = _member.Length;
+            _member.Relocate(_location + stride * index);
+            result = _member;
+            return true;
+         } catch { return base.TryGetIndex(binder, indexes, out result); }
+      }
+      public override string ToString() {
+         return "Array[" + _length + "] " + _member.ToString();
+      }
+      public int destinationof(int i) {
+         int stride = _member.Length;
+         return _location + i * stride;
       }
    }
 
