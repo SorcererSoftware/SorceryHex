@@ -67,7 +67,7 @@ namespace SorceryHex {
          }).ToArray();
       public static readonly Geometry[] NumericFlyweights =
          Enumerable.Range(0, 0x100).Select(i => {
-            var geo = i.ToString().ToGeometry();
+            var geo = i.ToString().ToGeometry(13);
             geo.Freeze();
             return geo;
          }).ToArray();
@@ -102,8 +102,8 @@ namespace SorceryHex {
          return value;
       }
 
-      public static Geometry ToGeometry(this string text) {
-         var fText = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Font, 15.0, Brushes.Black);
+      public static Geometry ToGeometry(this string text, double size = 15.0) {
+         var fText = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, Font, size, Brushes.Black);
          var geo = fText.BuildGeometry(new Point());
          geo.Freeze();
          return geo;

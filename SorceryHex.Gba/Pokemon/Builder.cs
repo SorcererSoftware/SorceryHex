@@ -283,7 +283,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public dynamic NullablePointer(string name, ChildReader reader) {
          if (_runs.Data.ReadData(4, _location) == 0) {
             _location += 4;
-            _result.AppendSkip(4);
+            _result.Append(name, null);
             return null;
          }
          return Pointer(name, reader);
@@ -409,27 +409,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public override bool TryGetMember(GetMemberBinder binder, out object result) {
          var index = _names.IndexOf(binder.Name);
          if (index == -1) return base.TryGetMember(binder, out result);
-         var loc = _location + _lengths.Take(index).Sum();
-         result = null;
-         if (_types[index] == typeof(byte)) result = _data[loc];
-         if (_types[index] == typeof(short)) result = _data.ReadShort(loc);
-         if (_types[index] == typeof(int)) result = _data.ReadData(4, loc);
-         if (_types[index] == typeof(string)) result = PCS.ReadString(_data, loc, _lengths[index]);
-         if (_types[index] == typeof(BuildableObject)) {
-            int ptr = _data.ReadPointer(loc);
-            if (ptr != -1) {
-               _children[binder.Name].Relocate(ptr);
-               result = _children[binder.Name];
-            }
-         }
-         if (_types[index] == typeof(BuildableObject[])) {
-            int ptr = _data.ReadPointer(loc);
-            if (ptr != -1) {
-               result = new BuildableArray(_children[binder.Name], ptr, _childrenLength[binder.Name]);
-            }
-         }
-
-         return true;
+         return TryMember(index, out result);
       }
 
       public override bool TrySetMember(SetMemberBinder binder, object value) {
@@ -441,6 +421,37 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          else if (_types[index] == typeof(int)) WriteBytes(loc, int.Parse(value.ToString()), 4);
          else if (_types[index] == typeof(string)) PCS.WriteString(_data, loc, _lengths[index], (string)value);
          else return false;
+         return true;
+      }
+
+      public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result) {
+         var index = _names.IndexOf(binder.Name);
+         if (index == -1) return base.TryInvokeMember(binder, args, out result);
+         return TryMember(index, out result);
+      }
+
+      bool TryMember(int index, out object result) {
+         string name = _names[index];
+         var loc = _location + _lengths.Take(index).Sum();
+         result = null;
+         if (_types[index] == typeof(byte)) result = _data[loc];
+         if (_types[index] == typeof(short)) result = _data.ReadShort(loc);
+         if (_types[index] == typeof(int)) result = _data.ReadData(4, loc);
+         if (_types[index] == typeof(string)) result = PCS.ReadString(_data, loc, _lengths[index]);
+         if (_types[index] == typeof(BuildableObject)) {
+            int ptr = _data.ReadPointer(loc);
+            if (ptr != -1) {
+               _children[name].Relocate(ptr);
+               result = _children[name];
+            }
+         }
+         if (_types[index] == typeof(BuildableObject[])) {
+            int ptr = _data.ReadPointer(loc);
+            if (ptr != -1) {
+               result = new BuildableArray(_children[name], ptr, _childrenLength[name]);
+            }
+         }
+
          return true;
       }
 

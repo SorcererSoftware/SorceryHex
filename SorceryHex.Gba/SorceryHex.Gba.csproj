@@ -73,6 +73,9 @@
     <None Include="pokemon_datatypes\datatype.conf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="pokemon_plugins\epic.rb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="pokemon_plugins\exploud.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -107,6 +110,7 @@ copy "$(ProjectDir)$(OutDir)PCS3-W.ini" "$(SolutionDir)SorceryHex\$(OutDir)\data
 mkdir "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
 copy "$(ProjectDir)$(OutDir)pokemon_datatypes\*.py" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
 copy "$(ProjectDir)$(OutDir)pokemon_datatypes\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
+mkdir "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_plugins"
 copy "$(ProjectDir)$(OutDir)pokemon_plugins\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_plugins"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
