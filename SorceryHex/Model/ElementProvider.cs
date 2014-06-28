@@ -5,7 +5,6 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex {
-
    public interface IElementProvider {
       FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength);
       bool IsEquivalent(IElementProvider other);
@@ -65,5 +64,4 @@ namespace SorceryHex {
 
       public void Recycle(FrameworkElement element) { _recycles.Enqueue((Border)element); }
    }
-
 }

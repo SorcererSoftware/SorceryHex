@@ -10,7 +10,7 @@ namespace SorceryHex {
    class StringDecoder : IPartialModel, IEditor {
       readonly byte[] _data;
       readonly Queue<Path> _recycles = new Queue<Path>();
-      readonly IDictionary<byte, Geometry> _specialCharacters = new Dictionary<byte, Geometry>(); 
+      readonly IDictionary<byte, Geometry> _specialCharacters = new Dictionary<byte, Geometry>();
       readonly int Stride;
       int lowerCaseStart = -1, upperCaseStart = -1;
 
@@ -26,7 +26,7 @@ namespace SorceryHex {
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var list = new FrameworkElement[length];
 
-         for(int i=0;i<length;i++){
+         for (int i = 0; i < length; i++) {
             if ((start + i) % Stride != 0) continue;
             var data = _data[start + i];
             if (lowerCaseStart != -1 && lowerCaseStart <= data && data < lowerCaseStart + 26) {
@@ -76,6 +76,8 @@ namespace SorceryHex {
 
       #region Editor
 
+      public FrameworkElement CreateElementEditor(int location) { return null; }
+
       public void Edit(int location, char c) {
          if (location % Stride != 0) return;
          if (LowerCaseAlphabet.Contains(c)) {
@@ -83,7 +85,7 @@ namespace SorceryHex {
          } else if (UpperCaseAlphabet.Contains(c)) {
             upperCaseStart = GetUpperStartFromUpperReference(_data[location], c);
          } else {
-            var geo = new string(c,1).ToGeometry();
+            var geo = new string(c, 1).ToGeometry();
             geo.Freeze();
             _specialCharacters[_data[location]] = geo;
          }

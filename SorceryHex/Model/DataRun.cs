@@ -22,10 +22,10 @@ namespace SorceryHex {
       public IEditor Editor { get; set; }
       public IElementProvider Provider { get; private set; }
 
-      public SimpleDataRun(IElementProvider provider, int length) {
+      public SimpleDataRun(IElementProvider provider, int length, IEditor editor = null) {
          Provider = provider;
          _length = length;
-         Editor = DefaultEditor;
+         Editor = editor ?? DefaultEditor;
       }
 
       public int GetLength(byte[] data, int startPoint) { return _length; }

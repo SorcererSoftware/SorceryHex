@@ -31,6 +31,6 @@ statsArray = types.ReadArray 412, statlocation, ->(b) {
    b.Unused 2
 }
 
-types.Label statsArray, ->(i) { return self.pokenamedata[i].name }
+types.Label statsArray, ->(i) { return self.pokename[i].name }
 types.AddShortcut "stats", statsArray.destinationof(0)
 self.stats = statsArray

@@ -94,6 +94,7 @@ namespace SorceryHex {
       public FrameworkElement GetInterpretation(int location) { return null; }
       public IList<int> Find(string term) { return null; }
 
+      public FrameworkElement CreateElementEditor(int location) { return null; }
       public void Edit(int location, char c) { }
       public void CompleteEdit(int location) { }
       public event EventHandler MoveToNext;

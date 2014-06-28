@@ -177,9 +177,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       static IElementProvider hex(string hoverText = null) { return new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number, hoverText: hoverText); }
       static IElementProvider nums(string hoverText = null) { return new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number, hoverText: hoverText); }
 
-      static IDataRun Build(IDictionary<string, IDataRun> dict, Func<string, IElementProvider> func, int len, string hoverText = "") {
+      static IDataRun Build(IDictionary<string, IDataRun> dict, Func<string, IElementProvider> func, int len, string hoverText = "", IEditor editor = null) {
          if (dict.ContainsKey(hoverText)) return dict[hoverText];
-         var run = new SimpleDataRun(func(hoverText == "" ? null : hoverText), len);
+         var run = new SimpleDataRun(func(hoverText == "" ? null : hoverText), len, editor);
          dict[hoverText] = run;
          return run;
       }
@@ -219,8 +219,12 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       static readonly IDictionary<string, IDataRun> _byteNumRuns = new Dictionary<string, IDataRun>();
-      public short ByteNum(string name) {
-         _runs.AddRun(_location, Build(_byteNumRuns, nums, 1, name));
+      IEditor _inlineByteNumEditor;
+      IEditor InlineByteNumEditor { get {
+         return _inlineByteNumEditor ?? (_inlineByteNumEditor = new InlineTextEditor(_runs.Data, 1, array => array[0].ToString(), str => new[] { byte.Parse(str) }));
+      } }
+      public byte ByteNum(string name) {
+         _runs.AddRun(_location, Build(_byteNumRuns, nums, 1, name, InlineByteNumEditor));
          var value = _runs.Data[_location];
          _location++;
          _result.AppendByte(name);

@@ -217,6 +217,14 @@ namespace SorceryHex {
 
       #region Editor
 
+      public FrameworkElement CreateElementEditor(int location) {
+         int index = _keys.BinarySearch(location);
+         if (index < 0) index = Math.Max(~index - 1, 0);
+         int startPoint = _keys[index];
+         Debug.Assert(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null);
+         return _runs[startPoint].Editor.CreateElementEditor(location);
+      }
+
       public void Edit(int location, char c) {
          int index = _keys.BinarySearch(location);
          if (index < 0) index = Math.Max(~index - 1, 0);

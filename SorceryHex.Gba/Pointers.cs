@@ -245,6 +245,8 @@ namespace SorceryHex.Gba {
 
       #region Editor
 
+      public FrameworkElement CreateElementEditor(int location) { return _base.CreateElementEditor(location); }
+
       public void Edit(int location, char c) { _base.Edit(location, c); }
 
       public void CompleteEdit(int location) { _base.CompleteEdit(location); }

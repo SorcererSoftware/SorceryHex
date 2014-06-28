@@ -42,6 +42,8 @@ namespace SorceryHex.Gba.Pokemon {
 
       IRunStorage _runs;
 
+      PCS() { }
+
       public void Load(ICommandFactory commander, IRunStorage runs) {
          _runs = runs;
          FindStrings();
@@ -74,6 +76,8 @@ namespace SorceryHex.Gba.Pokemon {
       }
 
       #region Editor
+
+      public FrameworkElement CreateElementEditor(int location) { return null; }
 
       public void Edit(int location, char c) {
          if (c == ' ') {

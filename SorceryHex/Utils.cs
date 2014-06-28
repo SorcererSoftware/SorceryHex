@@ -109,6 +109,8 @@ namespace SorceryHex {
          return geo;
       }
 
+      public static void Foreach<T>(this IEnumerable<T> list, Action<T> action) { foreach (var item in list)action(item); }
+
       public static string ToHexString(this int value) {
          if (value < 0) return "";
          if (value < 16) return Hex.Substring(value, 1);

@@ -16,32 +16,6 @@
         <CommandBinding Command="NavigationCommands.BrowseBack" Executed="BackExecuted" CanExecute="BackCanExecute" />
         <CommandBinding Command="MediaCommands.Select" Executed="ScriptExecuted" CanExecute="Always" />
     </UserControl.CommandBindings>
-    <UserControl.Resources>
-        <Style TargetType="Button">
-            <Setter Property="FontFamily" Value="Consolas"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="buttonBorder" Padding="1" Background="Transparent" VerticalAlignment="Center" BorderBrush="{Binding Secondary, Source={StaticResource Theme}}">
-                            <ContentPresenter TextBlock.Foreground="{Binding Primary, Source={StaticResource Theme}}"/>
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Margin" Value="4,1"/>
-                                    <Setter Property="BorderThickness" Value="0"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="true">
-                                            <Setter Property="BorderThickness" Value="1"/>
-                                            <Setter Property="Margin" Value="3,0"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </UserControl.Resources>
     <Grid>
         <StackPanel Margin="170,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Name="BreadCrumbBar"/>
         <StackPanel x:Name="MultiBoxContainer" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">

@@ -83,6 +83,7 @@ namespace SorceryHex {
       #region Events
 
       void BodyMouseDown(object sender, MouseButtonEventArgs e) {
+         _window.EditBody.Children.Clear();
          _window.MainFocus();
          _mouseDownPosition = e.GetPosition(_window.Body);
          if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) _clickStart = ByteOffsetForMouse(e);
@@ -115,10 +116,26 @@ namespace SorceryHex {
             if (dif.X <= SystemParameters.MinimumHorizontalDragDistance && dif.Y <= SystemParameters.MinimumVerticalDragDistance) {
                _commandFactory.CheckJumpForMouseOver();
             }
+            return;
          }
+         if (_selectionLength != 1) return;
+         var editor = _window.Holder.CreateElementEditor(_selectionStart);
+         if (editor == null) return;
+         Grid.SetColumnSpan(editor, 3);
+         int loc = _selectionStart - _window.Offset;
+         MainWindow.SplitLocation(editor, _window.CurrentColumnCount, loc);
+         int currentColumn = Grid.GetColumn(editor);
+         if (currentColumn > 0) Grid.SetColumn(editor, currentColumn - 1);
+         if (currentColumn > _window.CurrentColumnCount - 3) Grid.SetColumn(editor, _window.CurrentColumnCount - 3);
+         _window.EditBody.Children.Add(editor);
       }
 
       public void HandleMoveNext(object sender, EventArgs e) {
+         if (_window.EditBody.Children.Count > 0) {
+            _window.EditBody.Children.Clear();
+            _window.RefreshElement(_selectionStart);
+            return;
+         }
          _selectionStart++;
          UpdateSelectionFromMovement();
       }

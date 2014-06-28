@@ -44,6 +44,7 @@ namespace SorceryHex {
 
       #endregion
 
+      readonly IEnumerable<Grid> _bodies;
       readonly IEnumerable<IModelFactory> _factories;
       readonly MultiBoxControl _multiBox;
       readonly MainCommandFactory _commandFactory;
@@ -66,6 +67,7 @@ namespace SorceryHex {
          Data = data;
          _commandFactory = new MainCommandFactory(this);
          InitializeComponent();
+         _bodies = new[] { BackgroundBody, Body, EditBody };
          _multiBox = new MultiBoxControl(this);
          MenuDock.Children.Add(_multiBox);
          CommandBindings.AddRange(_multiBox.CommandBindings);
@@ -84,7 +86,7 @@ namespace SorceryHex {
          location = Math.Min(Math.Max(-MaxColumnCount, location), Holder.Length);
 
          foreach (FrameworkElement element in Body.Children) Recycle(element);
-         Body.Children.Clear();
+         _bodies.Foreach(body => body.Children.Clear());
 
          Offset = location;
          Add(0, CurrentColumnCount * CurrentRowCount);
@@ -127,6 +129,7 @@ namespace SorceryHex {
 
          UpdateRows(Body, rows, Recycle);
          UpdateRows(BackgroundBody, rows, _cursorController.Recycle);
+         UpdateRows(EditBody, rows, (element) => { });
 
          Offset -= add;
          if (rows > 0) Add(0, add);
@@ -228,6 +231,7 @@ namespace SorceryHex {
 
          ShiftColumns(Body, shift, Recycle);
          ShiftColumns(BackgroundBody, shift, _cursorController.Recycle);
+         ShiftColumns(EditBody, shift, (element) => { });
 
          Offset -= shift;
          if (shift > 0) Add(0, shift);
@@ -276,7 +280,7 @@ namespace SorceryHex {
 
       void LoadParser(IModelFactory factory, string name, byte[] data, bool jump = false) {
          foreach (FrameworkElement element in Body.Children) Recycle(element);
-         Body.Children.Clear();
+         _bodies.Foreach(body => body.Children.Clear());
          if (Holder != null) Holder.MoveToNext -= _cursorController.HandleMoveNext;
          Holder = factory.CreateModel(name, data, _multiBox.ScriptInfo);
          Holder.MoveToNext += _cursorController.HandleMoveNext;
@@ -320,6 +324,7 @@ namespace SorceryHex {
          CurrentColumnCount = newCols; CurrentRowCount = newRows;
          updateSize(Body);
          updateSize(BackgroundBody);
+         updateSize(EditBody);
          UpdateRows(Headers, newRows - oldRows);
          Headers.Height = newRows * ElementHeight;
 
@@ -371,6 +376,7 @@ namespace SorceryHex {
       }
 
       void HandleWindowKey(object sender, KeyEventArgs e) {
+         if (EditBody.IsKeyboardFocusWithin) return;
          if (Keyboard.Modifiers == ModifierKeys.Control) {
             e.Handled = true;
             if (KeyActions.ContainsKey(e.Key)) {
@@ -387,6 +393,7 @@ namespace SorceryHex {
       }
 
       void HandleKey(object sender, KeyEventArgs e) {
+         if (EditBody.IsKeyboardFocusWithin) return;
          if (e.Key == Key.Escape) {
             // some kind of modal knowledge required here...
          }

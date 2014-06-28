@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
@@ -22,15 +24,60 @@ namespace SorceryHex {
    }
 
    public interface IEditor {
+      FrameworkElement CreateElementEditor(int location);
       void Edit(int location, char c); // called because the user entered an edit key
       void CompleteEdit(int location); // called because the user entered a key that signifies the end of an edit
       event EventHandler MoveToNext; // sent up because the editor realizes it's done with the current edit
    }
 
    public class DisableEditor : IEditor {
+      public FrameworkElement CreateElementEditor(int location) { return null; }
       public void Edit(int location, char c) { }
       public void CompleteEdit(int location) { }
       public event EventHandler MoveToNext;
+   }
+
+   public class InlineTextEditor : IEditor {
+      readonly byte[] _data;
+      readonly Func<byte[], string> _convertToString;
+      readonly Func<string, byte[]> _convertToValue;
+      readonly int _length;
+
+      TextBox _box;
+      int _location;
+
+      public InlineTextEditor(byte[] data, int length, Func<byte[], string> toString, Func<string, byte[]> toValue) {
+         _data = data; _length = length;
+         _convertToString = toString;
+         _convertToValue = toValue;
+      }
+
+      public FrameworkElement CreateElementEditor(int location) {
+         _location = location;
+         if (_box != null) _box.KeyDown -= KeyDown;
+         _box = new TextBox();
+         byte[] temp = new byte[_length];
+         Array.Copy(_data, location, temp, 0, _length);
+         _box.Text = _convertToString(temp);
+         _box.KeyDown += KeyDown;
+         return _box;
+      }
+
+      public void Edit(int location, char c) { }
+      public void CompleteEdit(int location) { }
+      public event EventHandler MoveToNext;
+
+      void KeyDown(object sender, KeyEventArgs e) {
+         if (e.Key != Key.Enter) return;
+         e.Handled = true;
+         try {
+            var result = _convertToValue(_box.Text);
+            Array.Copy(result, 0, _data, _location, _length);
+            MoveToNext(this, EventArgs.Empty);
+         } catch (Exception ex) {
+            // TODO some kind of error message
+         }
+      }
    }
 
    public interface IModel : IParser, IEditor { }
@@ -164,6 +211,10 @@ namespace SorceryHex {
       #region Editor
 
       string _editBuffer = string.Empty;
+
+      public FrameworkElement CreateElementEditor(int location) {
+         return _children.Where(child => child.Editor != null).Select(child => child.Editor.CreateElementEditor(location)).FirstOrDefault();
+      }
 
       public void Edit(int location, char c) {
          foreach (var child in _children) {
