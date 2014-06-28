@@ -20,10 +20,11 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       string Version { get; }
       Pointer FindVariableArray(string generalLayout, ChildReader reader);
       Pointer FindVariableArray(byte ender, string generalLayout, ChildReader reader);
-      BuildableArray ReadArray(string generalLayout, int length, int location, ChildReader reader);
+      BuildableArray ReadArray(int length, int location, ChildReader reader);
       Pointer ReadPointer(int location, string generalLayout, ChildReader reader);
       Pointer[] FindMany(string generalLayout, ChildReader reader);
       Pointer[] FollowPointersUp(Pointer[] locations);
+      void Label(BuildableArray array, Func<int, string> label);
    }
 
    class ScriptedDataTypes : IRunParser, ITypes {
@@ -51,6 +52,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          }
          _scope.RemoveVariable("types");
       }
+
+      #region ITypes
 
       public string Version { get { return Header.GetCode(_runs.Data); } }
 
@@ -124,7 +127,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return FindVariableArray(reader, stride, matchingPointers, matchingLayouts, matchingLengths);
       }
 
-      public BuildableArray ReadArray(string generalLayout, int length, int location, ChildReader reader) {
+      public BuildableArray ReadArray(int length, int location, ChildReader reader) {
          var destination = _runs.Data.ReadPointer(location);
          if (destination == -1) return null;
          var parser = new Parser(_runs, destination);
@@ -173,6 +176,12 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          }
          return pointerSet.ToArray();
       }
+
+      public void Label(BuildableArray array, Func<int, string> label) { array.Label(_runs, label); }
+
+      #endregion
+
+      #region Helpers
 
       bool GeneralMatch(int address, string layout) {
          layout = layout.ToLower();
@@ -233,6 +242,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             data = factory.Result
          };
       }
+
+      #endregion
    }
 
    public class AutoArray {

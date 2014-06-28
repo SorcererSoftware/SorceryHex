@@ -6,6 +6,10 @@ using System.Windows;
 using System.Windows.Controls;
 
 namespace SorceryHex {
+   public interface ILabeler {
+      string GetLabel(int index);
+   }
+
    public interface IRunParser {
       void Load(IRunStorage runs);
       IEnumerable<int> Find(string term);
@@ -14,6 +18,7 @@ namespace SorceryHex {
    public interface IRunStorage {
       byte[] Data { get; }
       void AddRun(int location, IDataRun run);
+      void AddLabeler(ILabeler labeler);
       bool IsFree(int location);
       int NextUsed(int location);
    }
@@ -26,6 +31,7 @@ namespace SorceryHex {
       readonly HashSet<FrameworkElement> _jumpLinks = new HashSet<FrameworkElement>();
       readonly HashSet<IDataRun> _runSet = new HashSet<IDataRun>();
       readonly IRunParser[] _runParsers;
+      IList<ILabeler> _labelers = new List<ILabeler>();
 
       List<int> _keys = new List<int>();
       bool _listNeedsUpdate;
@@ -53,6 +59,8 @@ namespace SorceryHex {
          _listNeedsUpdate = true;
       }
 
+      public void AddLabeler(ILabeler labeler) { if (!_labelers.Contains(labeler)) _labelers.Add(labeler); }
+
       public bool IsFree(int location) {
          if (_runs.ContainsKey(location)) return false;
          int keyIndex = ~_keys.BinarySearch(location) - 1;
@@ -64,12 +72,13 @@ namespace SorceryHex {
 
       public int NextUsed(int location) {
          if (_runs.ContainsKey(location)) return location;
-         return _keys.BinarySearch(location);
+         int index = ~_keys.BinarySearch(location);
+         return index >= _keys.Count ? Data.Length : _keys[index];
       }
 
       #endregion
 
-      #region Partial Parser
+      #region PartialModel
 
       public bool CanEdit(int location) {
          int index = _keys.BinarySearch(location);
@@ -160,6 +169,10 @@ namespace SorceryHex {
             commander.RemoveJumpCommand(element);
          }
          ((IElementProvider)element.Tag).Recycle(element);
+      }
+
+      public string GetLabel(int location) {
+         return _labelers.Select(lbl => lbl.GetLabel(location)).Where(str => !string.IsNullOrEmpty(str)).FirstOrDefault();
       }
 
       public bool IsStartOfDataBlock(int location) {

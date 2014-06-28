@@ -233,6 +233,7 @@ namespace SorceryHex.Gba {
 
       public bool IsStartOfDataBlock(int location) { return _base.IsStartOfDataBlock(location); }
       public bool IsWithinDataBlock(int location) { return _base.IsWithinDataBlock(location); }
+      public string GetLabel(int location) { return _base.GetLabel(location); }
       public int GetDataBlockStart(int location) { return _base.GetDataBlockStart(location); }
       public int GetDataBlockLength(int location) { return _base.GetDataBlockLength(location); }
 

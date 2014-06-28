@@ -44,6 +44,7 @@ namespace SorceryHex {
       public void Recycle(ICommandFactory commander, FrameworkElement element) { _recycles.Enqueue((Path)element); }
       public bool IsStartOfDataBlock(int location) { return false; }
       public bool IsWithinDataBlock(int location) { return false; }
+      public string GetLabel(int location) { return null; }
       public int GetDataBlockStart(int location) { throw new NotImplementedException(); }
       public int GetDataBlockLength(int location) { throw new NotImplementedException(); }
       public FrameworkElement GetInterpretation(int location) { return null; }

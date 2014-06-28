@@ -468,10 +468,27 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
    }
 
-   public class BuildableArray : DynamicObject {
+   public class BuildableArray : DynamicObject, ILabeler {
       readonly BuildableObject _member;
       readonly int _location, _length;
       public BuildableArray(BuildableObject member, int location, int length) { _member = member; _location = location; _length = length; }
+
+      #region Labels
+
+      Func<int, string> _labelmaker;
+      public void Label(IRunStorage runs, Func<int, string> label) { runs.AddLabeler(this); _labelmaker = label; }
+
+      public string GetLabel(int index) {
+         if (index < _location) return null;
+         int stride = _member.Length;
+         if ((index - _location) % stride != 0) return null;
+         int i = (index - _location) / stride;
+         if (i >= _length) return null;
+         return _labelmaker(i);
+      }
+
+      #endregion
+
       public override bool TryGetIndex(GetIndexBinder binder, object[] indexes, out object result) {
          if (indexes.Length != 1) return base.TryGetIndex(binder, indexes, out result);
          try {

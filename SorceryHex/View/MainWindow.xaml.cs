@@ -105,7 +105,7 @@ namespace SorceryHex {
          int cols = CurrentColumnCount;
          foreach (TextBlock block in Headers.Children) {
             int location = Grid.GetRow(block) * cols + Offset;
-            block.Text = location.ToHexString();
+            block.Text = Holder.GetLabel(location);
          }
          _cursorController.UpdateSelection();
       }
@@ -200,7 +200,7 @@ namespace SorceryHex {
 
          // add new header rows
          for (int i = oldRows; i < newRows; i++) {
-            var headerText = (Offset + i * CurrentColumnCount).ToHexString();
+            var headerText = Holder.GetLabel(Offset + i * CurrentColumnCount);
             var block = new TextBlock { Text = headerText, HorizontalAlignment = HorizontalAlignment.Right };
             Grid.SetRow(block, i);
             Headers.Children.Add(block);

@@ -14,6 +14,7 @@ namespace SorceryHex {
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsStartOfDataBlock(int location);
       bool IsWithinDataBlock(int location);
+      string GetLabel(int location);
       int GetDataBlockStart(int location);
       int GetDataBlockLength(int location);
       FrameworkElement GetInterpretation(int location);
@@ -36,6 +37,7 @@ namespace SorceryHex {
 
    public interface IPartialModel {
       bool CanEdit(int location);
+      string GetLabel(int location);
       IEditor Editor { get; }
       void Load();
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
@@ -111,6 +113,10 @@ namespace SorceryHex {
       public bool IsWithinDataBlock(int location) {
          if (!_loaded) return false;
          return _children.Any(child => child.IsWithinDataBlock(location));
+      }
+
+      public string GetLabel(int location) {
+         return _children.Select(lbl => lbl.GetLabel(location)).Where(str => !string.IsNullOrEmpty(str)).FirstOrDefault() ?? location.ToHexString();
       }
 
       public int GetDataBlockStart(int location) {

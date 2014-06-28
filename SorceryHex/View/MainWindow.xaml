@@ -4,7 +4,7 @@
         xmlns:m="clr-namespace:SorceryHex"
         xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
         x:Class="SorceryHex.MainWindow"
-        Title="SorceryHex" Height="410" Width="525"
+        Title="SorceryHex" Height="410" Width="545"
         Activated="LoadData"
         Deactivated="SaveData"
         MouseWheel="ScrollWheel" KeyDown="HandleWindowKey">
@@ -51,7 +51,7 @@
         </DockPanel>
         <TextBlock Name="StatusBar" DockPanel.Dock="Bottom" Foreground="{Binding Secondary, Source={StaticResource Theme}}" Background="{Binding Backlight, Source={StaticResource Theme}}"/>
         <UserControl Background="{Binding Backlight, Source={StaticResource Theme}}" DockPanel.Dock="Left">
-            <Grid x:Name="Headers" HorizontalAlignment="Right" VerticalAlignment="Top" Width="70">
+            <Grid x:Name="Headers" HorizontalAlignment="Right" VerticalAlignment="Top" Width="90">
                 <Grid.Resources>
                     <Style TargetType="{x:Type TextBlock}">
                         <Setter Property="Foreground" Value="{Binding Secondary, Source={StaticResource Theme}}"/>
