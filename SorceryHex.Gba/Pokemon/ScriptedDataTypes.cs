@@ -20,6 +20,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       string Version { get; }
       Pointer FindVariableArray(string generalLayout, ChildReader reader);
       Pointer FindVariableArray(byte ender, string generalLayout, ChildReader reader);
+      BuildableArray ReadArray(string generalLayout, int length, int location, ChildReader reader);
+      Pointer ReadPointer(int location, string generalLayout, ChildReader reader);
       Pointer[] FindMany(string generalLayout, ChildReader reader);
       Pointer[] FollowPointersUp(Pointer[] locations);
    }
@@ -61,9 +63,6 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var matchingLayouts = new List<int>();
          var matchingLengths = new List<int>();
          foreach (var address in addressesList) {
-            if (address == 0x23EAC8) {
-               int x = 7;
-            }
             int elementCount1 = 0, elementCount2 = 0;
             while (GeneralMatch(address + elementCount1 * stride, generalLayout)) elementCount1++;
             if (address + stride * elementCount1 >= _runs.Data.Length) continue;
@@ -125,54 +124,32 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return FindVariableArray(reader, stride, matchingPointers, matchingLayouts, matchingLengths);
       }
 
-      Pointer FindVariableArray(ChildReader reader, int stride, IList<int> matchingPointers, IList<int> matchingLayouts, IList<int> matchingLengths) {
-         var counts = new List<double>();
-         for (int i = 0; i < matchingLayouts.Count; i++) {
-            var layout = matchingLayouts[i];
-            var length = matchingLengths[i];
-            int repeatCount = 0;
-            byte prev = _runs.Data[layout];
-            for (int j = 1; j < length; j++) {
-               var current = _runs.Data[layout + j];
-               if (prev == current) repeatCount++;
-               prev = current;
-            }
-            counts.Add((double)repeatCount / length);
+      public BuildableArray ReadArray(string generalLayout, int length, int location, ChildReader reader) {
+         var destination = _runs.Data.ReadPointer(location);
+         if (destination == -1) return null;
+         var parser = new Parser(_runs, destination);
+         var builder = new Builder2(_runs, _mapper, destination);
+         for (int i = 0; i < length; i++) {
+            reader(parser);
+            if (parser.FaultReason != null) return null;
+            builder.Clear();
+            reader(builder);
          }
+         return new BuildableArray(builder.Result, destination, length);
+      }
 
-         var least = counts.Min();
-         var index = counts.IndexOf(least);
-
-         int offset = matchingLayouts[index];
-         var factory = new Builder2(_runs, _mapper, offset);
-         var data = new dynamic[matchingLengths[index]];
-         for (int i = 0; i < matchingLengths[index]; i++) {
-            reader(factory);
-            data[i] = factory.Result;
-            factory.Clear();
-         }
-
-         int start = matchingLayouts[index], end = matchingLayouts[index] + matchingLengths[index] * stride;
-         _mapper.FilterPointer(i => i <= start || i >= end);
-         return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = data };
+      public Pointer ReadPointer(int location, string generalLayout, ChildReader reader) {
+         int destination = _runs.Data.ReadPointer(location);
+         if (destination == -1) return null;
+         return ReadPointerHelper(destination, generalLayout, reader);
       }
 
       public Pointer[] FindMany(string generalLayout, ChildReader reader) {
          var matchingPointers = new List<Pointer>();
          var addressesList = _mapper.OpenDestinations.ToList();
          foreach (var address in addressesList) {
-            if (!GeneralMatch(address, generalLayout)) continue;
-            var parser = new Parser(_runs, address);
-            reader(parser);
-            if (parser.FaultReason != null) continue;
-            var factory = new Builder2(_runs, _mapper, address);
-            reader(factory);
-
-            var p = new Pointer {
-               source = _mapper.PointersFromDestination(address).First(),
-               destination = address,
-               data = factory.Result
-            };
+            var p = ReadPointerHelper(address, generalLayout, reader);
+            if (p == null) continue;
             matchingPointers.Add(p);
          }
          return matchingPointers.ToArray();
@@ -208,6 +185,53 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             if (pointer == -1 && value != 0) return false;
          }
          return true;
+      }
+
+      Pointer FindVariableArray(ChildReader reader, int stride, IList<int> matchingPointers, IList<int> matchingLayouts, IList<int> matchingLengths) {
+         var counts = new List<double>();
+         for (int i = 0; i < matchingLayouts.Count; i++) {
+            var layout = matchingLayouts[i];
+            var length = matchingLengths[i];
+            int repeatCount = 0;
+            byte prev = _runs.Data[layout];
+            for (int j = 1; j < length; j++) {
+               var current = _runs.Data[layout + j];
+               if (prev == current) repeatCount++;
+               prev = current;
+            }
+            counts.Add((double)repeatCount / length);
+         }
+
+         var least = counts.Min();
+         var index = counts.IndexOf(least);
+
+         int offset = matchingLayouts[index];
+         var factory = new Builder2(_runs, _mapper, offset);
+         var data = new dynamic[matchingLengths[index]];
+         for (int i = 0; i < matchingLengths[index]; i++) {
+            reader(factory);
+            data[i] = factory.Result;
+            factory.Clear();
+         }
+
+         int start = matchingLayouts[index], end = matchingLayouts[index] + matchingLengths[index] * stride;
+         _mapper.FilterPointer(i => i <= start || i >= end);
+         return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = data };
+      }
+
+      Pointer ReadPointerHelper(int destination, string generalLayout, ChildReader reader) {
+         if (!GeneralMatch(destination, generalLayout)) return null;
+         var parser = new Parser(_runs, destination);
+         reader(parser);
+         if (parser.FaultReason != null) return null; ;
+         var factory = new Builder2(_runs, _mapper, destination);
+         reader(factory);
+
+         return new Pointer {
+            source = _mapper.PointersFromDestination(destination).First(),
+            destination = destination,
+            data = factory.Result
+         };
       }
    }
 
