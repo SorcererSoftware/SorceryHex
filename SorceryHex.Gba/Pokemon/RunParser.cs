@@ -165,6 +165,10 @@ namespace SorceryHex.Gba.Pokemon {
          return result;
       }
 
+      public static void WriteString(byte[] data, int location, int length, string value) {
+         throw new NotImplementedException();
+      }
+
       static FrameworkElement GetInterpretation(byte[] data, int location) {
          var result = ReadString(data, location);
          return new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };

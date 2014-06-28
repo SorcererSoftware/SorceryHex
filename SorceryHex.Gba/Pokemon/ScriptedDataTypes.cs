@@ -143,11 +143,13 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var least = counts.Min();
          var index = counts.IndexOf(least);
 
-         var factory = new Builder(_runs, _mapper, matchingLayouts[index]);
+         int offset = matchingLayouts[index];
+         var factory = new Builder2(_runs, _mapper, offset);
          var data = new dynamic[matchingLengths[index]];
          for (int i = 0; i < matchingLengths[index]; i++) {
             reader(factory);
             data[i] = factory.Result;
+            factory.Clear();
          }
 
          int start = matchingLayouts[index], end = matchingLayouts[index] + matchingLengths[index] * stride;
@@ -163,7 +165,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             var parser = new Parser(_runs, address);
             reader(parser);
             if (parser.FaultReason != null) continue;
-            var factory = new Builder(_runs, _mapper, address);
+            var factory = new Builder2(_runs, _mapper, address);
             reader(factory);
 
             var p = new Pointer {
