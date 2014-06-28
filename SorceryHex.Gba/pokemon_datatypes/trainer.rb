@@ -54,5 +54,5 @@ trainers = types.FindVariableArray "wwwwwwwwwp", ->(b){
    end
 }
 
-self.trainer = trainers.destination
-self.trainerdata = trainers.data
+types.AddShortcut "trainer", trainers.destination
+self.trainer = trainers.data

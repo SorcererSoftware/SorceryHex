@@ -9,7 +9,7 @@ using System.Windows.Shapes;
 namespace SorceryHex {
    public interface IParser {
       int Length { get; }
-      void Load();
+      void Load(ICommandFactory commander);
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsStartOfDataBlock(int location);
@@ -39,7 +39,7 @@ namespace SorceryHex {
       bool CanEdit(int location);
       string GetLabel(int location);
       IEditor Editor { get; }
-      void Load();
+      void Load(ICommandFactory commander);
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsStartOfDataBlock(int location);
@@ -69,11 +69,11 @@ namespace SorceryHex {
 
       #region Parser
 
-      public void Load() {
+      public void Load(ICommandFactory commander) {
          _loaded = false;
          foreach (var child in _children) {
             using (AutoTimer.Time(child.GetType().ToString().Split('.').Last())) {
-               child.Load();
+               child.Load(commander);
             }
          }
          _loaded = true;

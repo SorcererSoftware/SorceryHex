@@ -29,5 +29,6 @@ self.wild = types.FindVariableArray 0xFF, "wpppp", ->(b){
       b.Array "encounters", 10, encounter
    }
 }
-self.wilddata = self.wild.data
-self.wild = self.wild.destination
+
+types.AddShortcut "wild", self.wild.destination
+self.wild = self.wild.data

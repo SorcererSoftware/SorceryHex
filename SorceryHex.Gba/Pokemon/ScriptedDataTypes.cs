@@ -26,6 +26,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       Pointer[] FindMany(string generalLayout, ChildReader reader);
       Pointer[] FollowPointersUp(Pointer[] locations);
       void Label(BuildableArray array, Func<int, string> label);
+      void AddShortcut(string name, int location);
    }
 
    class ScriptedDataTypes : IRunParser, ITypes {
@@ -39,8 +40,10 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public IEnumerable<int> Find(string term) { return null; }
 
+      ICommandFactory _commander;
       IRunStorage _runs;
-      public void Load(IRunStorage runs) {
+      public void Load(ICommandFactory commander, IRunStorage runs) {
+         _commander = commander;
          _runs = runs;
          _scope.SetVariable("types", this);
          var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/");
@@ -178,6 +181,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       public void Label(BuildableArray array, Func<int, string> label) { array.Label(_runs, label); }
+
+      public void AddShortcut(string name, int location) { _commander.CreateJumpShortcut(name, location); }
 
       #endregion
 

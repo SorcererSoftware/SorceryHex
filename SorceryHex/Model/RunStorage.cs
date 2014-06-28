@@ -11,7 +11,7 @@ namespace SorceryHex {
    }
 
    public interface IRunParser {
-      void Load(IRunStorage runs);
+      void Load(ICommandFactory commander, IRunStorage runs);
       IEnumerable<int> Find(string term);
    }
 
@@ -89,11 +89,11 @@ namespace SorceryHex {
 
       public IEditor Editor { get { return this; } }
 
-      public void Load() {
+      public void Load(ICommandFactory commander) {
          foreach (var parser in _runParsers) {
             var type = parser.GetType().ToString().Split('.').Last();
             using (AutoTimer.Time(type)) {
-               parser.Load(this);
+               parser.Load(commander, this);
                UpdateList();
             }
          }

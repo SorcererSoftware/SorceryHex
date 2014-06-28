@@ -21,7 +21,7 @@ namespace SorceryHex {
       public int Length { get { return _data.Length; } }
       public bool CanEdit(int location) { return true; }
       public IEditor Editor { get { return this; } }
-      public void Load() { }
+      public void Load(ICommandFactory commander) { }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var list = new FrameworkElement[length];

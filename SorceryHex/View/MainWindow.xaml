@@ -39,7 +39,7 @@
                     <MenuItem Command="ApplicationCommands.Find" Header="_Find" />
                     <MenuItem Command="NavigationCommands.NextPage" Header="Find _Next" InputGestureText="F3"/>
                     <MenuItem Command="NavigationCommands.PreviousPage" Header="Find _Previous" InputGestureText="Shift+F3"/>
-                    <MenuItem Command="NavigationCommands.GoToPage" Header="_Go To" InputGestureText="Ctrl+G" />
+                    <MenuItem Command="NavigationCommands.GoToPage" Header="_Go To" InputGestureText="Ctrl+G" Name="GotoItem"/>
                     <MenuItem Command="NavigationCommands.BrowseBack" Header="_Back" InputGestureText="Alt+Left, Ctrl+-, Backspace" />
                     <MenuItem Command="MediaCommands.Select" InputGestureText="Ctrl+R" Header="Sc_ript"/>
                 </MenuItem>

@@ -93,6 +93,15 @@ namespace SorceryHex {
          UpdateHeaderText();
       }
 
+      public void JumpTo(string label, bool addToBreadcrumb = false) {
+         foreach (MenuItem item in GotoItem.Items) {
+            if (item.Header.ToString().ToLower() != label.ToLower()) continue;
+            item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            return;
+         }
+         throw new ArgumentException("There is no '" + label + "' to jump to");
+      }
+
       public int[] Find(string term) { return this.Holder.Find(term).ToArray(); }
 
       public void HighlightFromLocation(int combinedLocation) {
@@ -276,7 +285,7 @@ namespace SorceryHex {
          Parser.IsEnabled = false;
          _multiBox.BreadCrumbBar.Children.Clear();
          _loadTimer = AutoTimer.Time("Full Load Time");
-         Task.Factory.StartNew(Holder.Load).ContinueWith(t => Dispatcher.Invoke(LoadComplete));
+         Task.Factory.StartNew(() => Holder.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke(LoadComplete));
       }
 
       AutoTimer _loadTimer;

@@ -60,7 +60,7 @@ namespace SorceryHex.Gba {
 
       public Header(PointerMapper mapper) { _pointers = mapper; }
 
-      public void Load(IRunStorage runs) {
+      public void Load(ICommandFactory commander, IRunStorage runs) {
          int offset = 0;
          foreach (var run in _headerRuns) {
             runs.AddRun(offset, run);
@@ -79,7 +79,7 @@ namespace SorceryHex.Gba {
 
       public Lz(PointerMapper pointers) { _pointers = pointers; }
 
-      public void Load(IRunStorage runs) {
+      public void Load(ICommandFactory commander, IRunStorage runs) {
          var initialContitions = new Func<int, bool>[]{
             loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] == 0x20 &&
                    runs.Data[loc + 2] == 0x00 && runs.Data[loc + 3] == 0x00,

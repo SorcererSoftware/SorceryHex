@@ -20,6 +20,7 @@ namespace SorceryHex {
       byte[] Data { get; }
       void MainFocus();
       void JumpTo(int location, bool addToBreadCrumbs = false);
+      void JumpTo(string label, bool addToBreadCrumbs = false);
       int[] Find(string term);
       void WriteStatus(string status);
    }
@@ -39,6 +40,7 @@ namespace SorceryHex {
       public int[] find(string term) { return _app.Find(term); }
       public byte[] data { get { return _app.Data; } }
       public void @goto(int offset) { _app.JumpTo(offset, true); }
+      public void @goto(string label) { _app.JumpTo(label, true); }
       public string[] performance() { return AutoTimer.Report.ToArray(); }
       public IEnumerable<string> vars() { return _scope.GetVariableNames(); }
       public void status(string status) { _app.WriteStatus(status); }

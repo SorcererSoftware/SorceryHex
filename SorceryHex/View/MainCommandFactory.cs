@@ -9,6 +9,7 @@ namespace SorceryHex {
    public interface ICommandFactory {
       void CreateJumpCommand(FrameworkElement element, params int[] jumpLocation);
       void RemoveJumpCommand(FrameworkElement element);
+      void CreateJumpShortcut(string name, int location);
       void LinkToInterpretation(FrameworkElement element, FrameworkElement visual);
       void UnlinkFromInterpretation(FrameworkElement element);
    }
@@ -33,6 +34,14 @@ namespace SorceryHex {
 
       public void RemoveJumpCommand(FrameworkElement element) {
          _jumpers.Remove(element);
+      }
+
+      public void CreateJumpShortcut(string name, int location) {
+         _window.Dispatcher.Invoke(() => {
+            var item = new MenuItem { Header = name };
+            item.Click += (sender, e) => _window.JumpTo(location, addToBreadcrumb: true);
+            _window.GotoItem.Items.Add(item);
+         });
       }
 
       #endregion

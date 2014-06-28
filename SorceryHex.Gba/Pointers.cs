@@ -186,9 +186,9 @@ namespace SorceryHex.Gba {
          _mapper = mapper;
       }
 
-      public void Load() {
+      public void Load(ICommandFactory commander) {
          _loaded = false;
-         _base.Load();
+         _base.Load(commander);
          using (AutoTimer.Time("Gba.PointerParser-post_base_load")) {
             _mapper.FilterPointer(dest => !_storage.IsWithinDataBlock(dest));
             _mapper.ClaimDeferred(_storage);

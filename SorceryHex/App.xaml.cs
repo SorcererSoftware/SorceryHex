@@ -56,7 +56,7 @@ namespace SorceryHex {
 
       byte[] _data;
       public int Length { get { return _data.Length; } }
-      public void Load() { }
+      public void Load(ICommandFactory commander) { }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          var list = new List<FrameworkElement>();

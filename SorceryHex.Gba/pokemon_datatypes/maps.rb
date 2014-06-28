@@ -53,5 +53,5 @@
 
 bankPointers = types.FollowPointersUp mapPointers
 leadPointer = types.FollowPointersUp bankPointers
-self.maps = leadPointer[0].destination
-self.mapdata = leadPointer[0].data
+types.AddShortcut "maps", leadPointer[0].destination
+self.maps = leadPointer[0].data

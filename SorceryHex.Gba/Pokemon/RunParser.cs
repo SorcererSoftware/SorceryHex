@@ -42,7 +42,7 @@ namespace SorceryHex.Gba.Pokemon {
 
       IRunStorage _runs;
 
-      public void Load(IRunStorage runs) {
+      public void Load(ICommandFactory commander, IRunStorage runs) {
          _runs = runs;
          FindStrings();
       }
@@ -239,7 +239,7 @@ namespace SorceryHex.Gba.Pokemon {
 
       public IEnumerable<int> Find(string term) { return null; }
 
-      public void Load(IRunStorage runs) {
+      public void Load(ICommandFactory commander, IRunStorage runs) {
          var data = runs.Data;
          var code = Header.GetCode(data);
          var table = _tables[code];
