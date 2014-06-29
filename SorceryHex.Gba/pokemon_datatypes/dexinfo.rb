@@ -15,6 +15,15 @@ layout = types.FindVariableArray datalayout, ->(b){
    b.Unused 2
 }
 
-# types.Label evolutions, ->(i) { return self.pokename[i].name }
+types.Label layout.data, ->(i) {
+   k = -1
+   for j in 0..self.dexorder.Length-1
+      next if self.dexorder[j].index != i
+      k = j+1
+      break
+   end
+   return "" if k == 0
+   return self.pokename[k].name
+}
 types.AddShortcut "dexinfo", layout.destination
 self.dexinfo = layout.data

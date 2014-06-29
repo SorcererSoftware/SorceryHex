@@ -279,6 +279,7 @@ namespace SorceryHex.Gba {
 
          grid.Children.Add(element);
          grid.Children.Add(hat);
+         Grid.SetColumnSpan(grid, Grid.GetColumnSpan(element));
          commander.CreateJumpCommand(hat, jumpLocations);
          return grid;
       }

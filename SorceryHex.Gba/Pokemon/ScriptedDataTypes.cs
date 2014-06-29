@@ -142,6 +142,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             builder.Clear();
             reader(builder);
          }
+         _mapper.Claim(_runs, location, destination);
          return new BuildableArray(builder.Result, destination, length);
       }
 
@@ -224,14 +225,17 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var factory = new Builder2(_runs, _mapper, _pcs, offset);
          var data = new dynamic[matchingLengths[index]];
          for (int i = 0; i < matchingLengths[index]; i++) {
+            factory.Clear();
             reader(factory);
             data[i] = factory.Result;
-            factory.Clear();
          }
+
+         var array = new BuildableArray(factory.Result, offset, data.Length);
 
          int start = matchingLayouts[index], end = matchingLayouts[index] + matchingLengths[index] * stride;
          _mapper.FilterPointer(i => i <= start || i >= end);
-         return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = data };
+         _mapper.Claim(_runs, matchingLayouts[index]);
+         return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = array };
       }
 
       Pointer ReadPointerHelper(int destination, string generalLayout, ChildReader reader) {

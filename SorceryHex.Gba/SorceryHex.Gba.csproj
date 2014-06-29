@@ -79,6 +79,9 @@
     <None Include="pokemon_datatypes\dexinfo.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="pokemon_datatypes\dexorder.rb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="pokemon_datatypes\evolutions.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

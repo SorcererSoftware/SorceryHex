@@ -555,6 +555,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    public class BuildableArray : DynamicObject, ILabeler {
       readonly BuildableObject _member;
       readonly int _location, _length;
+      public int Length { get { return _length; } }
       public BuildableArray(BuildableObject member, int location, int length) { _member = member; _location = location; _length = length; }
 
       #region Labels
