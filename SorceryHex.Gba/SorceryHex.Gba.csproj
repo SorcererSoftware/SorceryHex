@@ -91,6 +91,9 @@
     <None Include="pokemon_datatypes\stats.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="pokemon_datatypes\_setup.rb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="pokemon_plugins\epic.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

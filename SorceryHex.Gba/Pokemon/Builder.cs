@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
@@ -552,7 +553,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       #endregion
    }
 
-   public class BuildableArray : DynamicObject, ILabeler {
+   public class BuildableArray : DynamicObject, ILabeler, IEnumerable<BuildableObject> {
       readonly BuildableObject _member;
       readonly int _location, _length;
       public int Length { get { return _length; } }
@@ -592,6 +593,17 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          int stride = _member.Length;
          return _location + i * stride;
       }
+
+      public IEnumerable<BuildableObject> each() { return this; }
+
+      public IEnumerator<BuildableObject> GetEnumerator() {
+         for (int i = 0; i < _length; i++) {
+            _member.Relocate(_location + _member.Length * i);
+            yield return _member;
+         }
+      }
+
+      IEnumerator IEnumerable.GetEnumerator() { return GetEnumerator(); }
    }
 
    class Reader : IBuilder {

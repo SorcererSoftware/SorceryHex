@@ -4,8 +4,8 @@ datalocation = 0x6D448 if types.Version == "BPEE"
 
 # these are not species: they are an index
 # in the Pokedex FOR each species, starting at 1.
-# TODO layout = types.ReadSpeciesIndex 411, datalocation
-layout = types.ReadArray 411, datalocation, ->(b) {
+# TODO something like: layout = types.ReadSpeciesIndex 411, datalocation
+layout = types.ReadArray self.pokecount-1, datalocation, ->(b) {
    b.Short "index"
 }
 

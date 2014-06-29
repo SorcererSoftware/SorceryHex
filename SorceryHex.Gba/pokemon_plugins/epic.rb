@@ -1,5 +1,6 @@
 ## -- Change every wild pokemon to be lvl 100
 def updateLevels(ary, len)
+   app.status "#{len}"
    return if ary==nil
    for i in 0..len-1
       ary[i].low = 100
@@ -7,11 +8,7 @@ def updateLevels(ary, len)
    end
 end
 
-# NOTE the data objects that are created need to be more tightly tied to the data
-#      they can't just be read from the data at startup and then be static
-#      they must read/write from the rom as they are requested
-
-for wild in wilddata
+for wild in self.wild
    updateLevels wild.grass.encounters, 12 if wild.grass != nil
    updateLevels wild.surf.encounters, 5   if wild.surf != nil
    updateLevels wild.tree.encounters, 5   if wild.tree != nil
@@ -19,7 +16,7 @@ for wild in wilddata
 end
 
 ## -- Change each trainer's pokemon to be lvl 100
-for trainer in trainerdata
+for trainer in self.trainer
    count = trainer.pokeCount
    for i in 0..count-1
       trainer.opponentPokemon[i].level = 100

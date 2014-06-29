@@ -24,7 +24,7 @@ trainerStruct3 = ->(b) {
    sharedStruct.call(b); sharedAttacks.call(b); b.Short "item"
 }
 
-trainers = types.FindVariableArray "wwwwwwwwwp", ->(b){
+layout = types.FindVariableArray "wwwwwwwwwp", ->(b){
    pokeStructType = b.ByteNum "pokestructure"
    b.Assert (pokeStructType < 4), "pokeStruct must be 0-3"
    b.Byte "trainerClass"
@@ -54,5 +54,5 @@ trainers = types.FindVariableArray "wwwwwwwwwp", ->(b){
    end
 }
 
-types.AddShortcut "trainer", trainers.destination
-self.trainer = trainers.data
+types.AddShortcut "trainer", layout.destination
+self.trainer = layout.data

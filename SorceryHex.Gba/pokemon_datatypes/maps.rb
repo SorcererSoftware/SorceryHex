@@ -1,4 +1,4 @@
-﻿mapPointers = types.FindMany "ppppwww", ->(b){
+﻿layout = types.FindMany "ppppwww", ->(b){
    b.Pointer "mapTileData", ->(b){
       b.Word "width" 
       b.Word "height" 
@@ -51,7 +51,9 @@
    b.Short "_"; b.Byte "labelToggle"; b.Byte "_"
 }
 
-bankPointers = types.FollowPointersUp mapPointers
-leadPointer = types.FollowPointersUp bankPointers
-types.AddShortcut "maps", leadPointer[0].destination
-self.maps = leadPointer[0].data
+layout = types.FollowPointersUp layout # from maps to banks
+layout = types.FollowPointersUp layout # from bank to lead
+layout = layout[0]                     # there's only one lead
+
+types.AddShortcut "maps", layout.destination
+self.maps = layout.data

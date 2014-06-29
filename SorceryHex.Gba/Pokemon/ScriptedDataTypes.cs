@@ -48,7 +48,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _runs = runs;
          _scope.SetVariable("types", this);
          var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/");
-         foreach (var script in dir.EnumerateFiles("*.rb")) {
+         var files = dir.EnumerateFiles("*.rb").OrderBy(file => file.Name).ToArray();
+         foreach (var script in files) {
             using (AutoTimer.Time("ScriptedDataTypes-" + script.Name)) {
                var source = _engine.CreateScriptSourceFromFile(script.FullName);
                source.Execute(_scope);

@@ -1,12 +1,8 @@
 datalocation = 0x42F6C
-if types.Version == "AXVE" || types.Version == "AXPE"
-   datalocation = 0x3F534 # Ruby / Sapphire
-end
-if types.Version == "BPEE"
-   datalocation = 0x6D140 # Emerald
-end
+datalocation = 0x3F534 if types.Version == "AXVE" || types.Version == "AXPE"
+datalocation = 0x6D140 if types.Version == "BPEE"
 
-layout = types.ReadArray 412, datalocation, ->(b) {
+layout = types.ReadArray self.pokecount, datalocation, ->(b) {
    b.InlineArray "index", 5, ->(b) {
       t = b.Short "evotype"
       if t==0
@@ -20,5 +16,6 @@ layout = types.ReadArray 412, datalocation, ->(b) {
 }
 
 types.Label layout, ->(i) { return self.pokename[i].name }
+
 types.AddShortcut "evolutions", layout.destinationof(0)
 self.evolutions = layout

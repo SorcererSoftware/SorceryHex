@@ -5,11 +5,11 @@
    b.Species
 }
 
-self.wild = types.FindVariableArray 0xFF, "wpppp", ->(b){
+layout = types.FindVariableArray 0xFF, "wpppp", ->(b){
    b.Link 2, "bankmap", ->(b){
       bank = b.Byte "bank"
       map  = b.Byte "map"
-      return mapdata[bank].destinationof map
+      return self.maps[bank].destinationof map
    }
    b.Unused 2
    b.NullablePointer "grass", ->(b){
@@ -30,5 +30,5 @@ self.wild = types.FindVariableArray 0xFF, "wpppp", ->(b){
    }
 }
 
-types.AddShortcut "wild", self.wild.destination
-self.wild = self.wild.data
+types.AddShortcut "wild", layout.destination
+self.wild = layout.data

@@ -1,11 +1,9 @@
-namelocation = 0x144
-if types.Version == "AXVE" || types.Version == "AXPE"
-   namelocation = 0xFA58 # Ruby / Sapphire
-end
+datalocation = 0x144
+datalocation = 0xFA58 if types.Version == "AXVE" || types.Version == "AXPE"
 
-nameArray = types.ReadArray 412, namelocation, ->(b) {
+layout = types.ReadArray self.pokecount, datalocation, ->(b) {
    b.String 11, "name"
 }
 
-types.AddShortcut "pokename", nameArray.destinationof(0)
-self.pokename = nameArray
+types.AddShortcut "pokename", layout.destinationof(0)
+self.pokename = layout

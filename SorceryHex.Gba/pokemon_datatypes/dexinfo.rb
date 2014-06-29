@@ -25,5 +25,6 @@ types.Label layout.data, ->(i) {
    return "" if k == 0
    return self.pokename[k].name
 }
+
 types.AddShortcut "dexinfo", layout.destination
 self.dexinfo = layout.data

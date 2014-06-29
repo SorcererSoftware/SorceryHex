@@ -1,9 +1,7 @@
-statlocation = 0x1BC
-if types.Version == "AXVE" || types.Version == "AXPE"
-   statlocation = 0x10B64 # Ruby / Sapphire
-end
+datalocation = 0x1BC
+datalocation = 0x10B64 if types.Version == "AXVE" || types.Version == "AXPE"
 
-statsArray = types.ReadArray 412, statlocation, ->(b) {
+layout = types.ReadArray self.pokecount, datalocation, ->(b) {
    b.ByteNum "health"
    b.ByteNum "attack"
    b.ByteNum "defense"
@@ -31,6 +29,7 @@ statsArray = types.ReadArray 412, statlocation, ->(b) {
    b.Unused 2
 }
 
-types.Label statsArray, ->(i) { return self.pokename[i].name }
-types.AddShortcut "stats", statsArray.destinationof(0)
-self.stats = statsArray
+types.Label layout, ->(i) { return self.pokename[i].name }
+
+types.AddShortcut "stats", layout.destinationof(0)
+self.stats = layout
