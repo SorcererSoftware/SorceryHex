@@ -162,10 +162,11 @@ namespace SorceryHex.Gba.Pokemon {
                result += "\\x" + Utils.ToHexString(data[location + j + 1]);
                j++;
             } else {
+               if (_pcs[data[location + j]] == null) return null;
                result += _pcs[data[location + j]];
             }
          }
-         if (result.Length > maxLength) return null;
+         if (result.Length > maxLength && maxLength != -1) return null;
          return result;
       }
 

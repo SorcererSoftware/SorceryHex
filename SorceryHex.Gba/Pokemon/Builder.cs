@@ -17,6 +17,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       short Species();
       void Pointer(string name);
       dynamic Pointer(string name, ChildReader reader);
+      string StringPointer(string name);
       void NullablePointer(string name);
       dynamic NullablePointer(string name, ChildReader reader);
       void InlineArray(string name, int length, ChildReader reader);
@@ -98,6 +99,22 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          if (FaultReason != null) return null;
          _result[name] = child.Result;
          return child.Result;
+      }
+
+      public string StringPointer(string name) {
+         if (FaultReason != null) return null;
+         var pointer = _runs.Data.ReadPointer(_location);
+         _location += 4;
+         if (pointer == -1) {
+            FaultReason = name + ": not a pointer";
+            return null;
+         }
+         var str = PCS.ReadString(_runs.Data, pointer);
+         if (str == null) {
+            FaultReason = name + ": not a string";
+            return null;
+         }
+         return str;
       }
 
       public void NullablePointer(string name) {
@@ -289,6 +306,15 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return child.Result;
       }
 
+      public string StringPointer(string name) {
+         var pointer = _runs.Data.ReadPointer(_location);
+         _mapper.Claim(_runs, _location, pointer);
+         _location += 4;
+         var str = PCS.ReadString(_runs.Data, pointer);
+         _result.AppendStringPointer(name);
+         return str;
+      }
+
       public void NullablePointer(string name) {
          if (_runs.Data.ReadData(4, _location) == 0) {
             _location += 4;
@@ -309,7 +335,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public void InlineArray(string name, int length, ChildReader reader) {
          var array = new BuildableObject[length];
-         for (int i = 0; i < length; i++) { 
+         for (int i = 0; i < length; i++) {
             var child = new Builder2(_runs, _mapper, _location);
             reader(child);
             _location = child._location;
@@ -405,6 +431,12 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _lengths.Add(length);
       }
 
+      public void AppendStringPointer(string name) {
+         _names.Add(name);
+         _types.Add(typeof(string));
+         _lengths.Add(4);
+      }
+
       public void Append(string name, BuildableObject b) {
          _names.Add(name);
          _types.Add(typeof(BuildableObject));
@@ -423,7 +455,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void AppendArray(string name, BuildableObject[] array) {
          _names.Add(name);
          _types.Add(typeof(BuildableObject[]));
-         _lengths.Add(array.Sum(b=>b.Length));
+         _lengths.Add(array.Sum(b => b.Length));
          _childrenArray[name] = array;
       }
 
@@ -474,7 +506,14 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          if (_types[index] == typeof(byte)) result = _data[loc];
          if (_types[index] == typeof(short)) result = _data.ReadShort(loc);
          if (_types[index] == typeof(int)) result = _data.ReadData(4, loc);
-         if (_types[index] == typeof(string)) result = PCS.ReadString(_data, loc, _lengths[index]);
+         if (_types[index] == typeof(string)) {
+            if (_lengths[index] == 4) {
+               int ptr = _data.ReadPointer(loc);
+               if (ptr != -1) result = PCS.ReadString(_data, ptr);
+            } else {
+               result = PCS.ReadString(_data, loc, _lengths[index]);
+            }
+         }
          if (_types[index] == typeof(BuildableObject)) {
             int ptr = _data.ReadPointer(loc);
             if (ptr != -1) {
@@ -506,7 +545,6 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       #endregion
-
    }
 
    public class BuildableArray : DynamicObject, ILabeler {
@@ -562,6 +600,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public short Species() { return Short(null); }
       public void Pointer(string name) { throw new NotImplementedException(); }
       public dynamic Pointer(string name, ChildReader reader) { throw new NotImplementedException(); }
+      public string StringPointer(string name) { throw new NotImplementedException(); }
       public void NullablePointer(string name) { throw new NotImplementedException(); }
       public dynamic NullablePointer(string name, ChildReader reader) { throw new NotImplementedException(); }
       public void InlineArray(string name, int length, ChildReader reader) { throw new NotImplementedException(); }
