@@ -1,6 +1,6 @@
 statlocation = 0x1BC
 if types.Version == "AXVE" || types.Version == "AXPE"
-   statlocation = 0x10B64
+   statlocation = 0x10B64 # Ruby / Sapphire
 end
 
 statsArray = types.ReadArray 412, statlocation, ->(b) {

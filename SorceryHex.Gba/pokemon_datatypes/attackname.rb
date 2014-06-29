@@ -1,6 +1,7 @@
 namelocation = 0x148
+
 if types.Version == "AXVE" || types.Version == "AXPE"
-   namelocation = 0x2E18C
+   namelocation = 0x2E18C # Ruby / Sapphire
 end
 
 nameArray = types.ReadArray 355, namelocation, ->(b) {

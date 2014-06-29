@@ -221,7 +221,7 @@ namespace SorceryHex {
          int index = _keys.BinarySearch(location);
          if (index < 0) index = Math.Max(~index - 1, 0);
          int startPoint = _keys[index];
-         Debug.Assert(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null);
+         if (!(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null)) return null;
          return _runs[startPoint].Editor.CreateElementEditor(location);
       }
 

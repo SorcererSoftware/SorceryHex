@@ -76,6 +76,9 @@
     <None Include="pokemon_datatypes\datatype.conf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="pokemon_datatypes\evolutions.rb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="pokemon_datatypes\pokename.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
