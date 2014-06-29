@@ -21,13 +21,13 @@ namespace SorceryHex.Gba {
 
          public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
             var pointerMapper = new PointerMapper(data);
-            // var maps = new Maps(pointerMapper);
+            var pcs = new PCS();
             var storage = new RunStorage(data
                , new Header(pointerMapper)
                , new Thumbnails(pointerMapper)
                , new Lz(pointerMapper)
-               , new Pokemon.DataTypes.ScriptedDataTypes(pointerMapper, scriptInfo.Engine, scriptInfo.Scope)
-               , PCS.Instance
+               , new Pokemon.DataTypes.ScriptedDataTypes(pointerMapper, pcs, scriptInfo.Engine, scriptInfo.Scope)
+               , pcs
             );
             IModel model = new CompositeModel(data, storage);
             model = new PointerParser(model, data, storage, pointerMapper);

@@ -31,14 +31,16 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    class Parser : IBuilder {
       readonly IDictionary<string, object> _result = new ExpandoObject();
       readonly IRunStorage _runs;
+      readonly PCS _pcs;
       int _location;
 
       public string FaultReason { get; private set; }
       public dynamic Result { get { return _result; } }
 
-      public Parser(IRunStorage runs, int location) {
+      public Parser(IRunStorage runs, PCS pcs, int location) {
          _runs = runs;
          _location = location;
+         _pcs = pcs;
       }
 
       public bool Assert(bool value, string message) {
@@ -93,7 +95,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             FaultReason = name + ": not a pointer";
             return null;
          }
-         var child = new Parser(_runs, pointer);
+         var child = new Parser(_runs, _pcs, pointer);
          reader(child);
          FaultReason = child.FaultReason;
          if (FaultReason != null) return null;
@@ -109,7 +111,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             FaultReason = name + ": not a pointer";
             return null;
          }
-         var str = PCS.ReadString(_runs.Data, pointer);
+         var str = _pcs.ReadString(_runs.Data, pointer);
          if (str == null) {
             FaultReason = name + ": not a string";
             return null;
@@ -139,7 +141,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public void InlineArray(string name, int length, ChildReader reader) {
          if (FaultReason != null) return;
-         var child = new Parser(_runs, _location);
+         var child = new Parser(_runs, _pcs, _location);
          for (int i = 0; i < length; i++) {
             reader(child);
             FaultReason = child.FaultReason;
@@ -161,7 +163,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             FaultReason = name + ": not a pointer";
             return null;
          }
-         var child = new Parser(_runs, pointer);
+         var child = new Parser(_runs, _pcs, pointer);
          var array = new dynamic[length];
          for (int i = 0; i < array.Length; i++) {
             reader(child);
@@ -175,7 +177,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public string String(int len, string name) {
          if (FaultReason != null) return null;
-         string result = PCS.ReadString(_runs.Data, _location, len);
+         string result = _pcs.ReadString(_runs.Data, _location, len);
          if (result == null) {
             FaultReason = name + " was not a string[" + len + "]";
             return null; ;
@@ -216,20 +218,22 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       BuildableObject _result;
       readonly IRunStorage _runs;
       readonly PointerMapper _mapper;
+      readonly PCS _pcs;
       int _location;
 
       public dynamic Result { get { return _result; } }
 
-      public Builder2(IRunStorage runs, PointerMapper mapper, int location) {
-         _result = new BuildableObject(runs.Data);
+      public Builder2(IRunStorage runs, PointerMapper mapper, PCS pcs, int location) {
+         _result = new BuildableObject(runs.Data, _pcs);
          _runs = runs;
          _mapper = mapper;
+         _pcs = pcs;
          _location = location;
          _result.Relocate(_location);
       }
 
       public void Clear() {
-         _result = new BuildableObject(_runs.Data);
+         _result = new BuildableObject(_runs.Data, _pcs);
          _result.Relocate(_location);
       }
 
@@ -300,7 +304,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var pointer = _runs.Data.ReadPointer(_location);
          _mapper.Claim(_runs, _location, pointer);
          _location += 4;
-         var child = new Builder2(_runs, _mapper, pointer);
+         var child = new Builder2(_runs, _mapper, _pcs, pointer);
          reader(child);
          _result.Append(name, child.Result);
          return child.Result;
@@ -310,7 +314,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var pointer = _runs.Data.ReadPointer(_location);
          _mapper.Claim(_runs, _location, pointer);
          _location += 4;
-         var str = PCS.ReadString(_runs.Data, pointer);
+         var str = _pcs.ReadString(_runs.Data, pointer);
          _result.AppendStringPointer(name);
          return str;
       }
@@ -336,7 +340,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void InlineArray(string name, int length, ChildReader reader) {
          var array = new BuildableObject[length];
          for (int i = 0; i < length; i++) {
-            var child = new Builder2(_runs, _mapper, _location);
+            var child = new Builder2(_runs, _mapper, _pcs, _location);
             reader(child);
             _location = child._location;
             array[i] = child._result;
@@ -353,7 +357,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var pointer = _runs.Data.ReadPointer(_location);
          _mapper.Claim(_runs, _location, pointer);
          _location += 4;
-         var child = new Builder2(_runs, _mapper, pointer);
+         var child = new Builder2(_runs, _mapper, _pcs, pointer);
          for (int i = 0; i < length; i++) {
             child.Clear();
             reader(child);
@@ -363,8 +367,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       public string String(int len, string name) {
-         _runs.AddRun(_location, PCS.StringRun);
-         string result = PCS.ReadString(_runs.Data, _location);
+         _runs.AddRun(_location, _pcs.StringRun);
+         string result = _pcs.ReadString(_runs.Data, _location);
          _location += len;
          _result.AppendString(name, len);
          return result;
@@ -393,6 +397,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    public class BuildableObject : DynamicObject {
 
       readonly byte[] _data;
+      readonly PCS _pcs;
       readonly IList<string> _names = new List<string>();
       readonly IList<int> _lengths = new List<int>();
       readonly IList<Type> _types = new List<Type>();
@@ -403,7 +408,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public int Length { get { return _lengths.Sum(); } }
 
-      public BuildableObject(byte[] data) { _data = data; }
+      public BuildableObject(byte[] data, PCS pcs) { _data = data; _pcs = pcs; }
 
       #region Append
 
@@ -488,7 +493,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          if (_types[index] == typeof(byte)) WriteBytes(loc, byte.Parse(value.ToString()), 1);
          else if (_types[index] == typeof(short)) WriteBytes(loc, short.Parse(value.ToString()), 2);
          else if (_types[index] == typeof(int)) WriteBytes(loc, int.Parse(value.ToString()), 4);
-         else if (_types[index] == typeof(string)) PCS.WriteString(_data, loc, _lengths[index], (string)value);
+         else if (_types[index] == typeof(string)) _pcs.WriteString(_data, loc, _lengths[index], (string)value);
          else return false;
          return true;
       }
@@ -509,9 +514,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          if (_types[index] == typeof(string)) {
             if (_lengths[index] == 4) {
                int ptr = _data.ReadPointer(loc);
-               if (ptr != -1) result = PCS.ReadString(_data, ptr);
+               if (ptr != -1) result = _pcs.ReadString(_data, ptr);
             } else {
-               result = PCS.ReadString(_data, loc, _lengths[index]);
+               result = _pcs.ReadString(_data, loc, _lengths[index]);
             }
          }
          if (_types[index] == typeof(BuildableObject)) {

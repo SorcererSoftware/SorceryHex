@@ -11,16 +11,18 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
 namespace SorceryHex.Gba.Pokemon {
-   class PCS : IRunParser, IEditor {
-      static readonly string[] _pcs = new string[0x100];
-      static readonly Geometry[] _pcsVisuals = new Geometry[0x100]; // leaving it null makes it use the default color and visualization
-      static readonly IDataRun _stringRun;
+   public class PCS : IRunParser, IEditor {
+      readonly string[] _pcs = new string[0x100];
+      readonly Geometry[] _pcsVisuals = new Geometry[0x100]; // leaving it null makes it use the default color and visualization
 
-      static PCS() {
-         Instance = new PCS();
-         _stringRun = new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcsVisuals) {
+      public readonly IDataRun StringRun;
+
+      IRunStorage _runs;
+
+      public PCS() {
+         StringRun = new VariableLengthDataRun(0xFF, 1, Solarized.Brushes.Violet, _pcsVisuals) {
             Interpret = GetInterpretation,
-            Editor = PCS.Instance
+            Editor = this
          };
 
          foreach (var line in System.IO.File.ReadAllLines("data\\PCS3-W.ini")) {
@@ -36,13 +38,6 @@ namespace SorceryHex.Gba.Pokemon {
          _pcsVisuals[0x00] = "".ToGeometry();
          _pcsVisuals[0xFD] = "\\x".ToGeometry();
       }
-
-      public static IDataRun StringRun { get { return _stringRun; } }
-      public static PCS Instance { get; private set; }
-
-      IRunStorage _runs;
-
-      PCS() { }
 
       public void Load(ICommandFactory commander, IRunStorage runs) {
          _runs = runs;
@@ -106,6 +101,28 @@ namespace SorceryHex.Gba.Pokemon {
 
       #endregion
 
+
+      public string ReadString(byte[] data, int location, int maxLength = -1) {
+         string result = string.Empty;
+         for (int j = 0; data[location + j] != 0xFF && (result.Length < maxLength || maxLength == -1); j++) {
+            if (data[location + j] == 0x00) {
+               result += " ";
+            } else if (data[location + j] == 0xFD) {
+               result += "\\x" + Utils.ToHexString(data[location + j + 1]);
+               j++;
+            } else {
+               if (_pcs[data[location + j]] == null) return null;
+               result += _pcs[data[location + j]];
+            }
+         }
+         if (result.Length > maxLength && maxLength != -1) return null;
+         return result;
+      }
+
+      public void WriteString(byte[] data, int location, int length, string value) {
+         throw new NotImplementedException();
+      }
+
       void FindStrings() {
          int currentLength = 0;
          int currentSkip;
@@ -142,7 +159,7 @@ namespace SorceryHex.Gba.Pokemon {
                   if (!Enumerable.Range(1, currentLength).All(j => _runs.Data[startLoc + j] == _runs.Data[startLoc])) {
                      if (_runs.IsFree(startLoc)) {
                         if (_runs.NextUsed(startLoc) > startLoc + currentLength) {
-                           _runs.AddRun(startLoc, _stringRun);
+                           _runs.AddRun(startLoc, StringRun);
                         }
                      }
                   }
@@ -153,28 +170,7 @@ namespace SorceryHex.Gba.Pokemon {
          }
       }
 
-      public static string ReadString(byte[] data, int location, int maxLength = -1) {
-         string result = string.Empty;
-         for (int j = 0; data[location + j] != 0xFF && (result.Length < maxLength || maxLength == -1); j++) {
-            if (data[location + j] == 0x00) {
-               result += " ";
-            } else if (data[location + j] == 0xFD) {
-               result += "\\x" + Utils.ToHexString(data[location + j + 1]);
-               j++;
-            } else {
-               if (_pcs[data[location + j]] == null) return null;
-               result += _pcs[data[location + j]];
-            }
-         }
-         if (result.Length > maxLength && maxLength != -1) return null;
-         return result;
-      }
-
-      public static void WriteString(byte[] data, int location, int length, string value) {
-         throw new NotImplementedException();
-      }
-
-      static FrameworkElement GetInterpretation(byte[] data, int location) {
+      FrameworkElement GetInterpretation(byte[] data, int location) {
          var result = ReadString(data, location);
          return new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
       }

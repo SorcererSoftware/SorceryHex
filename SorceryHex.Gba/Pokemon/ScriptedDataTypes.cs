@@ -31,11 +31,12 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
    class ScriptedDataTypes : IRunParser, ITypes {
       readonly PointerMapper _mapper;
+      readonly PCS _pcs;
       readonly ScriptEngine _engine;
       readonly ScriptScope _scope;
 
-      public ScriptedDataTypes(PointerMapper mapper, ScriptEngine engine, ScriptScope scope) {
-         _mapper = mapper; _engine = engine; _scope = scope;
+      public ScriptedDataTypes(PointerMapper mapper, PCS pcs, ScriptEngine engine, ScriptScope scope) {
+         _mapper = mapper; _pcs = pcs; _engine = engine; _scope = scope;
       }
 
       public IEnumerable<int> Find(string term) { return null; }
@@ -74,7 +75,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             if (address + stride * elementCount1 >= _runs.Data.Length) continue;
             if (elementCount1 < MinVariableLength) continue;
 
-            var parser = new Parser(_runs, address);
+            var parser = new Parser(_runs, _pcs, location: address);
             for (int i = 0; true; i++) {
                reader(parser);
                if (parser.FaultReason != null) break;
@@ -111,7 +112,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             if (elementCount < MinVariableLength) continue;
             if (Enumerable.Range(0, elementCount).Any(i => !GeneralMatch(address + i * stride, generalLayout))) continue;
 
-            var parser = new Parser(_runs, address);
+            var parser = new Parser(_runs, _pcs, location: address);
             for (int i = 0; i < elementCount; i++) {
                reader(parser);
                if (parser.FaultReason != null) break;
@@ -133,8 +134,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public BuildableArray ReadArray(int length, int location, ChildReader reader) {
          var destination = _runs.Data.ReadPointer(location);
          if (destination == -1) return null;
-         var parser = new Parser(_runs, destination);
-         var builder = new Builder2(_runs, _mapper, destination);
+         var parser = new Parser(_runs, _pcs, location: destination);
+         var builder = new Builder2(_runs, _mapper, _pcs, destination);
          for (int i = 0; i < length; i++) {
             reader(parser);
             if (parser.FaultReason != null) return null;
@@ -220,7 +221,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var index = counts.IndexOf(least);
 
          int offset = matchingLayouts[index];
-         var factory = new Builder2(_runs, _mapper, offset);
+         var factory = new Builder2(_runs, _mapper, _pcs, offset);
          var data = new dynamic[matchingLengths[index]];
          for (int i = 0; i < matchingLengths[index]; i++) {
             reader(factory);
@@ -235,10 +236,10 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       Pointer ReadPointerHelper(int destination, string generalLayout, ChildReader reader) {
          if (!GeneralMatch(destination, generalLayout)) return null;
-         var parser = new Parser(_runs, destination);
+         var parser = new Parser(_runs, _pcs, location: destination);
          reader(parser);
          if (parser.FaultReason != null) return null; ;
-         var factory = new Builder2(_runs, _mapper, destination);
+         var factory = new Builder2(_runs, _mapper, _pcs, destination);
          reader(factory);
 
          return new Pointer {
