@@ -1,8 +1,8 @@
-layout = "wwwwppwww"
-layout = "wwwwpwww" if types.Version == "BPEE" # emerald
+datalayout = "wwwwppwww"
+datalayout = "wwwwpwww" if types.Version == "BPEE" # emerald
 
-dexinfo = types.FindVariableArray layout, ->(b){
-   b.String 12, "type"
+layout = types.FindVariableArray datalayout, ->(b){
+   b.String 12, "pokespecies"
    b.Short "height"
    b.Short "weight"
    b.StringPointer "description"
@@ -15,5 +15,6 @@ dexinfo = types.FindVariableArray layout, ->(b){
    b.Unused 2
 }
 
-types.AddShortcut "dexinfo", dexinfo.destination
-self.dexinfo = dexinfo.data
+# types.Label evolutions, ->(i) { return self.pokename[i].name }
+types.AddShortcut "dexinfo", layout.destination
+self.dexinfo = layout.data

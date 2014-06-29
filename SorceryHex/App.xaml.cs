@@ -107,4 +107,12 @@ namespace SorceryHex {
       public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(data); }
       public int CompareTo(IModelFactory other) { return (other is SimpleFactory) ? 1 : -1; }
    }
+
+   [Export(typeof(IModelFactory))]
+   public class StringFactory : IModelFactory {
+      public string DisplayName { get { return "StringFinder"; } }
+      public bool CanCreateModel(string name, byte[] data) { return true; }
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(data, new StringDecoder(data, 1)); }
+      public int CompareTo(IModelFactory other) { return -1; }
+   }
 }

@@ -6,7 +6,7 @@ if types.Version == "BPEE"
    datalocation = 0x6D140 # Emerald
 end
 
-evolutions = types.ReadArray 412, datalocation, ->(b) {
+layout = types.ReadArray 412, datalocation, ->(b) {
    b.InlineArray "index", 5, ->(b) {
       t = b.Short "evotype"
       if t==0
@@ -19,6 +19,6 @@ evolutions = types.ReadArray 412, datalocation, ->(b) {
    }
 }
 
-types.Label evolutions, ->(i) { return self.pokename[i].name }
-types.AddShortcut "evolutions", evolutions.destinationof(0)
-self.evolutions = evolutions
+types.Label layout, ->(i) { return self.pokename[i].name }
+types.AddShortcut "evolutions", layout.destinationof(0)
+self.evolutions = layout

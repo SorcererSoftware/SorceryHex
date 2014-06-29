@@ -287,7 +287,7 @@ namespace SorceryHex {
          ScrollBar.Maximum = Holder.Length;
          JumpTo(jump ? 0 : Offset);
          Parser.IsEnabled = false;
-         _multiBox.BreadCrumbBar.Children.Clear();
+         if (jump) _multiBox.BreadCrumbBar.Children.Clear();
          GotoItem.Items.Clear();
          _loadTimer = AutoTimer.Time("Full Load Time");
          Task.Factory.StartNew(() => Holder.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke(LoadComplete));
