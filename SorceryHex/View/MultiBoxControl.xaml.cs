@@ -104,17 +104,20 @@ namespace SorceryHex {
             PlacementTarget = ScriptBox,
             StaysOpen = false
          };
+         SetupScope();
       }
 
       #region Helpers
 
       public void Show(dynamic result) {
          if (result == null) {
+            _outputText.Text = string.Empty;
             _popup.IsOpen = false;
             return;
          }
          _outputText.Foreground = Solarized.Theme.Instance.Emphasis;
          _outputText.Text = Parse(result);
+         _popup.IsOpen = !string.IsNullOrEmpty(_outputText.Text);
       }
 
       public void AddLocationToBreadCrumb() {
@@ -218,14 +221,13 @@ namespace SorceryHex {
 
          if (e.Key == Key.Enter) {
             try {
-               SetupScope();
                var result = _engine.CreateScriptSourceFromString(ScriptBox.Text, SourceCodeKind.SingleStatement).Execute(_scope);
                Show(result);
             } catch (Exception e1) {
                _outputText.Foreground = Solarized.Brushes.Red;
                _outputText.Text = "error: " + e1.Message;
+               _popup.IsOpen = true;
             }
-            _popup.IsOpen = true;
          }
       }
 

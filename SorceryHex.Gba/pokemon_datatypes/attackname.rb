@@ -5,5 +5,5 @@ layout = types.ReadArray self.attackcount, datalocation, ->(b) {
    b.String 13, "name"
 }
 
-types.AddShortcut "attackname", layout.destinationof(0)
+types.AddShortcut "attackname", layout[0].Location
 self.attackname = layout

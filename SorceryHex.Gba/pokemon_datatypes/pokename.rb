@@ -5,5 +5,5 @@ layout = types.ReadArray self.pokecount, datalocation, ->(b) {
    b.String 11, "name"
 }
 
-types.AddShortcut "pokename", layout.destinationof(0)
+types.AddShortcut "pokename", layout[0].Location
 self.pokename = layout

@@ -9,5 +9,5 @@ layout = types.ReadArray self.pokecount-1, datalocation, ->(b) {
    b.Short "index"
 }
 
-types.AddShortcut "dexorder", layout.destinationof(0)
+types.AddShortcut "dexorder", layout[0].Location
 self.dexorder = layout

@@ -9,7 +9,7 @@ layout = types.FindVariableArray 0xFF, "wpppp", ->(b){
    b.Link 2, "bankmap", ->(b){
       bank = b.Byte "bank"
       map  = b.Byte "map"
-      return self.maps[bank].destinationof map
+      return self.maps[bank][map].Location
    }
    b.Unused 2
    b.NullablePointer "grass", ->(b){

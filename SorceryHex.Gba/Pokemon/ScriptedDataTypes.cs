@@ -21,15 +21,15 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       string Version { get; }
       Pointer FindVariableArray(string generalLayout, ChildReader reader);
       Pointer FindVariableArray(byte ender, string generalLayout, ChildReader reader);
-      BuildableArray ReadArray(int length, int location, ChildReader reader);
+      BuildableObject[] ReadArray(int length, int location, ChildReader reader);
       Pointer ReadPointer(int location, string generalLayout, ChildReader reader);
       Pointer[] FindMany(string generalLayout, ChildReader reader);
       Pointer[] FollowPointersUp(Pointer[] locations);
-      void Label(BuildableArray array, Func<int, string> label);
+      void Label(BuildableObject[] array, Func<int, string> label);
       void AddShortcut(string name, int location);
    }
 
-   class ScriptedDataTypes : IRunParser, ITypes {
+   class ScriptedDataTypes : IRunParser, ITypes, ILabeler {
       readonly PointerMapper _mapper;
       readonly PCS _pcs;
       readonly ScriptEngine _engine;
@@ -56,7 +56,25 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             }
          }
          _scope.RemoveVariable("types");
+         _runs.AddLabeler(this);
       }
+
+      #region ILabeler
+
+      readonly IDictionary<int, BuildableObject[]> _arrays = new Dictionary<int, BuildableObject[]>();
+      readonly IDictionary<int, Func<int, string>> _labels = new Dictionary<int, Func<int, string>>();
+      public string GetLabel(int index) {
+         var list = _labels.Keys.Where(i => i < index).OrderBy(i => i).ToList();
+         if (list.Count == 0) return null;
+         int location = list.Last();
+         int stride = _arrays[location][0].Length;
+         if ((index - location) % stride != 0) return null;
+         int dex = (index - location) / stride;
+         if (dex >= _arrays[location].Length) return null;
+         return _labels[location](dex);
+      }
+
+      #endregion
 
       #region ITypes
 
@@ -132,19 +150,22 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return FindVariableArray(reader, stride, matchingPointers, matchingLayouts, matchingLengths);
       }
 
-      public BuildableArray ReadArray(int length, int location, ChildReader reader) {
+      public BuildableObject[] ReadArray(int length, int location, ChildReader reader) {
          var destination = _runs.Data.ReadPointer(location);
          if (destination == -1) return null;
          var parser = new Parser(_runs, _pcs, location: destination);
          var builder = new Builder2(_runs, _mapper, _pcs, destination);
+         var array = new BuildableObject[length];
          for (int i = 0; i < length; i++) {
             reader(parser);
             if (parser.FaultReason != null) return null;
             builder.Clear();
             reader(builder);
+            array[i] = builder.Result;
          }
          _mapper.Claim(_runs, location, destination);
-         return new BuildableArray(builder.Result, destination, length);
+         return array;
+         // return new BuildableArray(builder.Result, destination, length);
       }
 
       public Pointer ReadPointer(int location, string generalLayout, ChildReader reader) {
@@ -183,7 +204,11 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return pointerSet.ToArray();
       }
 
-      public void Label(BuildableArray array, Func<int, string> label) { array.Label(_runs, label); }
+      public void Label(BuildableObject[] array, Func<int, string> label) {
+         _arrays[array[0].Location] = array;
+         _labels[array[0].Location] = label;
+         // array.Label(_runs, label);
+      }
 
       public void AddShortcut(string name, int location) { _commander.CreateJumpShortcut(name, location); }
 
@@ -224,19 +249,19 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
          int offset = matchingLayouts[index];
          var factory = new Builder2(_runs, _mapper, _pcs, offset);
-         var data = new dynamic[matchingLengths[index]];
+         var data = new BuildableObject[matchingLengths[index]];
          for (int i = 0; i < matchingLengths[index]; i++) {
             factory.Clear();
             reader(factory);
             data[i] = factory.Result;
          }
 
-         var array = new BuildableArray(factory.Result, offset, data.Length);
+         // var array = new BuildableArray(factory.Result, offset, data.Length);
 
          int start = matchingLayouts[index], end = matchingLayouts[index] + matchingLengths[index] * stride;
          _mapper.FilterPointer(i => i <= start || i >= end);
          _mapper.Claim(_runs, matchingLayouts[index]);
-         return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = array };
+         return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = data };
       }
 
       Pointer ReadPointerHelper(int destination, string generalLayout, ChildReader reader) {

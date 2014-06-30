@@ -22,7 +22,7 @@ types.Label layout.data, ->(i) {
       k = j+1
       break
    end
-   return "" if k == 0
+   return "" if k < 1
    return self.pokename[k].name
 }
 

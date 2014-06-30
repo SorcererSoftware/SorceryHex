@@ -31,5 +31,5 @@ layout = types.ReadArray self.pokecount, datalocation, ->(b) {
 
 types.Label layout, ->(i) { return self.pokename[i].name }
 
-types.AddShortcut "stats", layout.destinationof(0)
+types.AddShortcut "stats", layout[0].Location
 self.stats = layout
