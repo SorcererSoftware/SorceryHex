@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
-using System.Linq;
 using System.Windows;
 
 namespace SorceryHex.Gba.Pokemon.DataTypes {
@@ -205,7 +203,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void WriteDebug(object o) { MessageBox.Show(MultiBoxControl.Parse(o)); }
    }
 
-   class Builder2 : IBuilder {
+   class Builder : IBuilder {
       static IElementProvider hex(string hoverText = null) { return new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number, hoverText: hoverText); }
       static IElementProvider nums(string hoverText = null) { return new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number, hoverText: hoverText); }
 
@@ -219,33 +217,25 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       BuildableObject _result;
       readonly IRunStorage _runs;
       readonly byte[] _data;
-      readonly PointerMapper _mapper;
+      readonly IPointerMapper _mapper;
       readonly PCS _pcs;
       int _location;
 
       public BuildableObject Result { get { return _result; } }
 
-      public Builder2(IRunStorage runs, PointerMapper mapper, PCS pcs, int location) {
+      public Builder(IRunStorage runs, IPointerMapper mapper, PCS pcs, int location) {
          _runs = runs;
          _data = _runs.Data;
          _mapper = mapper;
          _pcs = pcs;
          _location = location;
          _result = new BuildableObject(runs.Data, _pcs, _location);
-         // _result.Relocate(_location);
       }
 
-      public Builder2(byte[] data, PCS pcs, int location) {
-         _data = data;
-         _pcs = pcs;
-         _location = location;
-         _result = new BuildableObject(_data, _pcs, _location);
-         // _result.Relocate(_location);
-      }
+      // public Builder2(byte[] data, PCS pcs, int location) : this(new NullRunStorage { Data = data }, null, pcs, location) { }
 
       public void Clear() {
          _result = new BuildableObject(_data, _pcs, _location);
-         // _result.Relocate(_location);
       }
 
       public bool Assert(bool value, string message) {
@@ -306,7 +296,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public void Pointer(string name) {
          var pointer = _data.ReadPointer(_location);
-         if (_mapper != null) _mapper.Claim(_runs, _location, pointer);
+         _mapper.Claim(_runs, _location, pointer);
          _location += 4;
          _result.AppendSkip(4);
       }
@@ -315,7 +305,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var pointer = _data.ReadPointer(_location);
          if (_mapper != null) _mapper.Claim(_runs, _location, pointer);
          _location += 4;
-         var child = (_runs != null) ? new Builder2(_runs, _mapper, _pcs, pointer) : new Builder2(_data, _pcs, pointer);
+         var child = new Builder(_runs, _mapper, _pcs, pointer);
          reader(child);
          _result.Append(name, reader);
          return child.Result;
@@ -349,13 +339,11 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       public void InlineArray(string name, int length, ChildReader reader) {
-         // var array = new BuildableObject[length];
          int start = _location;
          for (int i = 0; i < length; i++) {
-            var child = (_runs != null) ? new Builder2(_runs, _mapper, _pcs, _location) : new Builder2(_data, _pcs, _location);
+            var child = new Builder(_runs, _mapper, _pcs, _location);
             reader(child);
             _location = child._location;
-            // array[i] = child._result;
          }
          _result.AppendInlineArray(name, length, _location - start, reader);
       }
@@ -369,7 +357,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var pointer = _data.ReadPointer(_location);
          if (_mapper != null) _mapper.Claim(_runs, _location, pointer);
          _location += 4;
-         var child = (_runs != null) ? new Builder2(_runs, _mapper, _pcs, pointer) : new Builder2(_data, _pcs, pointer);
+         var child = new Builder(_runs, _mapper, _pcs, pointer);
          for (int i = 0; i < length; i++) {
             child.Clear();
             reader(child);
@@ -405,259 +393,6 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public void WriteDebug(object o) { MessageBox.Show(MultiBoxControl.Parse(o)); }
    }
-
-   public class BuildableObject : DynamicObject {
-      readonly byte[] _data;
-      readonly PCS _pcs;
-      readonly IList<string> _names = new List<string>();
-      readonly IList<int> _lengths = new List<int>();
-      readonly IList<Type> _types = new List<Type>();
-      readonly IDictionary<string, ChildReader> _children = new Dictionary<string, ChildReader>();
-      readonly ISet<string> _inline = new HashSet<string>();
-      // readonly IDictionary<string, BuildableObject[]> _childrenArray = new Dictionary<string, BuildableObject[]>();
-      readonly IDictionary<string, int> _childrenLength = new Dictionary<string, int>();
-      readonly int _location;
-
-      public int Location { get { return _location; } }
-      public int Length { get { return _lengths.Sum(); } }
-
-      public BuildableObject(byte[] data, PCS pcs, int location) { _data = data; _pcs = pcs; _location = location; }
-
-      #region Append
-
-      public void AppendByte(string name) {
-         _names.Add(name);
-         _types.Add(typeof(byte));
-         _lengths.Add(1);
-      }
-
-      public void AppendShort(string name) {
-         _names.Add(name);
-         _types.Add(typeof(short));
-         _lengths.Add(2);
-      }
-
-      public void AppendWord(string name) {
-         _names.Add(name);
-         _types.Add(typeof(int));
-         _lengths.Add(4);
-      }
-
-      public void AppendString(string name, int length) {
-         _names.Add(name);
-         _types.Add(typeof(string));
-         _lengths.Add(length);
-      }
-
-      public void AppendStringPointer(string name) {
-         _names.Add(name);
-         _types.Add(typeof(string));
-         _lengths.Add(4);
-      }
-
-      public void Append(string name, ChildReader reader) {
-         _names.Add(name);
-         _types.Add(typeof(BuildableObject));
-         _lengths.Add(4);
-         _children[name] = reader;
-      }
-
-      public void AppendArray(string name, int len, ChildReader reader) {
-         _names.Add(name);
-         _types.Add(typeof(BuildableObject[]));
-         _lengths.Add(4);
-         _children[name] = reader;
-         _childrenLength[name] = len;
-      }
-
-      public void AppendInlineArray(string name, int len, int inlineLength, ChildReader reader) {
-         _names.Add(name);
-         _types.Add(typeof(BuildableObject[]));
-         _childrenLength[name] = len;
-         _children[name] = reader;
-         _inline.Add(name);
-         _lengths.Add(inlineLength);
-      }
-
-      //public void AppendArray(string name, BuildableObject[] array) {
-      //   _names.Add(name);
-      //   _types.Add(typeof(BuildableObject[]));
-      //   _lengths.Add(array.Sum(b => b.Length));
-      //   _childrenArray[name] = array;
-      //}
-
-      public void AppendSkip(int length) {
-         _names.Add(null);
-         _types.Add(null);
-         _lengths.Add(length);
-      }
-
-      #endregion
-
-      public override string ToString() {
-         return "{ " + _names.Where(name => name != null).Aggregate((a, b) => a + ", " + b) + " }";
-      }
-
-      // public void Relocate(int location) { _location = location; }
-
-      #region Dynamic Object
-
-      public override bool TryGetMember(GetMemberBinder binder, out object result) {
-         var index = _names.IndexOf(binder.Name);
-         if (index == -1) return base.TryGetMember(binder, out result);
-         return TryMember(index, out result);
-      }
-
-      public override bool TrySetMember(SetMemberBinder binder, object value) {
-         var index = _names.IndexOf(binder.Name);
-         if (index == -1) return base.TrySetMember(binder, value);
-         var loc = _location + _lengths.Take(index).Sum();
-         if (_types[index] == typeof(byte)) WriteBytes(loc, byte.Parse(value.ToString()), 1);
-         else if (_types[index] == typeof(short)) WriteBytes(loc, short.Parse(value.ToString()), 2);
-         else if (_types[index] == typeof(int)) WriteBytes(loc, int.Parse(value.ToString()), 4);
-         else if (_types[index] == typeof(string)) _pcs.WriteString(_data, loc, _lengths[index], (string)value);
-         else return false;
-         return true;
-      }
-
-      public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result) {
-         var index = _names.IndexOf(binder.Name);
-         if (index == -1) return base.TryInvokeMember(binder, args, out result);
-         return TryMember(index, out result);
-      }
-
-      bool TryMember(int index, out object result) {
-         string name = _names[index];
-         var loc = _location + _lengths.Take(index).Sum();
-         result = null;
-         if (_types[index] == typeof(byte)) result = _data[loc];
-         if (_types[index] == typeof(short)) result = _data.ReadShort(loc);
-         if (_types[index] == typeof(int)) result = _data.ReadData(4, loc);
-         if (_types[index] == typeof(string)) {
-            if (_lengths[index] == 4) {
-               int ptr = _data.ReadPointer(loc);
-               if (ptr != -1) result = _pcs.ReadString(_data, ptr);
-            } else {
-               result = _pcs.ReadString(_data, loc, _lengths[index]);
-            }
-         }
-         if (_types[index] == typeof(BuildableObject)) {
-            int ptr = _data.ReadPointer(loc);
-            if (ptr != -1) {
-               var builder = new Builder2(_data, _pcs, ptr);
-               _children[name](builder);
-               result = builder.Result;
-            }
-         }
-         if (_types[index] == typeof(BuildableObject[])) {
-            if (_inline.Contains(name)) {
-               var array = new BuildableObject[_childrenLength[name]];
-               var builder = new Builder2(_data, _pcs, loc);
-               for (int i = 0; i < _childrenLength[name]; i++) {
-                  _children[name](builder);
-                  array[i] = builder.Result;
-                  builder.Clear();
-               }
-               result = array;
-            } else {
-               var array = new BuildableObject[_childrenLength[name]];
-               int ptr = _data.ReadPointer(loc);
-               if (ptr == -1) {
-                  result = null;
-                  return true;
-               }
-               var builder = new Builder2(_data, _pcs, ptr);
-               for (int i = 0; i < _childrenLength[name]; i++) {
-                  _children[name](builder);
-                  array[i] = builder.Result;
-                  builder.Clear();
-               }
-               result = array;
-            }
-
-            //if (_childrenArray.ContainsKey(name)) {
-            //   result = _childrenArray[name];
-            //   for (int i = 0; i < _childrenArray[name].Length; i++) {
-            //      _childrenArray[name][i].Relocate(loc + _childrenArray[name].Take(i).Sum(p => p.Length));
-            //   }
-            //} else {
-            //   int ptr = _data.ReadPointer(loc);
-            //   if (ptr != -1) {
-            //      result = new BuildableArray(_children[name], ptr, _childrenLength[name]);
-            //   }
-            //}
-         }
-
-         return true;
-      }
-
-      void WriteBytes(int location, int value, int length) {
-         while (length > 0) {
-            _data[location] = (byte)value;
-            value >>= 8;
-            location++;
-            length--;
-         }
-      }
-
-      #endregion
-   }
-
-   //public class BuildableArray : DynamicObject, ILabeler, IEnumerable<BuildableObject> {
-   //   readonly BuildableObject _member;
-   //   readonly int _location, _length;
-   //   public int Length { get { return _length; } }
-   //   public BuildableArray(BuildableObject member, int location, int length) { _member = member; _location = location; _length = length; }
-
-   //   #region Labels
-
-   //   Func<int, string> _labelmaker;
-   //   public void Label(IRunStorage runs, Func<int, string> label) { runs.AddLabeler(this); _labelmaker = label; }
-
-   //   public string GetLabel(int index) {
-   //      if (index < _location) return null;
-   //      int stride = _member.Length;
-   //      if ((index - _location) % stride != 0) return null;
-   //      int i = (index - _location) / stride;
-   //      if (i >= _length) return null;
-   //      return _labelmaker(i);
-   //   }
-
-   //   #endregion
-
-   //   public override bool TryGetIndex(GetIndexBinder binder, object[] indexes, out object result) {
-   //      if (indexes.Length != 1) return base.TryGetIndex(binder, indexes, out result);
-   //      try {
-   //         var index = int.Parse(indexes[0].ToString()); // casting from a dynamic is difficult
-   //         if (index >= _length) return base.TryGetIndex(binder, indexes, out result);
-   //         int stride = _member.Length;
-   //         _member.Relocate(_location + stride * index);
-   //         result = _member;
-   //         return true;
-   //      } catch (Exception e) { return base.TryGetIndex(binder, indexes, out result); }
-   //   }
-
-   //   public override string ToString() {
-   //      return "Array[" + _length + "] " + _member.ToString();
-   //   }
-   //   public int destinationof(int i) {
-   //      int stride = _member.Length;
-   //      return _location + i * stride;
-   //   }
-
-   //   #region Enumerator
-
-   //   public IEnumerable<BuildableObject> each() { return this; }
-   //   public IEnumerator<BuildableObject> GetEnumerator() {
-   //      for (int i = 0; i < _length; i++) {
-   //         _member.Relocate(_location + _member.Length * i);
-   //         yield return _member;
-   //      }
-   //   }
-   //   IEnumerator IEnumerable.GetEnumerator() { return GetEnumerator(); }
-
-   //   #endregion
-   //}
 
    class Reader : IBuilder {
       readonly byte[] _data;

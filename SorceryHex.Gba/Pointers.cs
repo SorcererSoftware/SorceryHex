@@ -17,7 +17,11 @@ namespace SorceryHex.Gba {
     * 156E04 Stats     { .strength .agility .stamina .magic }
    //*/
 
-   class PointerMapper {
+   interface IPointerMapper {
+      void Claim(IRunStorage runs, int location, int pointer);
+   }
+
+   class PointerMapper : IPointerMapper {
       public static Brush Brush = GbaBrushes.Pointer;
       readonly SortedList<int, int> _pointerSet = new SortedList<int, int>(); // unclaimed pointers
       readonly IDictionary<int, List<int>> _reversePointerSet = new Dictionary<int, List<int>>(); // unclaimed pointers helper

@@ -55,6 +55,7 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Pokemon\BuildableObject.cs" />
     <Compile Include="Pokemon\Builder.cs" />
     <Compile Include="Pokemon\ElementProvider.cs" />
     <Compile Include="Factories.cs" />
