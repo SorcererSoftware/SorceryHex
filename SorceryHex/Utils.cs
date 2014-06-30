@@ -32,6 +32,11 @@ namespace SorceryHex {
          { Key.Oem7, '\'' }, { Key.Oem3, '`' },
          { Key.OemComma, ',' },
          { Key.OemPeriod, '.' }, { Key.Decimal, '.' },
+         { Key.OemSemicolon, ';' }
+      };
+
+      public static IDictionary<Key, char> CharForKeyAndShift = new Dictionary<Key, char> {
+         { Key.OemSemicolon, ':' },
       };
 
       public static char? Convert(Key key) {
@@ -46,6 +51,7 @@ namespace SorceryHex {
             }
             return (char)(key - Key.D0 + '0');
          }
+         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && CharForKeyAndShift.ContainsKey(key)) return CharForKeyAndShift[key];
          if (CharForKey.ContainsKey(key)) return CharForKey[key];
          return null;
       }
