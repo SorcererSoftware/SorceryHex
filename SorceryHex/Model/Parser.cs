@@ -80,6 +80,42 @@ namespace SorceryHex {
       }
    }
 
+   public class InlineComboEditor : IEditor {
+      readonly byte[] _data;
+      readonly int _stride;
+      readonly dynamic[] _names;
+      ComboBox _box;
+      int _location;
+
+      public InlineComboEditor(byte[] data, int stride, dynamic[] names) {
+         _data = data;
+         _stride = stride;
+         _names = names;
+      }
+
+      public FrameworkElement CreateElementEditor(int location) {
+         _location = location;
+         if (_box != null) {
+            // ???
+         }
+         _box = new ComboBox();
+         foreach (var option in _names) {
+            if (option.ToString() == "{ name }") {
+               _box.Items.Add(option.name);
+            } else {
+               _box.Items.Add(option);
+            }
+         }
+         _box.SelectedIndex = _data.ReadData(_stride, location);
+         _box.IsDropDownOpen = true;
+         return _box;
+      }
+
+      public void Edit(int location, char c) { }
+      public void CompleteEdit(int location) { }
+      public event EventHandler MoveToNext;
+   }
+
    public interface IModel : IParser, IEditor { }
 
    public interface IPartialModel {

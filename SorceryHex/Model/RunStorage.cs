@@ -222,7 +222,7 @@ namespace SorceryHex {
          if (index < 0) index = Math.Max(~index - 1, 0);
          int startPoint = _keys[index];
          if (!(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null)) return null;
-         return _runs[startPoint].Editor.CreateElementEditor(location);
+         return _runs[startPoint].Editor.CreateElementEditor(startPoint);
       }
 
       public void Edit(int location, char c) {

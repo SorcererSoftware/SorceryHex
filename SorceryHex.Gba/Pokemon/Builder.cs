@@ -11,7 +11,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    public interface IBuilder {
       bool Assert(bool value, string message);
       byte Byte(string name);
+      byte ByteNum(string name);
       short Short(string name);
+      short ShortEnum(string name, dynamic[] names);
       int Word(string name);
       short Species();
       void Pointer(string name);
@@ -62,6 +64,12 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _location += 2;
          _result[name] = result;
          return result;
+      }
+
+      public short ShortEnum(string name, dynamic[] names) {
+         var val = Short(name);
+         if (val >= names.Length) FaultReason = name + ": " + val + " larger than available range: " + names.Length;
+         return val;
       }
 
       public int Word(string name) {
@@ -206,6 +214,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    class Builder : IBuilder {
       static IElementProvider hex(string hoverText = null) { return new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number, hoverText: hoverText); }
       static IElementProvider nums(string hoverText = null) { return new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number, hoverText: hoverText); }
+      static IElementProvider enums(dynamic[] names, int stride, string hoverText = null) { return new EnumElementProvider(names, stride, GbaBrushes.Number, hoverText: hoverText); }
 
       static IDataRun Build(IDictionary<string, IDataRun> dict, Func<string, IElementProvider> func, int len, string hoverText = "", IEditor editor = null) {
          if (dict.ContainsKey(hoverText)) return dict[hoverText];
@@ -232,8 +241,6 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _result = new BuildableObject(runs.Data, _pcs, _location);
       }
 
-      // public Builder2(byte[] data, PCS pcs, int location) : this(new NullRunStorage { Data = data }, null, pcs, location) { }
-
       public void Clear() {
          _result = new BuildableObject(_data, _pcs, _location);
       }
@@ -245,7 +252,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       static readonly IDictionary<string, IDataRun> _byteRuns = new Dictionary<string, IDataRun>();
       public byte Byte(string name) {
-         if (_runs != null) _runs.AddRun(_location, Build(_byteRuns, hex, 1, name));
+         _runs.AddRun(_location, Build(_byteRuns, hex, 1, name));
          var value = _data[_location];
          _location++;
          _result.AppendByte(name);
@@ -260,7 +267,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          }
       }
       public byte ByteNum(string name) {
-         if (_runs != null) _runs.AddRun(_location, Build(_byteNumRuns, nums, 1, name, InlineByteNumEditor));
+         _runs.AddRun(_location, Build(_byteNumRuns, nums, 1, name, InlineByteNumEditor));
          var value = _data[_location];
          _location++;
          _result.AppendByte(name);
@@ -269,7 +276,30 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       static readonly IDictionary<string, IDataRun> _shortRuns = new Dictionary<string, IDataRun>();
       public short Short(string name) {
-         if (_runs != null) _runs.AddRun(_location, Build(_shortRuns, hex, 2, name));
+         _runs.AddRun(_location, Build(_shortRuns, hex, 2, name));
+         var value = _data.ReadShort(_location);
+         _location += 2;
+         _result.AppendShort(name);
+         return value;
+      }
+
+      static readonly IDictionary<dynamic[], IEditor> _shortEnumEditors = new Dictionary<dynamic[], IEditor>();
+      static readonly IDictionary<dynamic[], IDataRun> _shortEnumRuns = new Dictionary<dynamic[], IDataRun>();
+      public short ShortEnum(string name, dynamic[] names) {
+         if (_shortEnumRuns.ContainsKey(names)) {
+            _runs.AddRun(_location, _shortEnumRuns[names]);
+         } else {
+            IEditor editor;
+            if (_shortEnumEditors.ContainsKey(names)) {
+               editor = _shortEnumEditors[names];
+            } else {
+               editor = new InlineComboEditor(_data, 2, names);
+               _shortEnumEditors[names] = editor;
+            }
+            var run = new SimpleDataRun(enums(names, 2, name), 2, editor);
+            _shortEnumRuns[names] = run;
+            _runs.AddRun(_location, run);
+         }
          var value = _data.ReadShort(_location);
          _location += 2;
          _result.AppendShort(name);
@@ -278,7 +308,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       static readonly IDictionary<string, IDataRun> _wordRuns = new Dictionary<string, IDataRun>();
       public int Word(string name) {
-         if (_runs != null) _runs.AddRun(_location, Build(_wordRuns, hex, 4, name));
+         _runs.AddRun(_location, Build(_wordRuns, hex, 4, name));
          var value = _data.ReadData(4, _location);
          _location += 4;
          _result.AppendWord(name);
@@ -287,7 +317,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       static readonly IDataRun _speciesRun = new SimpleDataRun(SpeciesElementProvider.Instance, 2);
       public short Species() {
-         if (_runs != null) _runs.AddRun(_location, _speciesRun);
+         _runs.AddRun(_location, _speciesRun);
          var value = _data.ReadShort(_location);
          _location += 2;
          _result.AppendShort("species");
@@ -303,7 +333,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public dynamic Pointer(string name, ChildReader reader) {
          var pointer = _data.ReadPointer(_location);
-         if (_mapper != null) _mapper.Claim(_runs, _location, pointer);
+         _mapper.Claim(_runs, _location, pointer);
          _location += 4;
          var child = new Builder(_runs, _mapper, _pcs, pointer);
          reader(child);
@@ -313,7 +343,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public string StringPointer(string name) {
          var pointer = _data.ReadPointer(_location);
-         if (_mapper != null) _mapper.Claim(_runs, _location, pointer);
+         _mapper.Claim(_runs, _location, pointer);
          _location += 4;
          var str = _pcs.ReadString(_runs.Data, pointer);
          _result.AppendStringPointer(name);
@@ -367,7 +397,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       public string String(int len, string name) {
-         if (_runs != null) _runs.AddRun(_location, _pcs.StringRun);
+         _runs.AddRun(_location, _pcs.StringRun);
          string result = _pcs.ReadString(_data, _location);
          _location += len;
          _result.AppendString(name, len);
@@ -401,7 +431,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public bool Assert(bool value, string message) { return true; }
       public byte Byte(string name) { return _data[_location++]; }
+      public byte ByteNum(string name) { return Byte(name); }
       public short Short(string name) { return _data.ReadShort(_location += 2); }
+      public short ShortEnum(string name, dynamic[] names) { return Short(name); }
       public int Word(string name) { return _data.ReadData(4, _location += 4); }
       public short Species() { return Short(null); }
       public void Pointer(string name) { throw new NotImplementedException(); }

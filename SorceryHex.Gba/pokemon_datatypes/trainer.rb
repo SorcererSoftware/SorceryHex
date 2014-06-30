@@ -7,8 +7,10 @@
 }
 
 sharedAttacks = ->(b) {
-   b.Short "attack1"; b.Short "attack2"
-   b.Short "attack3"; b.Short "attack4"
+   b.ShortEnum "attack1", attackname
+   b.ShortEnum "attack2", attackname
+   b.ShortEnum "attack3", attackname
+   b.ShortEnum "attack4", attackname
 }
 
 trainerStruct0 = ->(b) {
