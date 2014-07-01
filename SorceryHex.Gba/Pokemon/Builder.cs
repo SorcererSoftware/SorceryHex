@@ -19,6 +19,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       void Pointer(string name);
       dynamic Pointer(string name, ChildReader reader);
       string StringPointer(string name);
+      void AttackListPointer();
       void NullablePointer(string name);
       dynamic NullablePointer(string name, ChildReader reader);
       void InlineArray(string name, int length, ChildReader reader);
@@ -124,6 +125,20 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             return null;
          }
          return str;
+      }
+
+      public void AttackListPointer() {
+         // TODO fail if its not an attack list
+         if (FaultReason != null) return;
+         var pointer = _runs.Data.ReadPointer(_location);
+         _location += 4;
+         if (pointer == -1) {
+            FaultReason = "AttackList: not a pointer";
+            return;
+         }
+         int count = 0;
+         while (_runs.Data.ReadData(2, pointer) != 0xFFFF) { pointer += 2; count++; }
+         if (count < 1 || count > 0x20) FaultReason = "AttackList: number of elements was " + count;
       }
 
       public void NullablePointer(string name) {
@@ -350,6 +365,15 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return str;
       }
 
+      public void AttackListPointer() {
+         // TODO read it, use it
+         // 2 bytes: 9 bits and 7 bits
+         // the 7 high bits of the second byte are a level
+         // the other 9 bits (little endian) are an attack
+         // (this limits the total number of attacks to 0x1FF and the highest learnable move to level 0x7F)
+
+      }
+
       public void NullablePointer(string name) {
          if (_data.ReadData(4, _location) == 0) {
             _location += 4;
@@ -439,6 +463,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void Pointer(string name) { throw new NotImplementedException(); }
       public dynamic Pointer(string name, ChildReader reader) { throw new NotImplementedException(); }
       public string StringPointer(string name) { throw new NotImplementedException(); }
+      public void AttackListPointer() { throw new NotImplementedException(); }
       public void NullablePointer(string name) { throw new NotImplementedException(); }
       public dynamic NullablePointer(string name, ChildReader reader) { throw new NotImplementedException(); }
       public void InlineArray(string name, int length, ChildReader reader) { throw new NotImplementedException(); }

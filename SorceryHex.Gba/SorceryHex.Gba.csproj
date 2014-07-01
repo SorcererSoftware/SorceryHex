@@ -71,6 +71,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="pokemon_datatypes\abilityname.rb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="pokemon_datatypes\attackname.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
