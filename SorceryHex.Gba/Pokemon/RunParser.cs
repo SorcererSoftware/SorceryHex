@@ -77,11 +77,11 @@ namespace SorceryHex.Gba.Pokemon {
       public void Edit(int location, char c) {
          if (c == ' ') {
             _runs.Data[location] = 0;
-            MoveToNext(this, EventArgs.Empty);
+            MoveToNext(this, new UpdateLocationEventArgs(location));
             return;
          } else if (c == '\n') {
             _runs.Data[location] = 0;
-            MoveToNext(this, EventArgs.Empty);
+            MoveToNext(this, new UpdateLocationEventArgs(location));
             return;
          }
 
@@ -90,14 +90,14 @@ namespace SorceryHex.Gba.Pokemon {
             if (_pcs[i][0] != c) continue;
             if (_runs.Data[location] == 0xFF) _runs.Data[location + 1] = 0xFF; // TODO this byte needs to show the update too
             _runs.Data[location] = (byte)i;
-            MoveToNext(this, EventArgs.Empty);
+            MoveToNext(this, new UpdateLocationEventArgs(location, location + 1));
             return;
          }
       }
 
       public void CompleteEdit(int location) { }
 
-      public event EventHandler MoveToNext;
+      public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 
       #endregion
 

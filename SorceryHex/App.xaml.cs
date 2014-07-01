@@ -97,7 +97,7 @@ namespace SorceryHex {
       public FrameworkElement CreateElementEditor(int location) { return null; }
       public void Edit(int location, char c) { }
       public void CompleteEdit(int location) { }
-      public event EventHandler MoveToNext;
+      public event EventHandler<UpdateLocationEventArgs> MoveToNext;
    }
 
    [Export(typeof(IModelFactory))]

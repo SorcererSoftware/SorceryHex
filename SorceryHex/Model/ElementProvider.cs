@@ -78,7 +78,7 @@ namespace SorceryHex {
          _names = names;
          _stride = stride;
          _runColor = runColor;
-         _hoverText = hoverText;
+         _hoverText = string.IsNullOrEmpty(hoverText) ? null : hoverText;
       }
 
       public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
@@ -90,8 +90,9 @@ namespace SorceryHex {
          var block = _textblocks.Count > 0 ? _textblocks.Dequeue() : new TextBlock {
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextTrimming = TextTrimming.None,
             FontSize = 10,
+            Margin = new Thickness(2, 0, 2, 0),
             Foreground = _runColor
          };
          var index = data.ReadData(_stride, runStart);
@@ -101,6 +102,7 @@ namespace SorceryHex {
             else name = _names[index].ToString();
          }
          block.Text = name;
+         block.ToolTip = _hoverText ?? string.Empty + " : " + name;
 
          Grid.SetColumnSpan(block, _stride);
          return block;

@@ -89,12 +89,12 @@ namespace SorceryHex {
             geo.Freeze();
             _specialCharacters[_data[location]] = geo;
          }
-         for (int i = 0; i < Stride; i++) MoveToNext(this, EventArgs.Empty);
+         for (int i = 0; i < Stride; i++) MoveToNext(this, new UpdateLocationEventArgs(location, location + 1));
       }
 
       public void CompleteEdit(int location) { }
 
-      public event EventHandler MoveToNext;
+      public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 
       #endregion
 

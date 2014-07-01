@@ -5,6 +5,8 @@
              xmlns:my="clr-namespace:Solarized">
     <Application.Resources>
         <my:Theme x:Key="Theme"/>
+        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="{Binding Source={StaticResource Theme}, Path=Background.Color}"/>
+        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="{Binding Source={StaticResource Theme}, Path=Emphasis.Color}"/>
         <Style x:Key="PanelStyle" TargetType="{x:Type Panel}">
             <Setter Property="Background" Value="{Binding Source={StaticResource Theme}, Path=Background}"/>
             <Setter Property="Focusable" Value="True"/>
@@ -12,6 +14,35 @@
         <Style TargetType="{x:Type Menu}">
             <Setter Property="Foreground" Value="{Binding Source={StaticResource Theme}, Path=Primary}"/>
             <Setter Property="Background" Value="{Binding Source={StaticResource Theme}, Path=Backlight}"/>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="{Binding Background, Source={StaticResource Theme}}"/>
+            <Setter Property="TextBlock.Foreground" Value="{Binding Primary, Source={StaticResource Theme}}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid x:Name="MainGrid" SnapsToDevicePixels="true" Background="{x:Null}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition MinWidth="{DynamicResource {x:Static SystemParameters.VerticalScrollBarWidthKey}}" Width="0"/>
+                            </Grid.ColumnDefinitions>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="true" Grid.ColumnSpan="2" IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" Margin="1" PopupAnimation="{DynamicResource {x:Static SystemParameters.ComboBoxPopupAnimationKey}}" Placement="Bottom">
+                                <Border x:Name="DropDownBorder" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{Binding Backlight, Source={StaticResource Theme}}">
+                                    <ScrollViewer x:Name="DropDownScrollViewer">
+                                        <Grid RenderOptions.ClearTypeHint="Enabled">
+                                            <Canvas HorizontalAlignment="Left" Height="0" VerticalAlignment="Top" Width="0">
+                                                <Rectangle x:Name="OpaqueRect" Fill="{Binding Background, ElementName=DropDownBorder}" Height="{Binding ActualHeight, ElementName=DropDownBorder}" Width="{Binding ActualWidth, ElementName=DropDownBorder}"/>
+                                            </Canvas>
+                                            <ItemsPresenter x:Name="ItemsPresenter" TextBlock.Foreground="{TemplateBinding TextBlock.Foreground}" KeyboardNavigation.DirectionalNavigation="Contained" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                        </Grid>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="Button">
@@ -366,5 +397,4 @@
             </Setter>
         </Style>
     </Application.Resources>
-
 </Application>

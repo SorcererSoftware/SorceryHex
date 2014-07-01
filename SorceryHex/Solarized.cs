@@ -64,11 +64,11 @@ namespace Solarized {
       readonly SolidColorBrush _backlight = new SolidColorBrush();
       readonly SolidColorBrush _background = new SolidColorBrush();
 
-      public Brush Emphasis { get { return _emphasis; } }
-      public Brush Primary { get { return _primary; } }
-      public Brush Secondary { get { return _secondary; } }
-      public Brush Backlight { get { return _backlight; } }
-      public Brush Background { get { return _background; } }
+      public SolidColorBrush Emphasis { get { return _emphasis; } }
+      public SolidColorBrush Primary { get { return _primary; } }
+      public SolidColorBrush Secondary { get { return _secondary; } }
+      public SolidColorBrush Backlight { get { return _backlight; } }
+      public SolidColorBrush Background { get { return _background; } }
 
       #endregion
 

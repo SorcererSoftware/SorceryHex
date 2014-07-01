@@ -23,18 +23,23 @@ namespace SorceryHex {
       IList<int> Find(string term);
    }
 
+   public class UpdateLocationEventArgs : EventArgs {
+      public readonly IEnumerable<int> UpdateList;
+      public UpdateLocationEventArgs(params int[] list) { UpdateList = list; }
+   }
+
    public interface IEditor {
       FrameworkElement CreateElementEditor(int location);
       void Edit(int location, char c); // called because the user entered an edit key
       void CompleteEdit(int location); // called because the user entered a key that signifies the end of an edit
-      event EventHandler MoveToNext; // sent up because the editor realizes it's done with the current edit
+      event EventHandler<UpdateLocationEventArgs> MoveToNext; // sent up because the editor realizes it's done with the current edit
    }
 
    public class DisableEditor : IEditor {
       public FrameworkElement CreateElementEditor(int location) { return null; }
       public void Edit(int location, char c) { }
       public void CompleteEdit(int location) { }
-      public event EventHandler MoveToNext;
+      public event EventHandler<UpdateLocationEventArgs> MoveToNext;
    }
 
    public class InlineTextEditor : IEditor {
@@ -59,13 +64,14 @@ namespace SorceryHex {
          byte[] temp = new byte[_length];
          Array.Copy(_data, location, temp, 0, _length);
          _box.Text = _convertToString(temp);
+         _box.SelectAll();
          _box.KeyDown += KeyDown;
          return _box;
       }
 
       public void Edit(int location, char c) { }
       public void CompleteEdit(int location) { }
-      public event EventHandler MoveToNext;
+      public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 
       void KeyDown(object sender, KeyEventArgs e) {
          if (e.Key != Key.Enter) return;
@@ -73,7 +79,7 @@ namespace SorceryHex {
          try {
             var result = _convertToValue(_box.Text);
             Array.Copy(result, 0, _data, _location, _length);
-            MoveToNext(this, EventArgs.Empty);
+            MoveToNext(this, new UpdateLocationEventArgs(_location));
          } catch (Exception ex) {
             // TODO some kind of error message
          }
@@ -96,7 +102,7 @@ namespace SorceryHex {
       public FrameworkElement CreateElementEditor(int location) {
          _location = location;
          if (_box != null) {
-            // ???
+            _box.DropDownClosed -= DropDownClosed;
          }
          _box = new ComboBox();
          foreach (var option in _names) {
@@ -108,12 +114,22 @@ namespace SorceryHex {
          }
          _box.SelectedIndex = _data.ReadData(_stride, location);
          _box.IsDropDownOpen = true;
+         _box.DropDownClosed += DropDownClosed;
          return _box;
       }
 
       public void Edit(int location, char c) { }
       public void CompleteEdit(int location) { }
-      public event EventHandler MoveToNext;
+      public event EventHandler<UpdateLocationEventArgs> MoveToNext;
+
+      void DropDownClosed(object sender, EventArgs e) {
+         int value = _box.SelectedIndex;
+         for (int i = 0; i < _stride; i++) {
+            _data[_location + i] = (byte)(value % 0x100);
+            value >>= 8;
+         }
+         MoveToNext(sender, new UpdateLocationEventArgs(_location));
+      }
    }
 
    public interface IModel : IParser, IEditor { }
@@ -264,7 +280,7 @@ namespace SorceryHex {
          _editBuffer += c;
          _data[location] = (byte)_editBuffer.ParseAsHex();
          if (_editBuffer.Length >= 2) {
-            MoveToNext(this, EventArgs.Empty);
+            MoveToNext(this, new UpdateLocationEventArgs(location));
             _editBuffer = string.Empty;
          }
       }
@@ -279,9 +295,9 @@ namespace SorceryHex {
          _editBuffer = string.Empty;
       }
 
-      public event EventHandler MoveToNext;
+      public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 
-      void ChainMoveToNext(object sender, EventArgs e) { MoveToNext(sender, e); }
+      void ChainMoveToNext(object sender, UpdateLocationEventArgs e) { MoveToNext(sender, e); }
 
       #endregion
 

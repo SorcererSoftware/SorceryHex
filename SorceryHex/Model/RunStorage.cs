@@ -241,9 +241,9 @@ namespace SorceryHex {
          _runs[startPoint].Editor.CompleteEdit(location);
       }
 
-      public event EventHandler MoveToNext;
+      public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 
-      void ChainMoveNext(object sender, EventArgs e) { MoveToNext(sender, e); }
+      void ChainMoveNext(object sender, UpdateLocationEventArgs e) { MoveToNext(sender, e); }
 
       #endregion
 

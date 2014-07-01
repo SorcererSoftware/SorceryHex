@@ -255,7 +255,7 @@ namespace SorceryHex.Gba {
 
       public void CompleteEdit(int location) { _base.CompleteEdit(location); }
 
-      public event EventHandler MoveToNext {
+      public event EventHandler<UpdateLocationEventArgs> MoveToNext {
          add { _base.MoveToNext += value; }
          remove { _base.MoveToNext -= value; }
       }

@@ -130,10 +130,10 @@ namespace SorceryHex {
          _window.EditBody.Children.Add(editor);
       }
 
-      public void HandleMoveNext(object sender, EventArgs e) {
+      public void HandleMoveNext(object sender, UpdateLocationEventArgs e) {
          if (_window.EditBody.Children.Count > 0) {
             _window.EditBody.Children.Clear();
-            _window.RefreshElement(_selectionStart);
+            e.UpdateList.Foreach(_window.RefreshElement);
             return;
          }
          _selectionStart++;
