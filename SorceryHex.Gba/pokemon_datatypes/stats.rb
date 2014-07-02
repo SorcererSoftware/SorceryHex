@@ -22,8 +22,8 @@ layout = types.ReadArray self.pokecount, datalocation, ->(b) {
    b.ByteNum "levelup"
    b.Byte "egggroup1"
    b.Byte "egggroup2"
-   b.Byte "ability1" # TODO update
-   b.Byte "ability2" # TODO update
+   b.ByteEnum "ability1", abilityname
+   b.ByteEnum "ability2", abilityname
    b.ByteNum "runrate"
    b.ByteNum "color"
    b.Unused 2

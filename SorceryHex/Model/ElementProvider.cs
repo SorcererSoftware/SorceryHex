@@ -102,7 +102,7 @@ namespace SorceryHex {
             else name = _names[index].ToString();
          }
          block.Text = name;
-         block.ToolTip = _hoverText ?? string.Empty + " : " + name;
+         block.ToolTip = (_hoverText ?? string.Empty) + " : " + name;
 
          Grid.SetColumnSpan(block, _stride);
          return block;

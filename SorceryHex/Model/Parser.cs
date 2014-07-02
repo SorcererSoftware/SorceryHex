@@ -87,16 +87,18 @@ namespace SorceryHex {
    }
 
    public class InlineComboEditor : IEditor {
+      public readonly dynamic[] Names;
+      public readonly string HoverText;
       readonly byte[] _data;
       readonly int _stride;
-      readonly dynamic[] _names;
       ComboBox _box;
       int _location;
 
-      public InlineComboEditor(byte[] data, int stride, dynamic[] names) {
+      public InlineComboEditor(byte[] data, int stride, dynamic[] names, string hoverText) {
          _data = data;
          _stride = stride;
-         _names = names;
+         Names = names;
+         HoverText = hoverText;
       }
 
       public FrameworkElement CreateElementEditor(int location) {
@@ -105,7 +107,7 @@ namespace SorceryHex {
             _box.DropDownClosed -= DropDownClosed;
          }
          _box = new ComboBox();
-         foreach (var option in _names) {
+         foreach (var option in Names) {
             if (option.ToString() == "{ name }") {
                _box.Items.Add(option.name);
             } else {

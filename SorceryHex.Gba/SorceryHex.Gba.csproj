@@ -59,6 +59,7 @@
     <Compile Include="Pokemon\Builder.cs" />
     <Compile Include="Pokemon\ElementProvider.cs" />
     <Compile Include="Factories.cs" />
+    <Compile Include="Pokemon\PokeMoves.cs" />
     <Compile Include="RunParser.cs" />
     <Compile Include="Pointers.cs" />
     <Compile Include="Pokemon\RunParser.cs" />
