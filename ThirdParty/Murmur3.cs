@@ -4,7 +4,7 @@
 // see http://blog.teamleadnet.com/2012/08/murmurhash3-ultra-fast-hash-algorithm.html
 
 namespace Hashing {
-   class Murmur3 {
+   public class Murmur3 {
       // 128 bit output, 64 bit platform version
 
       public static ulong READ_SIZE = 16;
