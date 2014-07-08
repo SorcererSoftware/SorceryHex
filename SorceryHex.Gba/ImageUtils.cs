@@ -186,6 +186,48 @@ namespace SorceryHex.Gba {
          width *= 0x08; height *= 0x08;
       }
 
+      public static double ImageNoise(byte[] image16bit, int width, int height) {
+         var image4bit = new byte[width * height];
+
+         // convert 1 byte to 2 pixels
+         for (int i = 0; i < image16bit.Length; i++) {
+            var paletteIndex = (byte)(image16bit[i] & 0xF);
+            var j = i * 2;
+            image4bit[j] = paletteIndex;
+
+            paletteIndex = (byte)(image16bit[i] >> 4);
+            j++;
+            image4bit[j] = paletteIndex;
+         }
+
+         // reorder into blocks
+         int image4bitIndex = 0;
+         int blockWrap = width / 8, pixelWrap = 8;
+         var orderedImage = new byte[width, height];
+         for (int block = 0; block < (width * height / 64); block++) {
+            int blockX = block % blockWrap, blockY = block / blockWrap;
+            for (int pixel = 0; pixel < 64; pixel++) {
+               int pixelX = pixel % pixelWrap, pixelY = pixel / pixelWrap;
+               orderedImage[blockX * 8 + pixelX, blockY * 8 + pixelY] = image4bit[image4bitIndex];
+               image4bitIndex++;
+            }
+         }
+
+         // count horizontal / vertical noise in the pixels
+         int noise = 0;
+         if (orderedImage[1, 0] != orderedImage[0, 0]) noise++;
+         if (orderedImage[0, 1] != orderedImage[0, 0]) noise++;
+
+         for (int x = 1; x < width; x++) for (int y = 1; y < height; y++) {
+            if (orderedImage[x, y] != orderedImage[x - 1, y]) noise++;
+            if (orderedImage[x, y] != orderedImage[x, y - 1]) noise++;
+            // noise += Math.Abs(orderedImage[x, y] - orderedImage[x - 1, y]);
+            // noise += Math.Abs(orderedImage[x, y] - orderedImage[x, y - 1]);
+         }
+
+         return (double)noise / (width * height);
+      }
+
       public static BitmapSource Expand16bitImage(byte[] image16bit, Palette palette32bit, int width, int height) {
          // image16bit is organized as follows:
          // each byte contains 2 pixels, values 0-0xF
@@ -253,9 +295,9 @@ namespace SorceryHex.Gba {
          var imageOutput = new byte[array.Length];
          int j = 0;
          for (int block = 0; block < (width * height / 64); block++) {
+            int blockX = block % blockWrap, blockY = block / blockWrap;
             for (int pixel = 0; pixel < 64; pixel++) {
                for (int channel = 0; channel < 4; channel++) {
-                  int blockX = block % blockWrap, blockY = block / blockWrap;
                   int pixelX = pixel % pixelWrap, pixelY = pixel / pixelWrap;
                   var outIndex = ((blockY * 8 + pixelY) * width + (blockX * 8 + pixelX)) * 4 + channel;
                   imageOutput[outIndex] = array[j++];
