@@ -97,6 +97,7 @@ namespace SorceryHex.Gba {
       }
       public IEnumerable<int> Find(string term) { yield break; }
       public void Load(ICommandFactory commander, IRunStorage runs) {
+         _pointers.ClaimDeferred(runs);
          var destinations = _pointers.OpenDestinations.OrderBy(i => i).ToArray();
          var list = new List<int>();
          for (int i = 0; i < destinations.Length; i++) {

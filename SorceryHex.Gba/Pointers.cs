@@ -60,6 +60,7 @@ namespace SorceryHex.Gba {
             }
             _reversePointerSet.Remove(destination);
          }
+         _deferredDestinations.Clear();
 
          foreach (var destination in _deferredDestinationsWithRuns.Keys) {
             var keys = _reversePointerSet[destination].ToArray();
@@ -72,6 +73,7 @@ namespace SorceryHex.Gba {
             }
             _reversePointerSet.Remove(destination);
          }
+         _deferredDestinationsWithRuns.Clear();
       }
 
       public void Claim(IRunStorage storage, IDataRun run, int destination) {
