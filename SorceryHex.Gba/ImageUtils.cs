@@ -186,6 +186,13 @@ namespace SorceryHex.Gba {
          width *= 0x08; height *= 0x08;
       }
 
+      public static double ImageNoise(byte[] data, int location, int width, int height) {
+         int len = width * height / 2;
+         var array = new byte[len];
+         Array.Copy(data, location, array, 0, len);
+         return ImageNoise(array, width, height);
+      }
+
       public static double ImageNoise(byte[] image16bit, int width, int height) {
          var image4bit = new byte[width * height];
 
@@ -221,8 +228,6 @@ namespace SorceryHex.Gba {
          for (int x = 1; x < width; x++) for (int y = 1; y < height; y++) {
             if (orderedImage[x, y] != orderedImage[x - 1, y]) noise++;
             if (orderedImage[x, y] != orderedImage[x, y - 1]) noise++;
-            // noise += Math.Abs(orderedImage[x, y] - orderedImage[x - 1, y]);
-            // noise += Math.Abs(orderedImage[x, y] - orderedImage[x, y - 1]);
          }
 
          return (double)noise / (width * height);

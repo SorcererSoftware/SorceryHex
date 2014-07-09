@@ -5,6 +5,8 @@ using System.ComponentModel.Composition;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
+using System.Windows.Shapes;
 
 namespace SorceryHex.Gba {
    namespace Pokemon {
@@ -28,16 +30,17 @@ namespace SorceryHex.Gba {
          public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
             var pointerMapper = new PointerMapper(data);
             var pcs = new PCS();
-            // var imageguess = new ImageGuess(pointerMapper);
+            // TODO fix this
+            var imageguess = new ImageGuess(pointerMapper, new Rectangle().Dispatcher);
             var storage = new RunStorage(data
                , new Header(pointerMapper)
                , new Thumbnails(pointerMapper)
                , new Lz(pointerMapper)
                , new Pokemon.DataTypes.ScriptedDataTypes(pointerMapper, pcs, scriptInfo.Engine, scriptInfo.Scope)
                , pcs
-               // , imageguess
+               , imageguess
             );
-            // new Window { Content = new ScrollViewer { Content = imageguess.Panel } }.Show();
+            new ImageSearchWindow(imageguess).Show();
             IModel model = new CompositeModel(data, storage);
             model = new PointerParser(model, data, storage, pointerMapper);
             return model;
@@ -47,6 +50,7 @@ namespace SorceryHex.Gba {
             if (other is StandardFactory) return 1;
             if (other is DefaultFactory) return 1;
             if (other is SimpleFactory) return 1;
+            if (other is StringFactory) return 1;
             return 0;
          }
       }
@@ -75,17 +79,20 @@ namespace SorceryHex.Gba {
          if (other is Pokemon.Factory) return -1;
          if (other is DefaultFactory) return 1;
          if (other is SimpleFactory) return 1;
+         if (other is StringFactory) return 1;
          return 0;
       }
    }
 
-   class ImageGuess : IRunParser {
+   public class ImageGuess : IRunParser {
       const int WidthHeight = 0x20, ByteCount = WidthHeight * WidthHeight / 2;
       readonly SimpleDataRun _guessRun;
       readonly PointerMapper _pointers;
-      public readonly Panel Panel = new WrapPanel();
-      public ImageGuess(PointerMapper pointers) {
+      readonly Dispatcher _dispatcher;
+      public readonly IList<ImageGuessResult> Items = new List<ImageGuessResult>();
+      public ImageGuess(PointerMapper pointers, Dispatcher dispatcher) {
          _pointers = pointers;
+         _dispatcher = dispatcher;
          _guessRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, Solarized.Brushes.Cyan), ByteCount) {
             Interpret = (data, location) => {
                var dataBytes = new byte[ByteCount];
@@ -103,6 +110,11 @@ namespace SorceryHex.Gba {
          for (int i = 0; i < destinations.Length; i++) {
             var loc = destinations[i];
             if (runs.Data[loc] != 0x00) continue;
+
+            var noise = ImageUtils.ImageNoise(runs.Data, loc, 32, 32);
+            if (noise > 1) continue;
+
+            // TODO reject if the noise level is higher than 1.
             if (i < destinations.Length - 1) {
                if (destinations[i + 1] < loc + ByteCount) continue;
                // if ((destinations[i + 1] - loc) % ByteCount != 0) continue;
@@ -110,13 +122,13 @@ namespace SorceryHex.Gba {
             // _pointers.Claim(runs, _guessRun, loc);
             list.Add(loc);
          }
-         Panel.Dispatcher.Invoke(() => {
-            foreach (var item in list) Panel.Children.Add(new ImageGuessResult(runs.Data, item, 2, 2));
-         });
+         _dispatcher.Invoke((Action)(() => {
+            foreach (var item in list) Items.Add(new ImageGuessResult(runs.Data, item, 2, 2));
+         }));
       }
    }
 
-   class ImageGuessResult : Image {
+   public class ImageGuessResult : Image {
       readonly byte[] _data;
       readonly int _location;
       int width;
@@ -130,7 +142,7 @@ namespace SorceryHex.Gba {
 
       Point p;
       protected override void OnMouseDown(MouseButtonEventArgs e) {
-         p = e.GetPosition(this);
+         p = e.GetPosition((FrameworkElement)this.VisualParent);
          e.Handled = true;
          CaptureMouse();
          base.OnMouseDown(e);
@@ -140,7 +152,7 @@ namespace SorceryHex.Gba {
          if (!IsMouseCaptured) {
             base.OnMouseMove(e); return;
          }
-         var p2 = e.GetPosition(this);
+         var p2 = e.GetPosition(((FrameworkElement)this.VisualParent));
          var dist = (p2 - p);
          var changed = false;
          while (dist.X > 10) {
@@ -185,9 +197,11 @@ namespace SorceryHex.Gba {
          var dataBytes = new byte[width * height * 0x80];
          Array.Copy(_data, _location, dataBytes, 0, dataBytes.Length);
          var source = ImageUtils.Expand16bitImage(dataBytes, ImageUtils.DefaultPalette, width * 0x10, height * 0x10);
+         var noise = ImageUtils.ImageNoise(dataBytes, width * 0x10, height * 0x10);
          Source = source;
          Width = width * 0x18;
          Height = height * 0x18;
+         ToolTip = Utils.ToHexString(_location) + " : " + noise;
       }
    }
 }

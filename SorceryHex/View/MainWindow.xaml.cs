@@ -256,13 +256,25 @@ namespace SorceryHex {
          Holder.Recycle(_commandFactory, element);
       }
 
+      IModelFactory[] Sort(IList<IModelFactory> factories) {
+         var index = new Dictionary<IModelFactory, int>();
+         foreach (var a in factories) {
+            index[a] = 0;
+            foreach (var b in factories) {
+               index[a] += a.CompareTo(b);
+               index[a] -= b.CompareTo(a);
+            }
+         }
+         return factories.OrderBy(f => index[f]).ToArray();
+      }
+
       void LoadBestMatch(string filename) {
          _filename = filename;
          _filestamp = File.GetLastWriteTime(filename);
          _filehash = new Hashing.Murmur3().ComputeHash(Data);
          Title = filename.Split('\\').Last();
          var array = _factories.Where(f => f.CanCreateModel(filename, Data)).ToArray();
-         Array.Sort(array);
+         array = Sort(array);
          foreach (MenuItem item in Parser.Items) item.Click -= SwitchParserClick;
          Parser.Items.Clear();
          foreach (var factory in array) {
@@ -290,7 +302,7 @@ namespace SorceryHex {
          if (jump) _multiBox.BreadCrumbBar.Children.Clear();
          GotoItem.Items.Clear();
          _loadTimer = AutoTimer.Time("Full Load Time");
-         Task.Factory.StartNew(() => Holder.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke(LoadComplete));
+         Task.Factory.StartNew(() => Holder.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke((Action)LoadComplete));
       }
 
       AutoTimer _loadTimer;

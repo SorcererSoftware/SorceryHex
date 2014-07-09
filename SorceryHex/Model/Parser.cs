@@ -80,7 +80,7 @@ namespace SorceryHex {
             var result = _convertToValue(_box.Text);
             Array.Copy(result, 0, _data, _location, _length);
             MoveToNext(this, new UpdateLocationEventArgs(_location));
-         } catch (Exception ex) {
+         } catch (Exception) {
             // TODO some kind of error message
          }
       }

@@ -37,11 +37,11 @@ namespace SorceryHex {
       }
 
       public void CreateJumpShortcut(string name, int location) {
-         _window.Dispatcher.Invoke(() => {
+         _window.Dispatcher.Invoke((Action)(() => {
             var item = new MenuItem { Header = name };
             item.Click += (sender, e) => _window.JumpTo(location, addToBreadcrumb: true);
             _window.GotoItem.Items.Add(item);
-         });
+         }));
       }
 
       #endregion
