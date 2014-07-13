@@ -31,16 +31,16 @@ namespace SorceryHex.Gba {
             var pointerMapper = new PointerMapper(data);
             var pcs = new PCS();
             // TODO fix this
-            var imageguess = new ImageGuess(pointerMapper, new Rectangle().Dispatcher);
+            // var imageguess = new ImageGuess(pointerMapper, new Rectangle().Dispatcher);
             var storage = new RunStorage(data
                , new Header(pointerMapper)
                , new Thumbnails(pointerMapper)
                , new Lz(pointerMapper)
                , new Pokemon.DataTypes.ScriptedDataTypes(pointerMapper, pcs, scriptInfo.Engine, scriptInfo.Scope)
                , pcs
-               , imageguess
+               // , imageguess
             );
-            new ImageSearchWindow(imageguess).Show();
+            // new ImageSearchWindow(imageguess).Show();
             IModel model = new CompositeModel(data, storage);
             model = new PointerParser(model, data, storage, pointerMapper);
             return model;
