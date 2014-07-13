@@ -79,56 +79,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="pokemon_datatypes\abilityname.rb">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\attackdata.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\attackname.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\datatype.conf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\dexinfo.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\dexorder.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\evolutions.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\items.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\pokename.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\stats.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\_setup.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_plugins\epic.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_plugins\exploud.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="PCS3-W.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\trainer.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\wild.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="pokemon_datatypes\maps.rb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -146,13 +98,12 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy "$(ProjectDir)$(OutDir)$(TargetFileName)" "$(SolutionDir)SorceryHex\$(OutDir)\data"
-copy "$(ProjectDir)$(OutDir)datatype.conf" "$(SolutionDir)SorceryHex\$(OutDir)\data"
-copy "$(ProjectDir)$(OutDir)PCS3-W.ini" "$(SolutionDir)SorceryHex\$(OutDir)\data"
+copy "$(ProjectDir)PCS3-W.ini" "$(SolutionDir)SorceryHex\$(OutDir)\data"
+
 mkdir "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
-copy "$(ProjectDir)$(OutDir)pokemon_datatypes\*.py" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
-copy "$(ProjectDir)$(OutDir)pokemon_datatypes\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
 mkdir "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_plugins"
-copy "$(ProjectDir)$(OutDir)pokemon_plugins\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_plugins"</PostBuildEvent>
+copy "$(ProjectDir)pokemon_datatypes\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_datatypes"
+copy "$(ProjectDir)pokemon_plugins\*.rb" "$(SolutionDir)SorceryHex\$(OutDir)\pokemon_plugins"</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

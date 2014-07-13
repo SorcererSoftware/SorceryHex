@@ -101,7 +101,6 @@ namespace SorceryHex.Gba.Pokemon {
 
       #endregion
 
-
       public string ReadString(byte[] data, int location, int maxLength = -1) {
          string result = string.Empty;
          int j = 0;
