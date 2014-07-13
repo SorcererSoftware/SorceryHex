@@ -195,13 +195,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          string result = _pcs.ReadString(_runs.Data, _location, len);
          if (result == null) {
             FaultReason = name + " was not a string[" + len + "]";
-            return null; ;
-         }
-         _location += len;
-         if (result.Length >= len) {
-            FaultReason = name + " : " + result + ": longer than " + len;
             return null;
          }
+         _location += len;
          _result[name] = result;
          return result;
       }

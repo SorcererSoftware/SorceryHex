@@ -104,7 +104,8 @@ namespace SorceryHex.Gba.Pokemon {
 
       public string ReadString(byte[] data, int location, int maxLength = -1) {
          string result = string.Empty;
-         for (int j = 0; data[location + j] != 0xFF && (result.Length < maxLength || maxLength == -1); j++) {
+         int j = 0;
+         for (; data[location + j] != 0xFF && (j < maxLength || maxLength == -1); j++) {
             if (data[location + j] == 0x00) {
                result += " ";
             } else if (data[location + j] == 0xFD) {
@@ -115,7 +116,7 @@ namespace SorceryHex.Gba.Pokemon {
                result += _pcs[data[location + j]];
             }
          }
-         if (result.Length > maxLength && maxLength != -1) return null;
+         if (j >= maxLength && maxLength != -1) return null;
          return result;
       }
 

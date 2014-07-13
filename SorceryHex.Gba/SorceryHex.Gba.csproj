@@ -82,6 +82,9 @@
     <None Include="pokemon_datatypes\abilityname.rb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="pokemon_datatypes\attackdata.rb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="pokemon_datatypes\attackname.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -95,6 +98,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="pokemon_datatypes\evolutions.rb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="pokemon_datatypes\items.rb">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="pokemon_datatypes\pokename.rb">
