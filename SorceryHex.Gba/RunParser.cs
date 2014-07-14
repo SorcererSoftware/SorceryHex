@@ -83,7 +83,7 @@ namespace SorceryHex.Gba {
          var initialContitions = new Func<int, bool>[]{
             loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] == 0x20 &&
                    runs.Data[loc + 2] == 0x00 && runs.Data[loc + 3] == 0x00,
-            loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] % 20 == 0
+            loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] % 0x20 == 0
          };
          var interpretations = new InterpretationRule[] { InterpretPalette, InterpretImage };
 
