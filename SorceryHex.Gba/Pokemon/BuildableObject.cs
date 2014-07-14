@@ -14,6 +14,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void AddLabeler(ILabeler labeler) { }
       public bool IsFree(int location) { throw new NotImplementedException(); }
       public int NextUsed(int location) { throw new NotImplementedException(); }
+
+      public IEnumerable<int> Runs(Func<string, IDataRun, bool> func) { yield break; }
    }
 
    public class BuildableObject : DynamicObject {

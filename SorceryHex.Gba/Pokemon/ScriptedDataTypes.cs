@@ -37,7 +37,17 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _mapper = mapper; _pcs = pcs; _engine = engine; _scope = scope;
       }
 
-      public IEnumerable<int> Find(string term) { return null; }
+      public IEnumerable<int> Find(string term) {
+         term = term.ToLower();
+         foreach (var key in _arrays.Keys.OrderBy(i => i)) {
+            int stride = _arrays[key][0].Length;
+            for (int i = 0; i < _arrays[key].Length; i++) {
+               if (_labels[key](i).ToLower() == term) {
+                  yield return key + i * stride;
+               }
+            }
+         }
+      }
 
       ICommandFactory _commander;
       IRunStorage _runs;

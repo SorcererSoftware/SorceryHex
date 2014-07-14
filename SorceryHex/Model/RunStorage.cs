@@ -210,7 +210,10 @@ namespace SorceryHex {
       }
 
       public IList<int> Find(string term) {
-         return _runParsers.Select(parser => parser.Find(term) ?? new int[0]).Aggregate(Enumerable.Concat).ToList();
+         var lowerTerm = term.ToLower();
+         return _runParsers.Select(parser => parser.Find(term) ?? new int[0]).Aggregate(Enumerable.Concat)
+            .Concat(_runs.Keys.Where(key => _runs[key].Provider.ProvideString(Data, key, _runs[key].GetLength(Data, key)) == lowerTerm))
+            .ToList();
       }
 
       #endregion

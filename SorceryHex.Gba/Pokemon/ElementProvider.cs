@@ -33,6 +33,11 @@ namespace SorceryHex.Gba.Pokemon {
          return image;
       }
 
+      public string ProvideString(byte[] data, int runStart, int runLength) {
+         // TODO provide the pokemon name
+         return data.ReadData(runLength, runStart).ToHexString();
+      }
+
       public void Recycle(FrameworkElement element) {
          if (element is Image) _recycles.Enqueue((Image)element);
          else if (element is Rectangle) _empties.Enqueue((Rectangle)element);
@@ -70,6 +75,8 @@ namespace SorceryHex.Gba.Pokemon {
          commandFactory.CreateJumpCommand(element, jump);
          return element;
       }
+
+      public string ProvideString(byte[] data, int runStart, int runLength) { return null; }
 
       public void Recycle(FrameworkElement element) { _provider.Recycle(element); }
    }

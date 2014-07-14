@@ -8,6 +8,7 @@ using System.Windows.Shapes;
 namespace SorceryHex {
    public interface IElementProvider {
       FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength);
+      string ProvideString(byte[] data, int runStart, int runLength);
       bool IsEquivalent(IElementProvider other);
       void Recycle(FrameworkElement element);
    }
@@ -52,6 +53,8 @@ namespace SorceryHex {
 
          return element;
       }
+
+      public string ProvideString(byte[] data, int runStart, int runLength) { return null; }
 
       public bool IsEquivalent(IElementProvider other) {
          var that = other as GeometryElementProvider;
@@ -106,6 +109,16 @@ namespace SorceryHex {
 
          Grid.SetColumnSpan(block, _stride);
          return block;
+      }
+
+      public string ProvideString(byte[] data, int runStart, int runLength) {
+         var index = data.ReadData(_stride, runStart);
+         string name = "???";
+         if (index < _names.Length) {
+            if (_names[index].ToString() == "{ name }") name = _names[index].name;
+            else name = _names[index].ToString();
+         }
+         return name;
       }
 
       public bool IsEquivalent(IElementProvider other) {
