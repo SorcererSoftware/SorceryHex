@@ -22,6 +22,8 @@ namespace SorceryHex {
          _window.ResizeGrid.MouseMove += BodyMouseMove;
          _window.ResizeGrid.MouseLeftButtonUp += BodyMouseUp;
          _window.JumpCompleted += HandleJumpCompleted;
+
+         _window.CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy, ExecuteCopy, CanExecuteCopy));
       }
 
       public void UpdateSelection(IModel model, int location) {
@@ -143,6 +145,21 @@ namespace SorceryHex {
       public void HandleJumpCompleted(object sender, EventArgs e) {
          _selectionStart = _window.Offset;
          _selectionLength = 1;
+      }
+
+      #endregion
+
+      #region Commands
+
+      void CanExecuteCopy(object sender, CanExecuteRoutedEventArgs e) {
+         e.CanExecute = _selectionLength > 0;
+      }
+
+      void ExecuteCopy(object sender, RoutedEventArgs e) {
+         var portion = new byte[_selectionLength];
+         Array.Copy(_window.Data, _selectionStart, portion, 0, _selectionLength);
+         var hex = portion.Select(p => Utils.ToHexString(p, 2)).Aggregate((a, b) => a + " " + b);
+         Clipboard.SetText(hex);
       }
 
       #endregion

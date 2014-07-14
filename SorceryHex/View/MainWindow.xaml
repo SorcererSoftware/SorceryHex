@@ -27,8 +27,11 @@
         <DockPanel DockPanel.Dock="Top" Name="MenuDock">
             <Menu DockPanel.Dock="Left">
                 <MenuItem Header="_File">
-                    <MenuItem Command="ApplicationCommands.Open" Header="_Open"/>
-                    <MenuItem Command="ApplicationCommands.Close" Header="E_xit" InputGestureText="Alt+F4"/>
+                    <MenuItem Command="Open" Header="_Open"/>
+                    <MenuItem Command="Close" Header="E_xit" InputGestureText="Alt+F4"/>
+                </MenuItem>
+                <MenuItem Header="_Edit">
+                    <MenuItem Command="Copy" Header="_Copy"/>
                 </MenuItem>
                 <MenuItem Header="_View">
                     <MenuItem Name="InterpretItem" Header="_Interpreter" IsCheckable="True" InputGestureText="Ctrl+I" Click="InterpretClick"/>
@@ -36,12 +39,12 @@
                     <MenuItem Name="Parser" Header="_Parser" Visibility="Collapsed"/>
                 </MenuItem>
                 <MenuItem Header="_Search">
-                    <MenuItem Command="ApplicationCommands.Find" Header="_Find" />
-                    <MenuItem Command="NavigationCommands.NextPage" Header="Find _Next" InputGestureText="F3"/>
-                    <MenuItem Command="NavigationCommands.PreviousPage" Header="Find _Previous" InputGestureText="Shift+F3"/>
-                    <MenuItem Command="NavigationCommands.GoToPage" Header="_Go To" InputGestureText="Ctrl+G" Name="GotoItem"/>
-                    <MenuItem Command="NavigationCommands.BrowseBack" Header="_Back" InputGestureText="Alt+Left, Ctrl+-, Backspace" />
-                    <MenuItem Command="MediaCommands.Select" InputGestureText="Ctrl+R" Header="Sc_ript"/>
+                    <MenuItem Command="Find" Header="_Find" />
+                    <MenuItem Command="NextPage" Header="Find _Next" InputGestureText="F3"/>
+                    <MenuItem Command="PreviousPage" Header="Find _Previous" InputGestureText="Shift+F3"/>
+                    <MenuItem Command="GoToPage" Header="_Go To" InputGestureText="Ctrl+G" Name="GotoItem"/>
+                    <MenuItem Command="BrowseBack" Header="_Back" InputGestureText="Alt+Left, Ctrl+-, Backspace" />
+                    <MenuItem Command="Select" InputGestureText="Ctrl+R" Header="Sc_ript"/>
                 </MenuItem>
                 <MenuItem Header="_Help">
                     <MenuItem Header="_About" Click="AboutClick"/>
