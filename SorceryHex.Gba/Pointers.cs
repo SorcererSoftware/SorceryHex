@@ -87,12 +87,19 @@ namespace SorceryHex.Gba {
 
       public void Claim(IRunStorage storage, int source, int destination) {
          // if it's already claimed, that's fine
-         if (_destinations.ContainsKey(destination)) return;
          if (_reversePointerSet.ContainsKey(destination)) {
+            if (_destinations.ContainsKey(destination)) return;
             Claim(storage, destination);
          } else {
             storage.AddRun(source, _pointerRun);
-            lock (_destinations) _destinations[destination] = new int[] { source };
+
+            lock (_destinations) {
+               if (_destinations.ContainsKey(destination)) {
+                  _destinations[destination] = _destinations[destination].Concat(new int[] { source }).ToArray();
+               } else {
+                  _destinations[destination] = new int[] { source };
+               }
+            }
          }
       }
 
