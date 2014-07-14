@@ -8,14 +8,13 @@ using System.Windows.Shapes;
 
 namespace SorceryHex.Gba.Pokemon {
    class SpeciesElementProvider : IElementProvider {
-      public static readonly IElementProvider Instance = new SpeciesElementProvider();
-      SpeciesElementProvider() { }
-
       readonly Queue<Image> _recycles = new Queue<Image>();
       readonly Queue<Rectangle> _empties = new Queue<Rectangle>();
       readonly IDictionary<int, ImageSource> _cache = new Dictionary<int, ImageSource>();
+      readonly dynamic[] _names;
+      public SpeciesElementProvider(dynamic[] names) { _names = names; }
 
-      public bool IsEquivalent(IElementProvider other) { return other == this; }
+      public bool IsEquivalent(IElementProvider other) { return other is SpeciesElementProvider && ((SpeciesElementProvider)other)._names == _names; }
 
       public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
          if (innerIndex == 1) return ProvideEmpty();
@@ -34,8 +33,13 @@ namespace SorceryHex.Gba.Pokemon {
       }
 
       public string ProvideString(byte[] data, int runStart, int runLength) {
-         // TODO provide the pokemon name
-         return data.ReadData(runLength, runStart).ToHexString();
+         var index = data.ReadData(runLength, runStart);
+         string name = "???";
+         if (index < _names.Length) {
+            if (_names[index].ToString() == "{ name }") name = _names[index].name;
+            else name = _names[index].ToString();
+         }
+         return name;
       }
 
       public void Recycle(FrameworkElement element) {

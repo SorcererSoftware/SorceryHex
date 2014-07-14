@@ -338,11 +338,11 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return value;
       }
 
-      IDataRun _speciesRun;
-      InlineComboEditor _speciesEnumEditor;
+      static IDataRun _speciesRun;
+      static InlineComboEditor _speciesEnumEditor;
       public short Species(dynamic[] names) {
          _speciesEnumEditor = _speciesEnumEditor ?? new InlineComboEditor(_data, 2, names, "species");
-         _speciesRun = _speciesRun ?? new SimpleDataRun(SpeciesElementProvider.Instance, 2, _speciesEnumEditor);
+         _speciesRun = _speciesRun ?? new SimpleDataRun(new SpeciesElementProvider(names), 2, _speciesEnumEditor);
          _runs.AddRun(_location, _speciesRun);
 
          var value = _data.ReadShort(_location);

@@ -212,7 +212,12 @@ namespace SorceryHex {
       public IList<int> Find(string term) {
          var lowerTerm = term.ToLower();
          return _runParsers.Select(parser => parser.Find(term) ?? new int[0]).Aggregate(Enumerable.Concat)
-            .Concat(_runs.Keys.Where(key => _runs[key].Provider.ProvideString(Data, key, _runs[key].GetLength(Data, key)) == lowerTerm))
+            .Concat(_runs.Keys.Where(key => {
+               var length = _runs[key].GetLength(Data, key);
+               var str = _runs[key].Provider.ProvideString(Data, key, length);
+               if (string.IsNullOrEmpty(str)) return false;
+               return str.ToLower() == lowerTerm;
+            }))
             .ToList();
       }
 
