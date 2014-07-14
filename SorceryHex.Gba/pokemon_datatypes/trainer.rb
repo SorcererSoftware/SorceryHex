@@ -3,7 +3,7 @@
    level = b.ByteNum "level"
    b.Assert (level<=100), "pokemon levels range from 1-100"
    b.Unused 1
-   b.Species
+   b.Species pokename
 }
 
 sharedAttacks = ->(b) {

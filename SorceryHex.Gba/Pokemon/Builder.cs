@@ -17,7 +17,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       short Short(string name);
       short ShortEnum(string name, dynamic[] names);
       int Word(string name);
-      short Species();
+      short Species(dynamic[] names);
       void Pointer(string name);
       dynamic Pointer(string name, ChildReader reader);
       string StringPointer(string name);
@@ -89,7 +89,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       public byte ByteNum(string name) { return Byte(name); }
-      public short Species() { return Short("species"); }
+      public short Species(dynamic[] names) { return Short("species"); }
 
       public void Pointer(string name) {
          if (FaultReason != null) return;
@@ -338,9 +338,13 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return value;
       }
 
-      static readonly IDataRun _speciesRun = new SimpleDataRun(SpeciesElementProvider.Instance, 2);
-      public short Species() {
+      IDataRun _speciesRun;
+      InlineComboEditor _speciesEnumEditor;
+      public short Species(dynamic[] names) {
+         _speciesEnumEditor = _speciesEnumEditor ?? new InlineComboEditor(_data, 2, names, "species");
+         _speciesRun = _speciesRun ?? new SimpleDataRun(SpeciesElementProvider.Instance, 2, _speciesEnumEditor);
          _runs.AddRun(_location, _speciesRun);
+
          var value = _data.ReadShort(_location);
          _location += 2;
          _result.AppendShort("species");
@@ -459,7 +463,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public short Short(string name) { return _data.ReadShort(_location += 2); }
       public short ShortEnum(string name, dynamic[] names) { return Short(name); }
       public int Word(string name) { return _data.ReadData(4, _location += 4); }
-      public short Species() { return Short(null); }
+      public short Species(dynamic[] names) { return Short(null); }
       public void Pointer(string name) { throw new NotImplementedException(); }
       public dynamic Pointer(string name, ChildReader reader) { throw new NotImplementedException(); }
       public string StringPointer(string name) { throw new NotImplementedException(); }

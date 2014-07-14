@@ -9,7 +9,7 @@ layout = types.ReadArray self.pokecount, datalocation, ->(b) {
          b.Unused 6
       else
          b.Short "param"
-         b.Species
+         b.Species pokename
          b.Unused 2
       end
    }

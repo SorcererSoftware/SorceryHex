@@ -2,7 +2,7 @@
    low = b.ByteNum "low"
    high = b.ByteNum "high"
    b.Assert (low<=high && high<=100), "pokemon levels range from 1-100"
-   b.Species
+   b.Species pokename
 }
 
 layout = types.FindVariableArray 0xFF, "wpppp", ->(b){
