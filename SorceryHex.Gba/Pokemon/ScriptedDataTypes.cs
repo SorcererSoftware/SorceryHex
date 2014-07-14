@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SorceryHex.Gba.Pokemon.DataTypes {
    public class Pointer {
@@ -165,7 +163,6 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          }
          _mapper.Claim(_runs, location, destination);
          return array;
-         // return new BuildableArray(builder.Result, destination, length);
       }
 
       public Pointer ReadPointer(int location, string generalLayout, ChildReader reader) {

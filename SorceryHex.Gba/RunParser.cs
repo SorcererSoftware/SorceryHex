@@ -103,7 +103,7 @@ namespace SorceryHex.Gba {
 
       public IEnumerable<int> Find(string term) { return null; }
 
-      static FrameworkElement InterpretImage(byte[] data, int location)  {
+      static FrameworkElement InterpretImage(byte[] data, int location) {
          var dataBytes = ImageUtils.UncompressLZ(data, location);
          int width, height; ImageUtils.GuessWidthHeight(dataBytes.Length, out width, out height);
          var source = ImageUtils.Expand16bitImage(dataBytes, ImageUtils.DefaultPalette, width, height);

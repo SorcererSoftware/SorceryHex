@@ -1,6 +1,4 @@
-﻿using Microsoft.Scripting.Hosting;
-using SorceryHex.Gba.Pokemon.DataTypes;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -8,7 +6,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace SorceryHex.Gba.Pokemon {
    public class PCS : IRunParser, IEditor {
