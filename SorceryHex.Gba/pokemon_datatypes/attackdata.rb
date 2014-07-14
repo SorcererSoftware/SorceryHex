@@ -4,7 +4,7 @@ datalocation = 0xCA54 if types.Version == "AXVE" || types.Version == "AXPE"
 layout = types.ReadArray self.attackcount, datalocation, ->(b) {
    b.Byte "effect"
    b.Byte "power"
-   b.Byte "type"
+   b.ByteEnum "type", poketype
    b.Byte "accuracy"
    b.Byte "pp"
    b.Byte "unknown1"

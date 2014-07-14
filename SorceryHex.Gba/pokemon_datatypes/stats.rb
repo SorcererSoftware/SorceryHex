@@ -8,8 +8,8 @@ layout = types.ReadArray self.pokecount, datalocation, ->(b) {
    b.ByteNum "speed"
    b.ByteNum "spattack"
    b.ByteNum "spdefense"
-   b.Byte "type1"
-   b.Byte "type2"
+   b.ByteEnum "type1", poketype
+   b.ByteEnum "type2", poketype
    b.ByteNum "catchrate"
    b.ByteNum "exp"
    b.Unused 3 # evs
