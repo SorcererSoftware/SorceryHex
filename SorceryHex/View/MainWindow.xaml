@@ -5,6 +5,7 @@
         xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
         x:Class="SorceryHex.MainWindow"
         Title="SorceryHex" Height="410" Width="545"
+        Icon="/SorceryHex;component/Properties/hex.ico"
         Activated="LoadData"
         Deactivated="SaveData"
         MouseWheel="ScrollWheel" KeyDown="HandleWindowKey">
