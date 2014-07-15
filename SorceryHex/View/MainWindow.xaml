@@ -5,7 +5,7 @@
         xmlns:Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
         x:Class="SorceryHex.MainWindow"
         Title="SorceryHex" Height="410" Width="545"
-        Icon="/SorceryHex;component/Properties/hex.ico"
+        Icon="/SorceryHex;component/Properties/hex_black.ico"
         Activated="LoadData"
         Deactivated="SaveData"
         MouseWheel="ScrollWheel" KeyDown="HandleWindowKey">
@@ -49,6 +49,7 @@
                 </MenuItem>
                 <MenuItem Header="_Help">
                     <MenuItem Header="_About" Click="AboutClick"/>
+                    <MenuItem Header="_Online Documentation" Click="AboutClick"/>
                     <MenuItem Header="About _Solarized" Click="AboutClick"/>
                 </MenuItem>
             </Menu>

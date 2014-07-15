@@ -464,6 +464,9 @@ namespace SorceryHex {
       void AboutClick(object sender, RoutedEventArgs e) {
          switch (((MenuItem)sender).Header.ToString()) {
             case "_About":
+               new AboutDialog().ShowDialog();
+               break;
+            case "_Online Documentation":
                Process.Start("http://sorcerersoftware.appspot.com");
                break;
             case "About _Solarized":

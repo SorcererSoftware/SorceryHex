@@ -81,7 +81,13 @@
     <Compile Include="AutoTimer.cs" />
     <Compile Include="Model\DataRun.cs" />
     <Compile Include="Model\ElementProvider.cs" />
+    <Compile Include="View\AboutDialog.xaml.cs">
+      <DependentUpon>AboutDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="View\CursorController.cs" />
+    <Compile Include="View\Icon.xaml.cs">
+      <DependentUpon>Icon.xaml</DependentUpon>
+    </Compile>
     <Compile Include="View\MultiBoxControl.xaml.cs">
       <DependentUpon>MultiBoxControl.xaml</DependentUpon>
     </Compile>
@@ -90,6 +96,14 @@
     <Compile Include="Model\RunStorage.cs" />
     <Compile Include="Model\StringDecoder.cs" />
     <Compile Include="Utils.cs" />
+    <Page Include="View\AboutDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="View\Icon.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="View\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -124,6 +138,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Properties\hex.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Properties\hex_black.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

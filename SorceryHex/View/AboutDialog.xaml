@@ -1,0 +1,41 @@
+﻿<Window x:Class="SorceryHex.AboutDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:my="clr-namespace:SorceryHex"
+        Icon="/SorceryHex;component/Properties/hex_black.ico"
+        TextBlock.Foreground="{Binding Primary, Source={StaticResource Theme}}"
+        Background="{Binding Backlight, Source={StaticResource Theme}}"
+        Title="AboutDialog" Height="300" Width="400">
+    <Window.Resources>
+        <Style TargetType="Separator">
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+    </Window.Resources>
+    <DockPanel>
+        <DockPanel DockPanel.Dock="Top">
+            <my:Icon x:Name="icon" Margin="15" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+            <StackPanel>
+                <TextBlock Text="SorceryHex"/>
+                <TextBlock Text="Version 0.1"/>
+                <Separator/>
+                <TextBlock Text="Plugins:"/>
+            </StackPanel>
+        </DockPanel>
+        <Button Name="closeButton" HorizontalAlignment="Right" Content="Close" Padding="5" Margin="5" DockPanel.Dock="Bottom"/>
+        <StackPanel DockPanel.Dock="Top">
+            <Separator/>
+            <TextBlock Text="Special Thanks:"/>
+            <TextBlock Text="Hannah Mellott - Icon Designer"/>
+            <TextBlock>
+                <Hyperlink NavigateUri="http://www.pokecommunity.com/">
+                    pokecommunity.com - Tutorials
+                </Hyperlink>
+            </TextBlock>
+            <TextBlock>
+                <Hyperlink NavigateUri="http://www.reddit.com/r/PokemonROMhacks/">
+                    reddit.com/r/PokemonROMhacks - ideas
+                </Hyperlink>
+            </TextBlock>
+        </StackPanel>
+    </DockPanel>
+</Window>
