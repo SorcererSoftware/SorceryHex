@@ -99,11 +99,7 @@ namespace SorceryHex {
             Foreground = _runColor
          };
          var index = data.ReadData(_stride, runStart);
-         string name = "???";
-         if (index < _names.Length) {
-            if (_names[index].ToString() == "{ name }") name = _names[index].name;
-            else name = _names[index].ToString();
-         }
+         string name = AsString(_names, index);
          block.Text = name;
          block.ToolTip = (_hoverText ?? string.Empty) + " : " + name;
 
@@ -112,13 +108,7 @@ namespace SorceryHex {
       }
 
       public string ProvideString(byte[] data, int runStart, int runLength) {
-         var index = data.ReadData(_stride, runStart);
-         string name = "???";
-         if (index < _names.Length) {
-            if (_names[index].ToString() == "{ name }") name = _names[index].name;
-            else name = _names[index].ToString();
-         }
-         return name;
+         return AsString(_names, data.ReadData(_stride, runStart));
       }
 
       public bool IsEquivalent(IElementProvider other) {
@@ -134,6 +124,12 @@ namespace SorceryHex {
          if (element is TextBlock) _textblocks.Enqueue((TextBlock)element);
          else if (element is Rectangle) _rectangles.Enqueue((Rectangle)element);
          else Debug.Fail("EnumElementProvider cannot recycle " + element);
+      }
+
+      public static string AsString(dynamic[] names, int index) {
+         if (index >= names.Length) return "???";
+         if (names[index].ToString() == "{ name }") return names[index].name;
+         return names[index].ToString();
       }
    }
 }

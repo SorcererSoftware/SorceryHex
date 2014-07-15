@@ -107,12 +107,9 @@ namespace SorceryHex {
             _box.DropDownClosed -= DropDownClosed;
          }
          _box = new ComboBox();
-         foreach (var option in Names) {
-            if (option.ToString() == "{ name }") {
-               _box.Items.Add(option.name);
-            } else {
-               _box.Items.Add(option);
-            }
+         for (int i = 0; i < Names.Length; i++) {
+            var option = EnumElementProvider.AsString(Names, i);
+            _box.Items.Add(option);
          }
          _box.SelectedIndex = _data.ReadData(_stride, location);
          _box.IsDropDownOpen = true;

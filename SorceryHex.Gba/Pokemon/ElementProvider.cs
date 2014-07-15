@@ -33,13 +33,7 @@ namespace SorceryHex.Gba.Pokemon {
       }
 
       public string ProvideString(byte[] data, int runStart, int runLength) {
-         var index = data.ReadData(runLength, runStart);
-         string name = "???";
-         if (index < _names.Length) {
-            if (_names[index].ToString() == "{ name }") name = _names[index].name;
-            else name = _names[index].ToString();
-         }
-         return name;
+         return EnumElementProvider.AsString(_names, data.ReadData(runLength, runStart));
       }
 
       public void Recycle(FrameworkElement element) {
