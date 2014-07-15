@@ -63,17 +63,22 @@ namespace SorceryHex {
 
       public bool IsFree(int location) {
          if (_runs.ContainsKey(location)) return false;
-         int keyIndex = ~_keys.BinarySearch(location) - 1;
-         if (keyIndex < 0) return true;
-         int prev = _keys[keyIndex];
+         int prev;
+         lock (_keys) {
+            int keyIndex = ~_keys.BinarySearch(location) - 1;
+            if (keyIndex < 0) return true;
+            prev = _keys[keyIndex];
+         }
          int prevEnd = prev + _runs[prev].GetLength(Data, prev);
          return prevEnd <= location;
       }
 
       public int NextUsed(int location) {
          if (_runs.ContainsKey(location)) return location;
-         int index = ~_keys.BinarySearch(location);
-         return index >= _keys.Count ? Data.Length : _keys[index];
+         lock (_keys) {
+            int index = ~_keys.BinarySearch(location);
+            return index >= _keys.Count ? Data.Length : _keys[index];
+         }
       }
 
       #endregion
@@ -81,7 +86,8 @@ namespace SorceryHex {
       #region PartialModel
 
       public bool CanEdit(int location) {
-         int index = _keys.BinarySearch(location);
+         int index;
+         lock (_keys) index = _keys.BinarySearch(location);
          if (index < 0) index = Math.Max(~index - 1, 0);
          int startPoint = _keys[index];
          return startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null;
@@ -111,10 +117,14 @@ namespace SorceryHex {
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          UpdateList();
          var elements = new FrameworkElement[length];
-         var startIndex = _keys.BinarySearch(start);
-         if (startIndex < 0) startIndex = ~startIndex - 1; // not in list: give me the one that starts just before here
 
-         if (startIndex == _keys.Count) return elements;
+         int startIndex;
+         lock (_keys) {
+            startIndex = _keys.BinarySearch(start);
+            if (startIndex < 0) startIndex = ~startIndex - 1; // not in list: give me the one that starts just before here
+
+            if (startIndex == _keys.Count) return elements;
+         }
 
          for (int i = 0; i < length; ) {
             int loc = start + i;
@@ -181,18 +191,23 @@ namespace SorceryHex {
 
       public bool IsWithinDataBlock(int location) {
          UpdateList();
-         var insertionPoint = _keys.BinarySearch(location);
-         if (insertionPoint >= 0) return false;
-         insertionPoint = ~insertionPoint - 1;
-         int startAddress = _keys[insertionPoint];
+         int startAddress;
+         lock (_keys) {
+            var insertionPoint = _keys.BinarySearch(location);
+            if (insertionPoint >= 0) return false;
+            insertionPoint = ~insertionPoint - 1;
+            startAddress = _keys[insertionPoint];
+         }
          return startAddress + _runs[startAddress].GetLength(Data, startAddress) > location;
       }
 
       public int GetDataBlockStart(int location) {
-         var insertionPoint = _keys.BinarySearch(location);
-         if (insertionPoint >= 0) return _keys[insertionPoint];
-         if (insertionPoint < 0) insertionPoint = ~insertionPoint;
-         return _keys[insertionPoint - 1];
+         lock (_keys) {
+            var insertionPoint = _keys.BinarySearch(location);
+            if (insertionPoint >= 0) return _keys[insertionPoint];
+            if (insertionPoint < 0) insertionPoint = ~insertionPoint;
+            return _keys[insertionPoint - 1];
+         }
       }
 
       public int GetDataBlockLength(int location) {
@@ -201,9 +216,12 @@ namespace SorceryHex {
       }
 
       public FrameworkElement GetInterpretation(int location) {
-         var index = _keys.BinarySearch(location);
-         if (index < 0) return null;
-         var run = _runs[_keys[index]];
+         IDataRun run;
+         lock (_keys) {
+            var index = _keys.BinarySearch(location);
+            if (index < 0) return null;
+            run = _runs[_keys[index]];
+         }
          InterpretData(run, location);
          if (!_interpretations.ContainsKey(location)) return null;
          return _interpretations[location];
@@ -226,27 +244,29 @@ namespace SorceryHex {
       #region Editor
 
       public FrameworkElement CreateElementEditor(int location) {
-         int index = _keys.BinarySearch(location);
-         if (index < 0) index = Math.Max(~index - 1, 0);
-         int startPoint = _keys[index];
+         int startPoint = GetStart(location);
          if (!(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null)) return null;
          return _runs[startPoint].Editor.CreateElementEditor(startPoint);
       }
 
       public void Edit(int location, char c) {
-         int index = _keys.BinarySearch(location);
-         if (index < 0) index = Math.Max(~index - 1, 0);
-         int startPoint = _keys[index];
+         int startPoint = GetStart(location);
          Debug.Assert(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null);
          _runs[startPoint].Editor.Edit(location, c);
       }
 
       public void CompleteEdit(int location) {
-         int index = _keys.BinarySearch(location);
-         if (index < 0) index = Math.Max(~index - 1, 0);
-         int startPoint = _keys[index];
+         int startPoint = GetStart(location);
          Debug.Assert(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null);
          _runs[startPoint].Editor.CompleteEdit(location);
+      }
+
+      int GetStart(int location) {
+         lock (_keys) {
+            int index = _keys.BinarySearch(location);
+            if (index < 0) index = Math.Max(~index - 1, 0);
+            return _keys[index];
+         }
       }
 
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
@@ -278,8 +298,10 @@ namespace SorceryHex {
 
       void UpdateList() {
          if (!_listNeedsUpdate) return;
-         lock (_runs) _keys = _runs.Keys.ToList();
-         _keys.Sort();
+         lock (_keys) {
+            lock (_runs) _keys = _runs.Keys.ToList();
+            _keys.Sort();
+         }
          _listNeedsUpdate = false;
       }
 
