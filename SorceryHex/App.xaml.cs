@@ -43,6 +43,7 @@ namespace SorceryHex {
 
    public interface IModelFactory : IComparable<IModelFactory> {
       string DisplayName { get; }
+      string Version { get; }
       bool CanCreateModel(string name, byte[] data);
       IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo);
    }
@@ -50,6 +51,7 @@ namespace SorceryHex {
    [Export(typeof(IModelFactory))]
    public class SimpleFactory : IModelFactory, IModel {
       public string DisplayName { get { return "Simple"; } }
+      public string Version { get { return "1.0"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
       public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { _data = data; return this; }
       public int CompareTo(IModelFactory other) { return -1; }
@@ -103,6 +105,7 @@ namespace SorceryHex {
    [Export(typeof(IModelFactory))]
    public class DefaultFactory : IModelFactory {
       public string DisplayName { get { return "Default"; } }
+      public string Version { get { return "1.0"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
       public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(data); }
       public int CompareTo(IModelFactory other) { return (other is SimpleFactory) ? 1 : -1; }
@@ -111,6 +114,7 @@ namespace SorceryHex {
    [Export(typeof(IModelFactory))]
    public class StringFactory : IModelFactory {
       public string DisplayName { get { return "StringFinder"; } }
+      public string Version { get { return "1.0"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
       public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(data, new StringDecoder(data, 1)); }
       public int CompareTo(IModelFactory other) { return -1; }

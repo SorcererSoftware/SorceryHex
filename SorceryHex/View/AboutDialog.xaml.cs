@@ -16,10 +16,13 @@ namespace SorceryHex {
    /// Interaction logic for AboutDialog.xaml
    /// </summary>
    public partial class AboutDialog : Window {
-      public AboutDialog() {
+      public AboutDialog(IEnumerable<IModelFactory> factories) {
          InitializeComponent();
          Loaded += (sender, e) => icon.Animate();
          closeButton.Click += (sender, e) => Close();
+         foreach (var pluginInfo in factories.Select(f => f.DisplayName + ": v. " + f.Version).Select(s => new TextBlock { Text = s })) {
+            pluginList.Children.Add(pluginInfo);
+         }
       }
    }
 }

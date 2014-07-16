@@ -19,6 +19,7 @@
                 <TextBlock Text="Version 0.1"/>
                 <Separator/>
                 <TextBlock Text="Plugins:"/>
+                <StackPanel x:Name="pluginList"/>
             </StackPanel>
         </DockPanel>
         <Button Name="closeButton" HorizontalAlignment="Right" Content="Close" Padding="5" Margin="5" DockPanel.Dock="Bottom"/>

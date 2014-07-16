@@ -13,6 +13,8 @@ namespace SorceryHex.Gba {
       public class Factory : IModelFactory {
          public string DisplayName { get { return "Pokemon Gba Game"; } }
 
+         public string Version { get { return "1.0"; } }
+
          public bool CanCreateModel(string name, byte[] data) {
             if (!name.ToLower().EndsWith("gba")) return false;
             var code = Header.GetCode(data);
@@ -59,6 +61,8 @@ namespace SorceryHex.Gba {
    public class StandardFactory : IModelFactory {
       public string DisplayName { get { return "Gba Game"; } }
 
+      public string Version { get { return "1.0"; } }
+      
       public bool CanCreateModel(string name, byte[] data) {
          return name.ToLower().EndsWith("gba");
       }
