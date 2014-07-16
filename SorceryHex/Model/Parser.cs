@@ -20,7 +20,7 @@ namespace SorceryHex {
       int GetDataBlockStart(int location);
       int GetDataBlockLength(int location);
       FrameworkElement GetInterpretation(int location);
-      IList<int> Find(string term);
+      IEnumerable<int> Find(string term);
    }
 
    public class UpdateLocationEventArgs : EventArgs {
@@ -232,31 +232,29 @@ namespace SorceryHex {
          return _children.Select(child => child.GetInterpretation(location)).Where(interpretation => interpretation != null).FirstOrDefault();
       }
 
-      public IList<int> Find(string term) {
-         if (!_loaded) return new int[0];
-
-         var list = _children
-            .Select(child => child.Find(term) ?? new int[0])
-            .Select(set => (IEnumerable<int>)set)
-            .Aggregate(Enumerable.Concat)
-            .ToList();
+      public IEnumerable<int> Find(string term) {
+         if (!_loaded) yield break;
 
          var sanitized = term.ToUpper().Replace(" ", "");
-         if (sanitized.Length % 2 != 0 || !sanitized.All(Utils.Hex.Contains)) return list;
+         if (sanitized.Length % 2 == 0 && sanitized.All(Utils.Hex.Contains)) {
+            byte[] searchTerm =
+               Enumerable.Range(0, sanitized.Length / 2)
+               .Select(i => (byte)sanitized.Substring(i * 2, 2).ParseAsHex())
+               .ToArray();
 
-         byte[] searchTerm =
-            Enumerable.Range(0, sanitized.Length / 2)
-            .Select(i => (byte)sanitized.Substring(i * 2, 2).ParseAsHex())
-            .ToArray();
-
-         for (int i = 0, j = 0; i < _data.Length; i++) {
-            j = _data[i] == searchTerm[j] ? j + 1 : 0;
-            if (j < searchTerm.Length) continue;
-            list.Add(i - j + 1);
-            j = 0;
+            for (int i = 0, j = 0; i < _data.Length; i++) {
+               j = _data[i] == searchTerm[j] ? j + 1 : 0;
+               if (j < searchTerm.Length) continue;
+               yield return i - j + 1;
+               j = 0;
+            }
          }
 
-         return list;
+         foreach(var childSearchResult in _children
+            .Select(child => child.Find(term) ?? new int[0])
+            .Aggregate(Enumerable.Concat)) {
+            yield return childSearchResult;
+         }
       }
 
       #endregion

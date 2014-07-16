@@ -224,8 +224,15 @@ namespace SorceryHex {
 
          // check for special keys
          if (e.Key == Key.Enter) {
-            // TODO enumerate the list in a background thread.
-            _findPositions = _appCommands.Find(MultiBoxInput.Text).ToList();
+            _appCommands.WriteStatus("Searching");
+            var searchEnumerable = _appCommands.Find(MultiBoxInput.Text);
+            Task task;
+            _findPositions = searchEnumerable.BackgroundEnumerate(out task);
+            if (task != null) {
+               Action complete = () => _appCommands.WriteStatus("Search Complete: " + _findPositions.Count + " results.");
+               task.ContinueWith(t => Dispatcher.Invoke(complete));
+               task.Start();
+            }
             if (_findPositions.Count == 0) {
                MessageBox.Show("No matches found for: " + MultiBoxInput.Text);
                return;

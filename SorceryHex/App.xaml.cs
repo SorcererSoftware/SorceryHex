@@ -94,7 +94,7 @@ namespace SorceryHex {
       public int GetDataBlockStart(int location) { throw new NotImplementedException(); }
       public int GetDataBlockLength(int location) { throw new NotImplementedException(); }
       public FrameworkElement GetInterpretation(int location) { return null; }
-      public IList<int> Find(string term) { return null; }
+      public IEnumerable<int> Find(string term) { return null; }
 
       public FrameworkElement CreateElementEditor(int location) { return null; }
       public void Edit(int location, char c) { }

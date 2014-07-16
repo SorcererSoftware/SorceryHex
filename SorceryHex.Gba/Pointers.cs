@@ -252,7 +252,7 @@ namespace SorceryHex.Gba {
 
       public FrameworkElement GetInterpretation(int location) { return _base.GetInterpretation(location); }
 
-      public IList<int> Find(string term) { return _base.Find(term); }
+      public IEnumerable<int> Find(string term) { return _base.Find(term); }
 
       #endregion
 

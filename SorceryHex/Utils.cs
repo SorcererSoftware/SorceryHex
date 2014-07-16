@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -164,6 +165,19 @@ namespace SorceryHex {
             stream.Read(data, 0, (int)stream.Length);
             return data;
          }
+      }
+
+      public static IList<T> BackgroundEnumerate<T>(this IEnumerable<T> enumerable, out Task task) {
+         task = null;
+         var list = new List<T>();
+         var enumerator = enumerable.GetEnumerator();
+         bool hasAny = enumerator.MoveNext();
+         if (!hasAny) return list;
+         list.Add(enumerator.Current);
+         task = new Task(() => {
+            while (enumerator.MoveNext()) list.Add(enumerator.Current);
+         }, TaskCreationOptions.LongRunning);
+         return list;
       }
 
       public enum FindOptions { StartOrBefore, StartOrAfter }
