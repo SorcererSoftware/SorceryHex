@@ -70,7 +70,16 @@ namespace SorceryHex {
       }
    }
 
-   public class ScriptInfo { public ScriptEngine Engine; public ScriptScope Scope; }
+   public class ScriptInfo {
+      public readonly ScriptEngine Engine;
+      public readonly ScriptScope Scope;
+      public readonly Action<IList<string>> ShowScriptErrors;
+      public ScriptInfo(ScriptEngine engine, ScriptScope scope, Action<IList<string>> errorFunc) {
+         Engine = engine;
+         Scope = scope;
+         ShowScriptErrors = errorFunc;
+      }
+   }
 
    /// <summary>
    /// Interaction logic for MultiBoxControl.xaml
@@ -85,7 +94,7 @@ namespace SorceryHex {
       IList<int> _findPositions;
       int _findIndex;
 
-      public ScriptInfo ScriptInfo { get { return new ScriptInfo { Engine = _engine, Scope = _scope }; } }
+      public readonly ScriptInfo ScriptInfo;
 
       public MultiBoxControl(IAppCommands appCommands) {
          InitializeComponent();
@@ -104,6 +113,8 @@ namespace SorceryHex {
             PlacementTarget = ScriptBox,
             StaysOpen = false
          };
+
+         ScriptInfo = new ScriptInfo(_engine, _scope, ShowScriptStartupErrors);
          SetupScope();
       }
 
@@ -155,6 +166,21 @@ namespace SorceryHex {
          if (!_scopeNeedsSetup) return;
          _scopeNeedsSetup = false;
          _scope.SetVariable("app", new ScriptCommands(this, _appCommands, _engine, _scope));
+      }
+
+      void ShowScriptStartupErrors(IList<string> errors) {
+         Dispatcher.Invoke((Action)(() => {
+            _outputText.Foreground = Solarized.Brushes.Red;
+            Debug.Assert(errors.Count > 0);
+            if (errors.Count == 1) {
+               _outputText.Text = "The following error occured when running startup scripts:" + Environment.NewLine;
+               _outputText.Text += errors[0];
+            } else {
+               _outputText.Text = "The following errors occured when running startup scripts:" + Environment.NewLine;
+               _outputText.Text += errors.Aggregate((a, b) => a + Environment.NewLine + b);
+            }
+            _popup.IsOpen = true;
+         }));
       }
 
       #endregion

@@ -30,11 +30,10 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    class ScriptedDataTypes : IRunParser, ITypes, ILabeler {
       readonly PointerMapper _mapper;
       readonly PCS _pcs;
-      readonly ScriptEngine _engine;
-      readonly ScriptScope _scope;
+      readonly ScriptInfo _scriptInfo;
 
-      public ScriptedDataTypes(PointerMapper mapper, PCS pcs, ScriptEngine engine, ScriptScope scope) {
-         _mapper = mapper; _pcs = pcs; _engine = engine; _scope = scope;
+      public ScriptedDataTypes(PointerMapper mapper, PCS pcs, ScriptInfo scriptInfo) {
+         _mapper = mapper; _pcs = pcs; _scriptInfo = scriptInfo;
       }
 
       public IEnumerable<int> Find(string term) {
@@ -56,16 +55,22 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _commander = commander;
          _runs = runs;
          _cache = new BuilderCache(_runs, _mapper, _pcs);
-         _scope.SetVariable("types", this);
+         _scriptInfo.Scope.SetVariable("types", this);
          var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/");
          var files = dir.EnumerateFiles("*.rb").OrderBy(file => file.Name).ToArray();
+         var errorList = new List<string>();
          foreach (var script in files) {
-            using (AutoTimer.Time("ScriptedDataTypes-" + script.Name)) {
-               var source = _engine.CreateScriptSourceFromFile(script.FullName);
-               source.Execute(_scope);
+            try {
+               using (AutoTimer.Time("ScriptedDataTypes-" + script.Name)) {
+                  var source = _scriptInfo.Engine.CreateScriptSourceFromFile(script.FullName);
+                  source.Execute(_scriptInfo.Scope);
+               }
+            } catch (Exception e) {
+               errorList.Add(script.Name + ": " + e.Message);
             }
          }
-         _scope.RemoveVariable("types");
+         if (errorList.Count > 0) _scriptInfo.ShowScriptErrors(errorList);
+         _scriptInfo.Scope.RemoveVariable("types");
          _runs.AddLabeler(this);
       }
 
