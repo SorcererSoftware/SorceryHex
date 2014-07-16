@@ -37,7 +37,7 @@ namespace SorceryHex.Gba {
                , new Header(pointerMapper)
                , new Thumbnails(pointerMapper)
                , new Lz(pointerMapper)
-               , new Pokemon.DataTypes.ScriptedDataTypes(pointerMapper, pcs, scriptInfo.Engine, scriptInfo.Scope)
+               , new Pokemon.DataTypes.ScriptedDataTypes(pointerMapper, pcs, scriptInfo)
                , pcs
                // , imageguess
             );
