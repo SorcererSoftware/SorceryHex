@@ -11,6 +11,7 @@ namespace SorceryHex {
             return _timers.Select(pair => pair.Key + ": " + pair.Value._average);
          }
       }
+      public static void ClearReport() { _timers.Clear(); }
       public static AutoTimer Time(string key) {
          var timer = Get(key);
          Debug.Assert(!timer._watch.IsRunning);
@@ -29,6 +30,7 @@ namespace SorceryHex {
       int _runs;
       double _average;
       AutoTimer() { }
+
       public void Dispose() {
          _watch.Stop();
          double total = _watch.ElapsedMilliseconds + _average * _runs;

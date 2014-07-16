@@ -51,7 +51,7 @@ namespace SorceryHex {
 
       static readonly string UpperCaseAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
       static readonly string LowerCaseAlphabet = UpperCaseAlphabet.ToLower();
-      public IList<int> Find(string term) {
+      public IEnumerable<int> Find(string term) {
          byte[] searchTerm = null;
          if (term == term.ToUpper() && term.All(UpperCaseAlphabet.Contains)) {
             upperCaseStart = SearchUpperCase(_data, term);
@@ -61,15 +61,13 @@ namespace SorceryHex {
             searchTerm = term.Select(c => (byte)(((int)c) - 'a' + lowerCaseStart)).ToArray();
          }
 
-         if (searchTerm == null) return null;
-         var list = new List<int>();
+         if (searchTerm == null) yield break;
          for (int i = 0, j = 0; i < _data.Length; i += Stride) {
             j = _data[i] == searchTerm[j] || _data[i] == searchTerm[j] ? j + 1 : 0;
             if (j < searchTerm.Length) continue;
-            list.Add(i - j + 1);
+            yield return i - j + 1;
             j = 0;
          }
-         return list;
       }
 
       #endregion

@@ -104,7 +104,7 @@ namespace SorceryHex {
          throw new ArgumentException("There is no '" + label + "' to jump to");
       }
 
-      public int[] Find(string term) { return this.Holder.Find(term).ToArray(); }
+      public IEnumerable<int> Find(string term) { return this.Holder.Find(term); }
 
       public void HighlightFromLocation(int combinedLocation) {
          int location = Offset + combinedLocation;
@@ -292,6 +292,7 @@ namespace SorceryHex {
 
       void LoadParser(IModelFactory factory, string name, byte[] data, bool jump = false) {
          foreach (FrameworkElement element in Body.Children) Recycle(element);
+         AutoTimer.ClearReport();
          _bodies.Foreach(body => body.Children.Clear());
          if (Holder != null) Holder.MoveToNext -= _cursorController.HandleMoveNext;
          Holder = factory.CreateModel(name, data, _multiBox.ScriptInfo);

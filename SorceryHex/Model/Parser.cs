@@ -145,7 +145,7 @@ namespace SorceryHex {
       int GetDataBlockStart(int location);
       int GetDataBlockLength(int location);
       FrameworkElement GetInterpretation(int location);
-      IList<int> Find(string term);
+      IEnumerable<int> Find(string term);
    }
 
    public class CompositeModel : IModel {
@@ -234,6 +234,7 @@ namespace SorceryHex {
 
       public IList<int> Find(string term) {
          if (!_loaded) return new int[0];
+
          var list = _children
             .Select(child => child.Find(term) ?? new int[0])
             .Select(set => (IEnumerable<int>)set)
@@ -242,6 +243,7 @@ namespace SorceryHex {
 
          var sanitized = term.ToUpper().Replace(" ", "");
          if (sanitized.Length % 2 != 0 || !sanitized.All(Utils.Hex.Contains)) return list;
+
          byte[] searchTerm =
             Enumerable.Range(0, sanitized.Length / 2)
             .Select(i => (byte)sanitized.Substring(i * 2, 2).ParseAsHex())

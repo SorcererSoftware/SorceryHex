@@ -7,8 +7,8 @@ using System.Windows.Shapes;
 
 namespace SorceryHex {
    public interface IElementProvider {
-      FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength);
       string ProvideString(byte[] data, int runStart, int runLength);
+      FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength);
       bool IsEquivalent(IElementProvider other);
       void Recycle(FrameworkElement element);
    }
@@ -26,6 +26,8 @@ namespace SorceryHex {
          _underline = underline;
          _hoverText = hoverText;
       }
+
+      public string ProvideString(byte[] data, int runStart, int runLength) { return null; }
 
       public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
          var geometry = _parser[data[runStart + innerIndex]];
@@ -53,8 +55,6 @@ namespace SorceryHex {
 
          return element;
       }
-
-      public string ProvideString(byte[] data, int runStart, int runLength) { return null; }
 
       public bool IsEquivalent(IElementProvider other) {
          var that = other as GeometryElementProvider;
@@ -84,6 +84,10 @@ namespace SorceryHex {
          _hoverText = string.IsNullOrEmpty(hoverText) ? null : hoverText;
       }
 
+      public string ProvideString(byte[] data, int runStart, int runLength) {
+         return AsString(_names, data.ReadData(_stride, runStart));
+      }
+
       public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
          if (innerIndex != 0) {
             var rectangle = _rectangles.Count > 0 ? _rectangles.Dequeue() : new Rectangle();
@@ -107,10 +111,6 @@ namespace SorceryHex {
          return block;
       }
 
-      public string ProvideString(byte[] data, int runStart, int runLength) {
-         return AsString(_names, data.ReadData(_stride, runStart));
-      }
-
       public bool IsEquivalent(IElementProvider other) {
          var that = other as EnumElementProvider;
          if (that == null) return false;
@@ -128,8 +128,8 @@ namespace SorceryHex {
 
       public static string AsString(dynamic[] names, int index) {
          if (index >= names.Length) return "???";
-         if (names[index].ToString() == "{ name }") return names[index].name;
-         return names[index].ToString();
+         var toString = names[index].ToString();
+         return toString == "{ name }" ? names[index].name : toString;
       }
    }
 }

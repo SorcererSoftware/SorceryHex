@@ -227,16 +227,17 @@ namespace SorceryHex {
          return _interpretations[location];
       }
 
-      public IList<int> Find(string term) {
+      public IEnumerable<int> Find(string term) {
          var lowerTerm = term.ToLower();
-         return _runParsers.Select(parser => parser.Find(term) ?? new int[0]).Aggregate(Enumerable.Concat)
-            .Concat(_runs.Keys.Where(key => {
-               var length = _runs[key].GetLength(Data, key);
-               var str = _runs[key].Provider.ProvideString(Data, key, length);
-               if (string.IsNullOrEmpty(str)) return false;
-               return str.ToLower() == lowerTerm;
-            }))
-            .ToList();
+         var results = _runParsers.Select(parser => parser.Find(term) ?? new int[0]).Aggregate(Enumerable.Concat);
+
+         var runStringResults = _runs.Keys.Where(key => {
+            var length = _runs[key].GetLength(Data, key);
+            var str = _runs[key].Provider.ProvideString(Data, key, length);
+            if (string.IsNullOrEmpty(str)) return false;
+            return str.ToLower() == lowerTerm;
+         });
+         return results.Concat(runStringResults);
       }
 
       #endregion

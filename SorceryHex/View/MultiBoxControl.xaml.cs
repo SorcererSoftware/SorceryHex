@@ -21,7 +21,7 @@ namespace SorceryHex {
       void MainFocus();
       void JumpTo(int location, bool addToBreadCrumbs = false);
       void JumpTo(string label, bool addToBreadCrumbs = false);
-      int[] Find(string term);
+      IEnumerable<int> Find(string term);
       void WriteStatus(string status);
    }
 
@@ -37,7 +37,7 @@ namespace SorceryHex {
          _scope = scope;
       }
       public int offset { get { return _app.Offset; } }
-      public int[] find(string term) { return _app.Find(term); }
+      public int[] find(string term) { return _app.Find(term).ToArray(); }
       public byte[] data { get { return _app.Data; } }
       public void @goto(int offset) { _app.JumpTo(offset, true); }
       public void @goto(string label) { _app.JumpTo(label, true); }
@@ -224,7 +224,8 @@ namespace SorceryHex {
 
          // check for special keys
          if (e.Key == Key.Enter) {
-            _findPositions = _appCommands.Find(MultiBoxInput.Text);
+            // TODO enumerate the list in a background thread.
+            _findPositions = _appCommands.Find(MultiBoxInput.Text).ToList();
             if (_findPositions.Count == 0) {
                MessageBox.Show("No matches found for: " + MultiBoxInput.Text);
                return;

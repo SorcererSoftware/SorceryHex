@@ -12,9 +12,14 @@ namespace SorceryHex.Gba.Pokemon {
       readonly Queue<Rectangle> _empties = new Queue<Rectangle>();
       readonly IDictionary<int, ImageSource> _cache = new Dictionary<int, ImageSource>();
       readonly dynamic[] _names;
+
       public SpeciesElementProvider(dynamic[] names) { _names = names; }
 
       public bool IsEquivalent(IElementProvider other) { return other is SpeciesElementProvider && ((SpeciesElementProvider)other)._names == _names; }
+
+      public string ProvideString(byte[] data, int runStart, int runLength) {
+         return EnumElementProvider.AsString(_names, data.ReadData(runLength, runStart));
+      }
 
       public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
          if (innerIndex == 1) return ProvideEmpty();
@@ -30,10 +35,6 @@ namespace SorceryHex.Gba.Pokemon {
          }
          image.Source = source;
          return image;
-      }
-
-      public string ProvideString(byte[] data, int runStart, int runLength) {
-         return EnumElementProvider.AsString(_names, data.ReadData(runLength, runStart));
       }
 
       public void Recycle(FrameworkElement element) {
@@ -58,6 +59,7 @@ namespace SorceryHex.Gba.Pokemon {
    class JumpElementProvider : IElementProvider {
       readonly GeometryElementProvider _provider = new GeometryElementProvider(Utils.ByteFlyweights, Solarized.Brushes.Orange, true);
       readonly ChildJump _jump;
+
       public JumpElementProvider(ChildJump jump) { _jump = jump; }
 
       public bool IsEquivalent(IElementProvider other) {
@@ -66,6 +68,8 @@ namespace SorceryHex.Gba.Pokemon {
          return _jump == that._jump;
       }
 
+      public string ProvideString(byte[] data, int runStart, int runLength) { return null; }
+
       public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
          var element = _provider.ProvideElement(commandFactory, data, runStart, innerIndex, runLength);
          var reader = new Reader(data, runStart);
@@ -73,8 +77,6 @@ namespace SorceryHex.Gba.Pokemon {
          commandFactory.CreateJumpCommand(element, jump);
          return element;
       }
-
-      public string ProvideString(byte[] data, int runStart, int runLength) { return null; }
 
       public void Recycle(FrameworkElement element) { _provider.Recycle(element); }
    }
