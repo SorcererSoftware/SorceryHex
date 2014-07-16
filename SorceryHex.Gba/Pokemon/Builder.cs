@@ -215,6 +215,71 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void WriteDebug(object o) { MessageBox.Show(MultiBoxControl.Parse(o)); }
    }
 
+   public class BuilderCache {
+      public readonly IRunStorage Runs;
+      public readonly byte[] Data;
+      public readonly IPointerMapper Mapper;
+      public readonly PCS Pcs;
+      public readonly IDictionary<string, IDataRun> ByteRuns;
+      public readonly IList<InlineComboEditor> ByteEnumEditors;
+      public readonly IList<SimpleDataRun> ByteEnumRuns;
+      public readonly IDictionary<string, IDataRun> ByteNumRuns;
+      public readonly IDictionary<string, IDataRun> ShortRuns;
+      public readonly IList<InlineComboEditor> ShortEnumEditors;
+      public readonly IList<SimpleDataRun> ShortEnumRuns;
+      public readonly IDictionary<string, IDataRun> WordRuns;
+      public readonly IDataRun UnusedRun;
+
+      public IDataRun SpeciesRun { get; private set; }
+      public InlineComboEditor SpeciesEnumEditor { get; private set; }
+
+      public BuilderCache(IRunStorage runs, IPointerMapper mapper, PCS pcs) {
+         Runs = runs;
+         Data = runs.Data;
+         Mapper = mapper;
+         Pcs = pcs;
+
+         ByteRuns = new Dictionary<string, IDataRun>();
+         ByteEnumEditors = new List<InlineComboEditor>();
+         ByteEnumRuns = new List<SimpleDataRun>();
+         ByteNumRuns = new Dictionary<string, IDataRun>();
+         ShortRuns = new Dictionary<string, IDataRun>();
+         ShortEnumEditors = new List<InlineComboEditor>();
+         ShortEnumRuns = new List<SimpleDataRun>();
+         WordRuns = new Dictionary<string, IDataRun>();
+         UnusedRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Unused), 1);
+      }
+
+      BuilderCache(BuilderCache other) {
+         ByteRuns = other.ByteRuns;
+         ByteEnumEditors = other.ByteEnumEditors;
+         ByteEnumRuns = other.ByteEnumRuns;
+         ByteNumRuns = other.ByteNumRuns;
+         ShortRuns = other.ShortRuns;
+         ShortEnumEditors = other.ShortEnumEditors;
+         ShortEnumRuns = other.ShortEnumRuns;
+         WordRuns = other.WordRuns;
+         UnusedRun = other.UnusedRun;
+
+         Runs = new NullRunStorage();
+         Mapper = new NullPointerMapper();
+         Pcs = other.Pcs;
+         SpeciesRun = other.SpeciesRun;
+         SpeciesEnumEditor = other.SpeciesEnumEditor;
+      }
+
+      public void SetupSpecies(dynamic[] names) {
+         if (SpeciesEnumEditor != null) {
+            Debug.Assert(SpeciesEnumEditor.Names.Length == names.Length && Enumerable.Range(0, names.Length).All(i => SpeciesEnumEditor.Names[i].ToString() == names[i].ToString()));
+            return;
+         }
+         SpeciesEnumEditor = new InlineComboEditor(Data, 2, names, "species");
+         SpeciesRun = new SimpleDataRun(new SpeciesElementProvider(names), 2, SpeciesEnumEditor);
+      }
+
+      public BuilderCache GetFixed() { return new BuilderCache(this); }
+   }
+
    class Builder : IBuilder {
       static IElementProvider hex(string hoverText = null) { return new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number, hoverText: hoverText); }
       static IElementProvider nums(string hoverText = null) { return new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number, hoverText: hoverText); }
@@ -227,169 +292,149 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return run;
       }
 
-      BuildableObject _result;
-      readonly IRunStorage _runs;
-      readonly byte[] _data;
-      readonly IPointerMapper _mapper;
-      readonly PCS _pcs;
+      readonly BuilderCache _cache;
       int _location;
 
-      public BuildableObject Result { get { return _result; } }
+      public BuildableObject Result { get; private set; }
 
-      public Builder(IRunStorage runs, IPointerMapper mapper, PCS pcs, int location) {
-         _runs = runs;
-         _data = _runs.Data;
-         _mapper = mapper;
-         _pcs = pcs;
+      public Builder(BuilderCache cache, int location) {
+         _cache = cache;
          _location = location;
-         _result = new BuildableObject(runs.Data, _pcs, _location);
+         Result = new BuildableObject(_cache.Data, _cache, _location);
       }
 
-      public void Clear() {
-         _result = new BuildableObject(_data, _pcs, _location);
-      }
+      public void Clear() { Result = new BuildableObject(_cache.Data, _cache, _location); }
 
       public bool Assert(bool value, string message) {
          Debug.Assert(value, message);
          return value;
       }
 
-      static readonly IDictionary<string, IDataRun> _byteRuns = new Dictionary<string, IDataRun>();
       public byte Byte(string name) {
-         _runs.AddRun(_location, Build(_byteRuns, hex, 1, name));
-         var value = _data[_location];
+         _cache.Runs.AddRun(_location, Build(_cache.ByteRuns, hex, 1, name));
+         var value = _cache.Data[_location];
          _location++;
-         _result.AppendByte(name);
+         Result.AppendByte(name);
          return value;
       }
 
-      static readonly IList<InlineComboEditor> _byteEnumEditors = new List<InlineComboEditor>();
-      static readonly IList<SimpleDataRun> _byteEnumRuns = new List<SimpleDataRun>();
       public byte ByteEnum(string name, dynamic[] names) {
-         var editor = _byteEnumEditors.FirstOrDefault(e => e.Names == names && e.HoverText == name);
+         var editor = _cache.ByteEnumEditors.FirstOrDefault(e => e.Names == names && e.HoverText == name);
          if (editor == null) {
-            editor = new InlineComboEditor(_data, 1, names, name);
-            _byteEnumEditors.Add(editor);
+            editor = new InlineComboEditor(_cache.Data, 1, names, name);
+            _cache.ByteEnumEditors.Add(editor);
          }
-         var run = _byteEnumRuns.FirstOrDefault(r => r.Editor == editor);
+         var run = _cache.ByteEnumRuns.FirstOrDefault(r => r.Editor == editor);
          if (run == null) {
             run = new SimpleDataRun(enums(names, 1, name), 1, editor);
-            _byteEnumRuns.Add(run);
+            _cache.ByteEnumRuns.Add(run);
          }
-         _runs.AddRun(_location, run);
+         _cache.Runs.AddRun(_location, run);
 
-         var value = _data[_location];
+         var value = _cache.Data[_location];
          _location += 1;
-         _result.AppendByte(name);
+         Result.AppendByte(name);
          return value;
       }
 
-      static readonly IDictionary<string, IDataRun> _byteNumRuns = new Dictionary<string, IDataRun>();
       IEditor _inlineByteNumEditor;
       IEditor InlineByteNumEditor {
          get {
-            return _inlineByteNumEditor ?? (_inlineByteNumEditor = new InlineTextEditor(_data, 1, array => array[0].ToString(), str => new[] { byte.Parse(str) }));
+            return _inlineByteNumEditor ?? (_inlineByteNumEditor = new InlineTextEditor(_cache.Data, 1, array => array[0].ToString(), str => new[] { byte.Parse(str) }));
          }
       }
       public byte ByteNum(string name) {
-         _runs.AddRun(_location, Build(_byteNumRuns, nums, 1, name, InlineByteNumEditor));
-         var value = _data[_location];
+         _cache.Runs.AddRun(_location, Build(_cache.ByteNumRuns, nums, 1, name, InlineByteNumEditor));
+         var value = _cache.Data[_location];
          _location++;
-         _result.AppendByte(name);
+         Result.AppendByte(name);
          return value;
       }
 
-      static readonly IDictionary<string, IDataRun> _shortRuns = new Dictionary<string, IDataRun>();
       public short Short(string name) {
-         _runs.AddRun(_location, Build(_shortRuns, hex, 2, name));
-         var value = _data.ReadShort(_location);
+         _cache.Runs.AddRun(_location, Build(_cache.ShortRuns, hex, 2, name));
+         var value = _cache.Data.ReadShort(_location);
          _location += 2;
-         _result.AppendShort(name);
+         Result.AppendShort(name);
          return value;
       }
 
-      static readonly IList<InlineComboEditor> _shortEnumEditors = new List<InlineComboEditor>();
-      static readonly IList<SimpleDataRun> _shortEnumRuns = new List<SimpleDataRun>();
       public short ShortEnum(string name, dynamic[] names) {
-         var editor = _shortEnumEditors.FirstOrDefault(e => e.Names == names && e.HoverText == name);
+         var editor = _cache.ShortEnumEditors.FirstOrDefault(e => e.Names == names && e.HoverText == name);
          if (editor == null) {
-            editor = new InlineComboEditor(_data, 2, names, name);
-            _shortEnumEditors.Add(editor);
+            editor = new InlineComboEditor(_cache.Data, 2, names, name);
+            _cache.ShortEnumEditors.Add(editor);
          }
-         var run = _shortEnumRuns.FirstOrDefault(r => r.Editor == editor);
+         var run = _cache.ShortEnumRuns.FirstOrDefault(r => r.Editor == editor);
          if (run == null) {
             run = new SimpleDataRun(enums(names, 2, name), 2, editor);
-            _shortEnumRuns.Add(run);
+            _cache.ShortEnumRuns.Add(run);
          }
-         _runs.AddRun(_location, run);
+         _cache.Runs.AddRun(_location, run);
 
-         var value = _data[_location];
+         var value = _cache.Data[_location];
          _location += 2;
-         _result.AppendShort(name);
+         Result.AppendShort(name);
          return value;
       }
 
-      static readonly IDictionary<string, IDataRun> _wordRuns = new Dictionary<string, IDataRun>();
       public int Word(string name) {
-         _runs.AddRun(_location, Build(_wordRuns, hex, 4, name));
-         var value = _data.ReadData(4, _location);
+         _cache.Runs.AddRun(_location, Build(_cache.WordRuns, hex, 4, name));
+         var value = _cache.Data.ReadData(4, _location);
          _location += 4;
-         _result.AppendWord(name);
+         Result.AppendWord(name);
          return value;
       }
 
-      static IDataRun _speciesRun;
-      static InlineComboEditor _speciesEnumEditor;
       public short Species(dynamic[] names) {
-         _speciesEnumEditor = _speciesEnumEditor ?? new InlineComboEditor(_data, 2, names, "species");
-         _speciesRun = _speciesRun ?? new SimpleDataRun(new SpeciesElementProvider(names), 2, _speciesEnumEditor);
-         _runs.AddRun(_location, _speciesRun);
+         _cache.SetupSpecies(names);
+         _cache.Runs.AddRun(_location, _cache.SpeciesRun);
 
-         var value = _data.ReadShort(_location);
+         var value = _cache.Data.ReadShort(_location);
          _location += 2;
-         _result.AppendShort("species");
+         Result.AppendShort("species");
          return value;
       }
 
       public void Pointer(string name) {
-         var pointer = _data.ReadPointer(_location);
-         _mapper.Claim(_runs, _location, pointer);
+         var pointer = _cache.Data.ReadPointer(_location);
+         _cache.Mapper.Claim(_cache.Runs, _location, pointer);
          _location += 4;
-         _result.AppendSkip(4);
+         Result.AppendSkip(4);
       }
 
       public dynamic Pointer(string name, ChildReader reader) {
-         var pointer = _data.ReadPointer(_location);
-         _mapper.Claim(_runs, _location, pointer);
+         var pointer = _cache.Data.ReadPointer(_location);
+         _cache.Mapper.Claim(_cache.Runs, _location, pointer);
          _location += 4;
-         var child = new Builder(_runs, _mapper, _pcs, pointer);
+         var child = new Builder(_cache, pointer);
          reader(child);
-         _result.Append(name, reader);
+         Result.Append(name, reader);
          return child.Result;
       }
 
       public string StringPointer(string name) {
-         var pointer = _data.ReadPointer(_location);
-         _mapper.Claim(_runs, _location, pointer);
+         var pointer = _cache.Data.ReadPointer(_location);
+         _cache.Mapper.Claim(_cache.Runs, _location, pointer);
          _location += 4;
-         var str = _pcs.ReadString(_runs.Data, pointer);
-         _result.AppendStringPointer(name);
+         var str = _cache.Pcs.ReadString(_cache.Runs.Data, pointer);
+         Result.AppendStringPointer(name);
          return str;
       }
 
       public void NullablePointer(string name) {
-         if (_data.ReadData(4, _location) == 0) {
+         if (_cache.Data.ReadData(4, _location) == 0) {
             _location += 4;
-            _result.AppendSkip(4);
+            Result.AppendSkip(4);
             return;
          }
          Pointer(name);
       }
 
       public dynamic NullablePointer(string name, ChildReader reader) {
-         if (_data.ReadData(4, _location) == 0) {
+         if (_cache.Data.ReadData(4, _location) == 0) {
             _location += 4;
-            _result.Append(name, null);
+            Result.Append(name, null);
             return null;
          }
          return Pointer(name, reader);
@@ -398,53 +443,52 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void InlineArray(string name, int length, ChildReader reader) {
          int start = _location;
          for (int i = 0; i < length; i++) {
-            var child = new Builder(_runs, _mapper, _pcs, _location);
+            var child = new Builder(_cache, _location);
             reader(child);
             _location = child._location;
          }
-         _result.AppendInlineArray(name, length, _location - start, reader);
+         Result.AppendInlineArray(name, length, _location - start, reader);
       }
 
       public dynamic Array(string name, int length, ChildReader reader) {
-         if (_data.ReadData(4, _location) == 0) {
+         if (_cache.Data.ReadData(4, _location) == 0) {
             _location += 4;
-            _result.AppendSkip(4);
+            Result.AppendSkip(4);
             return null;
          }
-         var pointer = _data.ReadPointer(_location);
-         if (_mapper != null) _mapper.Claim(_runs, _location, pointer);
+         var pointer = _cache.Data.ReadPointer(_location);
+         if (_cache.Mapper != null) _cache.Mapper.Claim(_cache.Runs, _location, pointer);
          _location += 4;
-         var child = new Builder(_runs, _mapper, _pcs, pointer);
+         var child = new Builder(_cache, pointer);
          for (int i = 0; i < length; i++) {
             child.Clear();
             reader(child);
          }
-         _result.AppendArray(name, length, reader);
+         Result.AppendArray(name, length, reader);
          return null;
       }
 
       public string String(int len, string name) {
-         _runs.AddRun(_location, _pcs.StringRun);
-         string result = _pcs.ReadString(_data, _location);
+         _cache.Runs.AddRun(_location, _cache.Pcs.StringRun);
+         string result = _cache.Pcs.ReadString(_cache.Data, _location);
          _location += len;
-         _result.AppendString(name, len);
+         Result.AppendString(name, len);
          return result;
       }
 
-      static readonly IDataRun _unusedRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Unused), 1);
       public void Unused(int len) {
-         _result.AppendSkip(len);
+         Result.AppendSkip(len);
          while (len > 0) {
-            if (_runs != null) _runs.AddRun(_location, _unusedRun);
+            if (_cache.Runs != null) _cache.Runs.AddRun(_location, _cache.UnusedRun);
             _location++;
             len--;
          }
       }
 
       public void Link(int len, string name, ChildJump jump) {
-         _result.AppendSkip(len);
+         Result.AppendSkip(len);
          var run = new SimpleDataRun(new JumpElementProvider(jump), len);
-         if (_runs != null) _runs.AddRun(_location, run);
+         if (_cache.Runs != null) _cache.Runs.AddRun(_location, run);
          _location += len;
       }
 

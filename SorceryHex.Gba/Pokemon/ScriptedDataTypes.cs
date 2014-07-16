@@ -51,9 +51,11 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       ICommandFactory _commander;
       IRunStorage _runs;
+      BuilderCache _cache;
       public void Load(ICommandFactory commander, IRunStorage runs) {
          _commander = commander;
          _runs = runs;
+         _cache = new BuilderCache(_runs, _mapper, _pcs);
          _scope.SetVariable("types", this);
          var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/");
          var files = dir.EnumerateFiles("*.rb").OrderBy(file => file.Name).ToArray();
@@ -162,7 +164,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var destination = _runs.Data.ReadPointer(location);
          if (destination == -1) return null;
          var parser = new Parser(_runs, _pcs, location: destination);
-         var builder = new Builder(_runs, _mapper, _pcs, destination);
+         var builder = new Builder(_cache, destination);
          var array = new BuildableObject[length];
          for (int i = 0; i < length; i++) {
             reader(parser);
@@ -255,15 +257,13 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var index = counts.IndexOf(least);
 
          int offset = matchingLayouts[index];
-         var factory = new Builder(_runs, _mapper, _pcs, offset);
+         var factory = new Builder(_cache, offset);
          var data = new BuildableObject[matchingLengths[index]];
          for (int i = 0; i < matchingLengths[index]; i++) {
             factory.Clear();
             reader(factory);
             data[i] = factory.Result;
          }
-
-         // var array = new BuildableArray(factory.Result, offset, data.Length);
 
          int start = matchingLayouts[index], end = matchingLayouts[index] + matchingLengths[index] * stride;
          _mapper.FilterPointer(i => i <= start || i >= end);
@@ -276,7 +276,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var parser = new Parser(_runs, _pcs, location: destination);
          reader(parser);
          if (parser.FaultReason != null) return null; ;
-         var factory = new Builder(_runs, _mapper, _pcs, destination);
+         var factory = new Builder(_cache, destination);
          reader(factory);
 
          return new Pointer {

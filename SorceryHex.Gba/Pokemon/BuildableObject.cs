@@ -20,7 +20,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
    public class BuildableObject : DynamicObject {
       readonly byte[] _data;
-      readonly PCS _pcs;
+      readonly BuilderCache _cache;
       readonly IList<string> _names = new List<string>();
       readonly IList<int> _lengths = new List<int>();
       readonly IList<Type> _types = new List<Type>();
@@ -32,7 +32,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public int Location { get { return _location; } }
       public int Length { get { return _lengths.Sum(); } }
 
-      public BuildableObject(byte[] data, PCS pcs, int location) { _data = data; _pcs = pcs; _location = location; }
+      public BuildableObject(byte[] data, BuilderCache cache, int location) { _data = data; _cache = cache; _location = location; }
 
       #region Append
 
@@ -117,7 +117,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          if (_types[index] == typeof(byte)) WriteBytes(loc, byte.Parse(value.ToString()), 1);
          else if (_types[index] == typeof(short)) WriteBytes(loc, short.Parse(value.ToString()), 2);
          else if (_types[index] == typeof(int)) WriteBytes(loc, int.Parse(value.ToString()), 4);
-         else if (_types[index] == typeof(string)) _pcs.WriteString(_data, loc, _lengths[index], (string)value);
+         else if (_types[index] == typeof(string)) _cache.Pcs.WriteString(_data, loc, _lengths[index], (string)value);
          else return false;
          return true;
       }
@@ -138,17 +138,18 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          if (_types[index] == typeof(string)) {
             if (_lengths[index] == 4) {
                int ptr = _data.ReadPointer(loc);
-               if (ptr != -1) result = _pcs.ReadString(_data, ptr);
+               if (ptr != -1) result = _cache.Pcs.ReadString(_data, ptr);
             } else {
-               result = _pcs.ReadString(_data, loc, _lengths[index]);
+               result = _cache.Pcs.ReadString(_data, loc, _lengths[index]);
             }
          }
          var runStorage = new NullRunStorage { Data = _data };
          var pointerMapper = new NullPointerMapper();
+         var nullCache = _cache.GetFixed();
          if (_types[index] == typeof(BuildableObject)) {
             int ptr = _data.ReadPointer(loc);
             if (ptr != -1) {
-               var builder = new Builder(runStorage, pointerMapper, _pcs, ptr);
+               var builder = new Builder(nullCache, ptr);
                _children[name](builder);
                result = builder.Result;
             }
@@ -156,7 +157,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          if (_types[index] == typeof(BuildableObject[])) {
             if (_inline.Contains(name)) {
                var array = new BuildableObject[_childrenLength[name]];
-               var builder = new Builder(runStorage, pointerMapper, _pcs, loc);
+               var builder = new Builder(nullCache, loc);
                for (int i = 0; i < _childrenLength[name]; i++) {
                   _children[name](builder);
                   array[i] = builder.Result;
@@ -170,7 +171,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
                   result = null;
                   return true;
                }
-               var builder = new Builder(runStorage, pointerMapper, _pcs, ptr);
+               var builder = new Builder(nullCache, ptr);
                for (int i = 0; i < _childrenLength[name]; i++) {
                   _children[name](builder);
                   array[i] = builder.Result;
