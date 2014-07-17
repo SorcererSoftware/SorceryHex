@@ -295,6 +295,7 @@ namespace SorceryHex {
          AutoTimer.ClearReport();
          _bodies.Foreach(body => body.Children.Clear());
          if (Holder != null) Holder.MoveToNext -= _cursorController.HandleMoveNext;
+         _multiBox.ResetScope();
          Holder = factory.CreateModel(name, data, _multiBox.ScriptInfo);
          Holder.MoveToNext += _cursorController.HandleMoveNext;
          ScrollBar.Maximum = Holder.Length;

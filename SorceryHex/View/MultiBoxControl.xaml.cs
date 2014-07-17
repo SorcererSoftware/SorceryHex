@@ -74,9 +74,9 @@ namespace SorceryHex {
       public readonly ScriptEngine Engine;
       public readonly ScriptScope Scope;
       public readonly Action<IList<string>> ShowScriptErrors;
-      public ScriptInfo(ScriptEngine engine, ScriptScope scope, Action<IList<string>> errorFunc) {
-         Engine = engine;
-         Scope = scope;
+      public ScriptInfo(Action<IList<string>> errorFunc) {
+         Engine = Ruby.CreateEngine();
+         Scope = Engine.CreateScope();
          ShowScriptErrors = errorFunc;
       }
    }
@@ -86,8 +86,6 @@ namespace SorceryHex {
    /// </summary>
    public partial class MultiBoxControl : UserControl {
       readonly IAppCommands _appCommands;
-      readonly ScriptEngine _engine = Ruby.CreateEngine();
-      readonly ScriptScope _scope;
       readonly Popup _popup;
       readonly TextBlock _outputText;
 
@@ -99,7 +97,6 @@ namespace SorceryHex {
       public MultiBoxControl(IAppCommands appCommands) {
          InitializeComponent();
          _appCommands = appCommands;
-         _scope = _engine.CreateScope();
 
          _outputText = new TextBlock {
             FontFamily = new FontFamily("Consolas"),
@@ -114,7 +111,7 @@ namespace SorceryHex {
             StaysOpen = false
          };
 
-         ScriptInfo = new ScriptInfo(_engine, _scope, ShowScriptStartupErrors);
+         ScriptInfo = new ScriptInfo(ShowScriptStartupErrors);
          SetupScope();
       }
 
@@ -143,6 +140,12 @@ namespace SorceryHex {
          BreadCrumbBar.Children.Add(button);
       }
 
+      public void ResetScope() {
+         ScriptInfo.Scope.GetVariableNames().Foreach(name => ScriptInfo.Scope.RemoveVariable(name));
+         _scopeNeedsSetup = true;
+         SetupScope();
+      }
+
       void UpdateVisibility(FrameworkElement visibleControl) {
          foreach (var control in new FrameworkElement[] { BreadCrumbBar, MultiBoxContainer, ScriptContainer }) {
             control.Visibility = control == visibleControl ? Visibility.Visible : Visibility.Collapsed;
@@ -165,7 +168,7 @@ namespace SorceryHex {
       void SetupScope() {
          if (!_scopeNeedsSetup) return;
          _scopeNeedsSetup = false;
-         _scope.SetVariable("app", new ScriptCommands(this, _appCommands, _engine, _scope));
+         ScriptInfo.Scope.SetVariable("app", new ScriptCommands(this, _appCommands, ScriptInfo.Engine, ScriptInfo.Scope));
       }
 
       void ShowScriptStartupErrors(IList<string> errors) {
@@ -255,7 +258,7 @@ namespace SorceryHex {
 
          if (e.Key == Key.Enter) {
             try {
-               var result = _engine.CreateScriptSourceFromString(ScriptBox.Text, SourceCodeKind.SingleStatement).Execute(_scope);
+               var result = ScriptInfo.Engine.CreateScriptSourceFromString(ScriptBox.Text, SourceCodeKind.SingleStatement).Execute(ScriptInfo.Scope);
                Show(result);
             } catch (Exception e1) {
                _outputText.Foreground = Solarized.Brushes.Red;
