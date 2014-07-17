@@ -46,15 +46,17 @@ namespace SorceryHex {
       }
 
       public void AddRun(int location, IDataRun run) {
-         if (_runs.ContainsKey(location)) {
-            Debug.Assert(RunsAreEquivalent(_runs[location], run, location));
-         } else {
-            Debug.Assert(IsFree(location));
-            if (!_runSet.Contains(run) && run.Editor != null) {
-               run.Editor.MoveToNext += ChainMoveNext;
-               _runSet.Add(run);
+         lock (_runs) {
+            if (_runs.ContainsKey(location)) {
+               Debug.Assert(RunsAreEquivalent(_runs[location], run, location));
+            } else {
+               Debug.Assert(IsFree(location));
+               if (!_runSet.Contains(run) && run.Editor != null) {
+                  run.Editor.MoveToNext += ChainMoveNext;
+                  _runSet.Add(run);
+               }
+               _runs.Add(location, run);
             }
-            lock (_runs) _runs.Add(location, run);
          }
          _listNeedsUpdate = true;
       }

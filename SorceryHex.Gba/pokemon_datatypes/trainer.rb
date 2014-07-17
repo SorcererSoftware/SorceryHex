@@ -1,4 +1,7 @@
-﻿sharedStruct = ->(b) {
+﻿types.WaitFor "0pokename"
+types.WaitFor "0attackname"
+
+sharedStruct = ->(b) {
    b.Short "ivSpread"
    level = b.ByteNum "level"
    b.Assert (level<=100), "pokemon levels range from 1-100"
@@ -26,7 +29,7 @@ trainerStruct3 = ->(b) {
    sharedStruct.call(b); sharedAttacks.call(b); b.Short "item"
 }
 
-layout = types.FindVariableArray "wwwwwwwwwp", ->(b){
+self.trainer = types.FindVariableArray "wwwwwwwwwp", ->(b){
    pokeStructType = b.ByteNum "pokestructure"
    b.Assert (pokeStructType < 4), "pokeStruct must be 0-3"
    b.Byte "trainerClass"
@@ -56,5 +59,5 @@ layout = types.FindVariableArray "wwwwwwwwwp", ->(b){
    end
 }
 
-types.AddShortcut "trainer", layout.destination
-self.trainer = layout.data
+types.AddShortcut "trainer", trainer.destination
+self.trainer = trainer.data

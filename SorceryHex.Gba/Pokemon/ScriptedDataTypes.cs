@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SorceryHex.Gba.Pokemon.DataTypes {
    public class Pointer {
@@ -25,6 +26,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       Pointer[] FollowPointersUp(Pointer[] locations);
       void Label(BuildableObject[] array, Func<int, string> label);
       void AddShortcut(string name, int location);
+      void WaitFor(string name);
    }
 
    class ScriptedDataTypes : IRunParser, ITypes, ILabeler {
@@ -55,20 +57,26 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _commander = commander;
          _runs = runs;
          _cache = new BuilderCache(_runs, _mapper, _pcs);
+         _tasks.Clear();
          _scriptInfo.Scope.SetVariable("types", this);
          var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/");
          var files = dir.EnumerateFiles("*.rb").OrderBy(file => file.Name).ToArray();
          var errorList = new List<string>();
          foreach (var script in files) {
-            try {
-               using (AutoTimer.Time("ScriptedDataTypes-" + script.Name)) {
-                  var source = _scriptInfo.Engine.CreateScriptSourceFromFile(script.FullName);
-                  source.Execute(_scriptInfo.Scope);
+            var t = new Task(() => {
+               try {
+                  using (AutoTimer.Time("ScriptedDataTypes-" + script.Name)) {
+                     var source = _scriptInfo.Engine.CreateScriptSourceFromFile(script.FullName);
+                     source.Execute(_scriptInfo.Scope);
+                  }
+               } catch (Exception e) {
+                  errorList.Add(script.Name + ": " + e.Message);
                }
-            } catch (Exception e) {
-               errorList.Add(script.Name + ": " + e.Message);
-            }
+            }, TaskCreationOptions.LongRunning);
+            _tasks[script.Name.Split('.')[0]] = t;
          }
+         _tasks.Values.Foreach(t => t.Start());
+         _tasks.Values.Foreach(t => t.Wait());
          if (errorList.Count > 0) _scriptInfo.ShowScriptErrors(errorList);
          _scriptInfo.Scope.RemoveVariable("types");
          _runs.AddLabeler(this);
@@ -225,6 +233,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       public void AddShortcut(string name, int location) { _commander.CreateJumpShortcut(name, location); }
+
+      readonly IDictionary<string, Task> _tasks = new Dictionary<string, Task>();
+      public void WaitFor(string name) { _tasks[name].Wait(); }
 
       #endregion
 

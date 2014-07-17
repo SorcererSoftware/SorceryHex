@@ -1,7 +1,10 @@
-datalocation = 0x1BC
-datalocation = 0x10B64 if types.Version == "AXVE" || types.Version == "AXPE"
+types.WaitFor "0poketype"
+types.WaitFor "0abilityname"
 
-layout = types.ReadArray self.pokecount, datalocation, ->(b) {
+_stats = 0x1BC
+_stats = 0x10B64 if types.Version == "AXVE" || types.Version == "AXPE"
+
+self.stats = types.ReadArray pokecount, _stats, ->(b) {
    b.ByteNum "health"
    b.ByteNum "attack"
    b.ByteNum "defense"
@@ -29,7 +32,6 @@ layout = types.ReadArray self.pokecount, datalocation, ->(b) {
    b.Unused 2
 }
 
-types.Label layout, ->(i) { return self.pokename[i].name }
+types.Label stats, ->(i) { return pokename[i].name }
 
-types.AddShortcut "stats", layout[0].Location
-self.stats = layout
+types.AddShortcut "stats", stats[0].Location

@@ -1,9 +1,10 @@
-datalocation = 0x144
-datalocation = 0xFA58 if types.Version == "AXVE" || types.Version == "AXPE"
+types.WaitFor "_setup"
 
-layout = types.ReadArray self.pokecount, datalocation, ->(b) {
+_pokename = 0x144
+_pokename = 0xFA58 if types.Version == "AXVE" || types.Version == "AXPE"
+
+self.pokename = types.ReadArray pokecount, _pokename, ->(b) {
    b.String 11, "name"
 }
 
-types.AddShortcut "pokename", layout[0].Location
-self.pokename = layout
+types.AddShortcut "pokename", pokename[0].Location

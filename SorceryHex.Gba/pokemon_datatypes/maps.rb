@@ -1,11 +1,11 @@
-﻿layout = types.FindMany "ppppwww", ->(b){
+﻿self.maps = types.FindMany "ppppwww", ->(b){
    b.Pointer "mapTileData", ->(b){
-      b.Word "width" 
-      b.Word "height" 
-      b.Pointer "borderTile" 
-      b.Pointer "tiles" 
-      b.Pointer "tileset1" 
-      b.Pointer "tileset2" 
+      b.Word "width"
+      b.Word "height"
+      b.Pointer "borderTile"
+      b.Pointer "tiles"
+      b.Pointer "tileset1"
+      b.Pointer "tileset2"
       if types.Version == "BPRE" || types.Version == "BPGE" # FR / LG
         b.Byte "borderWidth"
         b.Byte "borderHeight"
@@ -51,9 +51,9 @@
    b.Short "_"; b.Byte "labelToggle"; b.Byte "_"
 }
 
-layout = types.FollowPointersUp layout # from maps to banks
-layout = types.FollowPointersUp layout # from bank to lead
-layout = layout[0]                     # there's only one lead
+self.maps = types.FollowPointersUp maps # from maps to banks
+self.maps = types.FollowPointersUp maps # from bank to lead
+self.maps = maps[0]                      # there's only one lead
 
-types.AddShortcut "maps", layout.destination
-self.maps = layout.data
+types.AddShortcut "maps", maps.destination
+self.maps = maps.data

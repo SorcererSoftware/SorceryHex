@@ -1,4 +1,4 @@
-﻿layout = types.FindVariableArray "wwwwwpwpwpw", ->(b){
+﻿self.items = types.FindVariableArray "wwwwwpwpwpw", ->(b){
    b.String 14, "name"
    b.Short "id"
    b.Short "itemtype"
@@ -12,5 +12,5 @@
    b.Word "variable"
 }
 
-types.AddShortcut "items", layout.destination
-self.items = layout.data
+types.AddShortcut "items", items.destination
+self.items = items.data

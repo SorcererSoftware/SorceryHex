@@ -1,7 +1,10 @@
-﻿datalocation = 0x1CC
-datalocation = 0xCA54 if types.Version == "AXVE" || types.Version == "AXPE"
+﻿types.WaitFor "_setup"
+types.WaitFor "0poketype"
 
-layout = types.ReadArray self.attackcount, datalocation, ->(b) {
+_attackdata = 0x1CC
+_attackdata = 0xCA54 if types.Version == "AXVE" || types.Version == "AXPE"
+
+self.attackdata = types.ReadArray attackcount, _attackdata, ->(b) {
    b.Byte "effect"
    b.Byte "power"
    b.ByteEnum "type", poketype
@@ -12,6 +15,5 @@ layout = types.ReadArray self.attackcount, datalocation, ->(b) {
    b.Word "unknown2"
 }
 
-types.Label layout, ->(i) { return self.attackname[i].name }
-types.AddShortcut "attackdata", layout[0].Location
-self.attackdata = layout
+types.Label attackdata, ->(i) { return attackname[i].name }
+types.AddShortcut "attackdata", attackdata[0].Location

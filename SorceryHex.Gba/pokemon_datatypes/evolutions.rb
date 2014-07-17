@@ -1,8 +1,10 @@
-datalocation = 0x42F6C
-datalocation = 0x3F534 if types.Version == "AXVE" || types.Version == "AXPE"
-datalocation = 0x6D140 if types.Version == "BPEE"
+types.WaitFor "0pokename"
 
-layout = types.ReadArray self.pokecount, datalocation, ->(b) {
+_evolutions = 0x42F6C
+_evolutions = 0x3F534 if types.Version == "AXVE" || types.Version == "AXPE"
+_evolutions = 0x6D140 if types.Version == "BPEE"
+
+self.evolutions = types.ReadArray self.pokecount, _evolutions, ->(b) {
    b.InlineArray "index", 5, ->(b) {
       t = b.Short "evotype"
       if t==0
@@ -15,7 +17,6 @@ layout = types.ReadArray self.pokecount, datalocation, ->(b) {
    }
 }
 
-types.Label layout, ->(i) { return self.pokename[i].name }
+types.Label evolutions, ->(i) { return pokename[i].name }
 
-types.AddShortcut "evolutions", layout[0].Location
-self.evolutions = layout
+types.AddShortcut "evolutions", evolutions[0].Location
