@@ -63,17 +63,18 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var files = dir.EnumerateFiles("*.rb").OrderBy(file => file.Name).ToArray();
          var errorList = new List<string>();
          foreach (var script in files) {
+            var currentScript = script; // closure
             var t = new Task(() => {
                try {
-                  using (AutoTimer.Time("ScriptedDataTypes-" + script.Name)) {
-                     var source = _scriptInfo.Engine.CreateScriptSourceFromFile(script.FullName);
+                  using (AutoTimer.Time("ScriptedDataTypes-" + currentScript.Name)) {
+                     var source = _scriptInfo.Engine.CreateScriptSourceFromFile(currentScript.FullName);
                      source.Execute(_scriptInfo.Scope);
                   }
                } catch (Exception e) {
-                  errorList.Add(script.Name + ": " + e.Message);
+                  errorList.Add(currentScript.Name + ": " + e.Message);
                }
             });
-            _tasks[script.Name.Split('.')[0]] = t;
+            _tasks[currentScript.Name.Split('.')[0]] = t;
          }
          _tasks.Values.Foreach(t => t.Start());
          _tasks.Values.Foreach(t => t.Wait());
