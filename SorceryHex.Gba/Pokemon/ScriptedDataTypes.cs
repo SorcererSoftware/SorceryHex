@@ -79,7 +79,6 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _tasks.Values.Foreach(t => t.Start());
          _tasks.Values.Foreach(t => t.Wait());
          if (errorList.Count > 0) _scriptInfo.ShowScriptErrors(errorList);
-         _scriptInfo.Scope.RemoveVariable("types");
          _runs.AddLabeler(this);
       }
 
