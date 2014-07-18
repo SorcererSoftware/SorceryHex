@@ -177,7 +177,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var destination = _runs.Data.ReadPointer(location);
          if (destination == -1) return null;
          var parser = new Parser(_runs, _pcs, location: destination);
-         var builder = new Builder(_cache, destination);
+         var builder = new Builder(_cache, new GbaSegment(_runs.Data, destination));
          var array = new BuildableObject[length];
          for (int i = 0; i < length; i++) {
             reader(parser);
@@ -273,7 +273,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var index = counts.IndexOf(least);
 
          int offset = matchingLayouts[index];
-         var factory = new Builder(_cache, offset);
+         var factory = new Builder(_cache, new GbaSegment(_runs.Data, offset));
          var data = new BuildableObject[matchingLengths[index]];
          for (int i = 0; i < matchingLengths[index]; i++) {
             factory.Clear();
@@ -292,7 +292,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var parser = new Parser(_runs, _pcs, location: destination);
          reader(parser);
          if (parser.FaultReason != null) return null; ;
-         var factory = new Builder(_cache, destination);
+         var factory = new Builder(_cache, new GbaSegment(_runs.Data, destination));
          reader(factory);
 
          return new Pointer {

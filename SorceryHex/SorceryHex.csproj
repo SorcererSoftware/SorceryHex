@@ -81,6 +81,7 @@
     <Compile Include="AutoTimer.cs" />
     <Compile Include="Model\DataRun.cs" />
     <Compile Include="Model\ElementProvider.cs" />
+    <Compile Include="Model\Segment.cs" />
     <Compile Include="View\AboutDialog.xaml.cs">
       <DependentUpon>AboutDialog.xaml</DependentUpon>
     </Compile>

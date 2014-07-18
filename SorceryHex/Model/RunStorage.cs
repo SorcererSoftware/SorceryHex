@@ -17,6 +17,7 @@ namespace SorceryHex {
 
    public interface IRunStorage {
       byte[] Data { get; }
+      ISegment Segment { get; }
       void AddRun(int location, IDataRun run);
       void AddLabeler(ILabeler labeler);
       bool IsFree(int location);
@@ -39,9 +40,11 @@ namespace SorceryHex {
       #region Run Storage
 
       public byte[] Data { get; private set; }
+      public ISegment Segment { get; private set; }
 
-      public RunStorage(byte[] data, params IRunParser[] runParsers) {
+      public RunStorage(ISegment segment, byte[] data, params IRunParser[] runParsers) {
          Data = data;
+         Segment = segment;
          _runParsers = runParsers;
       }
 

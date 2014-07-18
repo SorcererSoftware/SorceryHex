@@ -98,25 +98,25 @@ namespace SorceryHex.Gba.Pokemon {
 
       #endregion
 
-      public string ReadString(byte[] data, int location, int maxLength = -1) {
+      public string ReadString(ISegment segment, int maxLength = -1) {
          string result = string.Empty;
          int j = 0;
-         for (; data[location + j] != 0xFF && (j < maxLength || maxLength == -1); j++) {
-            if (data[location + j] == 0x00) {
+         for (; segment[j] != 0xFF && (j < maxLength || maxLength == -1); j++) {
+            if (segment[j] == 0x00) {
                result += " ";
-            } else if (data[location + j] == 0xFD) {
-               result += "\\x" + Utils.ToHexString(data[location + j + 1]);
+            } else if (segment[j] == 0xFD) {
+               result += "\\x" + Utils.ToHexString(segment[j + 1]);
                j++;
             } else {
-               if (_pcs[data[location + j]] == null) return null;
-               result += _pcs[data[location + j]];
+               if (_pcs[segment[j]] == null) return null;
+               result += _pcs[segment[j]];
             }
          }
          if (j >= maxLength && maxLength != -1) return null;
          return result;
       }
 
-      public void WriteString(byte[] data, int location, int length, string value) {
+      public void WriteString(ISegment segment, int length, string value) {
          throw new NotImplementedException();
       }
 
@@ -168,7 +168,7 @@ namespace SorceryHex.Gba.Pokemon {
       }
 
       FrameworkElement GetInterpretation(byte[] data, int location) {
-         var result = ReadString(data, location);
+         var result = ReadString(new GbaSegment(data, location)); // TODO push up
          return new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
       }
    }

@@ -72,7 +72,7 @@ namespace SorceryHex.Gba.Pokemon {
 
       public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
          var element = _provider.ProvideElement(commandFactory, data, runStart, innerIndex, runLength);
-         var reader = new Reader(data, runStart);
+         var reader = new Reader(new GbaSegment(data, runStart)); // TODO push up
          int jump = _jump(reader);
          commandFactory.CreateJumpCommand(element, jump);
          return element;

@@ -33,7 +33,7 @@ namespace SorceryHex.Gba {
             var pcs = new PCS();
             // TODO fix this
             // var imageguess = new ImageGuess(pointerMapper, new Rectangle().Dispatcher);
-            var storage = new RunStorage(data
+            var storage = new RunStorage(new GbaSegment(data, 0), data
                , new Header(pointerMapper)
                , new Thumbnails(pointerMapper)
                , new Lz(pointerMapper)
@@ -62,14 +62,14 @@ namespace SorceryHex.Gba {
       public string DisplayName { get { return "Gba Game"; } }
 
       public string Version { get { return "1.0"; } }
-      
+
       public bool CanCreateModel(string name, byte[] data) {
          return name.ToLower().EndsWith("gba");
       }
 
       public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
          var pointerMapper = new Gba.PointerMapper(data);
-         var storage = new RunStorage(data
+         var storage = new RunStorage(new GbaSegment(data, 0), data
             , new Gba.Header(pointerMapper)
             , new Gba.Lz(pointerMapper)
          );

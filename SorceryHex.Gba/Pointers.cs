@@ -299,4 +299,31 @@ namespace SorceryHex.Gba {
 
       #endregion
    }
+
+   class GbaSegment : ISegment {
+      readonly byte[] _data;
+
+      public bool HasLength { get { return Length != -1; } }
+      public int Length { get; private set; }
+      public int Location { get; private set; }
+      public byte this[int index] { get { return _data[Location + index]; } }
+
+      public GbaSegment(byte[] data, int location) { _data = data; Location = location; Length = -1; }
+
+      public int Read(int offset, int length) { return _data.ReadData(length, Location + offset); }
+      public void Write(int offset, int length, int value) {
+         while (length > 0) {
+            _data[Location + offset] = (byte)value;
+            value >>= 8;
+            offset++;
+         }
+      }
+      public ISegment Inner(int offset) { return new GbaSegment(_data, Location + offset); }
+      public ISegment Follow(int offset) {
+         if (Read(offset + 3, 1) != 0x08) return null;
+         int value = Read(offset, 3);
+         if (value < 0 || value > _data.Length) return null;
+         return new GbaSegment(_data, value);
+      }
+   }
 }

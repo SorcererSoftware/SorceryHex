@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Dynamic;
 using System.Linq;
 
@@ -9,7 +10,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    }
 
    class NullRunStorage : IRunStorage {
-      public byte[] Data { get; set; }
+      public byte[] Data { get { Debug.Fail("Don't call this!"); return null; } }
+      public ISegment Segment { get; set; }
       public void AddRun(int location, IDataRun run) { }
       public void AddLabeler(ILabeler labeler) { }
       public bool IsFree(int location) { throw new NotImplementedException(); }
@@ -19,7 +21,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    }
 
    public class BuildableObject : DynamicObject {
-      readonly byte[] _data;
+      readonly ISegment _segment;
       readonly BuilderCache _cache;
       readonly IList<string> _names = new List<string>();
       readonly IList<int> _lengths = new List<int>();
@@ -27,12 +29,11 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       readonly IDictionary<string, ChildReader> _children = new Dictionary<string, ChildReader>();
       readonly ISet<string> _inline = new HashSet<string>();
       readonly IDictionary<string, int> _childrenLength = new Dictionary<string, int>();
-      readonly int _location;
 
-      public int Location { get { return _location; } }
+      public int Location { get { return _segment.Location; } }
       public int Length { get { return _lengths.Sum(); } }
 
-      public BuildableObject(byte[] data, BuilderCache cache, int location) { _data = data; _cache = cache; _location = location; }
+      public BuildableObject(ISegment segment, BuilderCache cache) { _segment = segment; _cache = cache; }
 
       #region Append
 
@@ -113,11 +114,11 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public override bool TrySetMember(SetMemberBinder binder, object value) {
          var index = _names.IndexOf(binder.Name);
          if (index == -1) return base.TrySetMember(binder, value);
-         var loc = _location + _lengths.Take(index).Sum();
-         if (_types[index] == typeof(byte)) WriteBytes(loc, byte.Parse(value.ToString()), 1);
-         else if (_types[index] == typeof(short)) WriteBytes(loc, short.Parse(value.ToString()), 2);
-         else if (_types[index] == typeof(int)) WriteBytes(loc, int.Parse(value.ToString()), 4);
-         else if (_types[index] == typeof(string)) _cache.Pcs.WriteString(_data, loc, _lengths[index], (string)value);
+         var loc = _lengths.Take(index).Sum();
+         if (_types[index] == typeof(byte)) _segment.Write(loc, 1, byte.Parse(value.ToString()));
+         else if (_types[index] == typeof(short)) _segment.Write(loc, 2, short.Parse(value.ToString()));
+         else if (_types[index] == typeof(int)) _segment.Write(loc, 4, int.Parse(value.ToString()));
+         else if (_types[index] == typeof(string)) _cache.Pcs.WriteString(_segment.Inner(loc), _lengths[index], (string)value);
          else return false;
          return true;
       }
@@ -130,25 +131,25 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       bool TryMember(int index, out object result) {
          string name = _names[index];
-         var loc = _location + _lengths.Take(index).Sum();
+         var loc = _lengths.Take(index).Sum();
          result = null;
-         if (_types[index] == typeof(byte)) result = _data[loc];
-         if (_types[index] == typeof(short)) result = _data.ReadShort(loc);
-         if (_types[index] == typeof(int)) result = _data.ReadData(4, loc);
+         if (_types[index] == typeof(byte)) result = _segment[loc];
+         if (_types[index] == typeof(short)) result = (short)_segment.Read(loc, 2);
+         if (_types[index] == typeof(int)) result = _segment.Read(loc, 4);
          if (_types[index] == typeof(string)) {
             if (_lengths[index] == 4) {
-               int ptr = _data.ReadPointer(loc);
-               if (ptr != -1) result = _cache.Pcs.ReadString(_data, ptr);
+               var ptr = _segment.Follow(loc);
+               if (ptr != null) result = _cache.Pcs.ReadString(ptr);
             } else {
-               result = _cache.Pcs.ReadString(_data, loc, _lengths[index]);
+               result = _cache.Pcs.ReadString(_segment.Inner(loc), _lengths[index]);
             }
          }
-         var runStorage = new NullRunStorage { Data = _data };
+         var runStorage = new NullRunStorage { Segment = _segment };
          var pointerMapper = new NullPointerMapper();
          var nullCache = _cache.GetFixed();
          if (_types[index] == typeof(BuildableObject)) {
-            int ptr = _data.ReadPointer(loc);
-            if (ptr != -1) {
+            var ptr = _segment.Follow(loc);
+            if (ptr != null) {
                var builder = new Builder(nullCache, ptr);
                _children[name](builder);
                result = builder.Result;
@@ -157,7 +158,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          if (_types[index] == typeof(BuildableObject[])) {
             if (_inline.Contains(name)) {
                var array = new BuildableObject[_childrenLength[name]];
-               var builder = new Builder(nullCache, loc);
+               var builder = new Builder(nullCache, _segment.Inner(loc));
                for (int i = 0; i < _childrenLength[name]; i++) {
                   _children[name](builder);
                   array[i] = builder.Result;
@@ -166,8 +167,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
                result = array;
             } else {
                var array = new BuildableObject[_childrenLength[name]];
-               int ptr = _data.ReadPointer(loc);
-               if (ptr == -1) {
+               var ptr = _segment.Follow(loc);
+               if (ptr == null) {
                   result = null;
                   return true;
                }
@@ -182,15 +183,6 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          }
 
          return true;
-      }
-
-      void WriteBytes(int location, int value, int length) {
-         while (length > 0) {
-            _data[location] = (byte)value;
-            value >>= 8;
-            location++;
-            length--;
-         }
       }
 
       #endregion
