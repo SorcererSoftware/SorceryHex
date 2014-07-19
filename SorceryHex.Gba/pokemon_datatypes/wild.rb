@@ -32,5 +32,11 @@ self.wild = types.FindVariableArray 0xFF, "wpppp", ->(b){
    }
 }
 
+types.Label wild.data, ->(i) {
+   bank = app.data[wild[i].Location]
+   map  = app.data[wild[i].Location + 1]
+   return mapname[maps[bank][map].labelid - 0x58].name
+}
+
 types.AddShortcut "wild", wild.destination
 self.wild = wild.data
