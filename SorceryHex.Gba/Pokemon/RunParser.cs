@@ -151,9 +151,21 @@ namespace SorceryHex.Gba.Pokemon {
                   continue;
                }
                if (_runs.Data[i] == 0xFF && currentLength >= 3) {
-                  // if all the characters are the same, don't add the run.
+                  // if there are more than 3 of the same character in a row, don't add the run.
                   int startLoc = i - currentLength;
-                  if (!Enumerable.Range(1, currentLength).All(j => _runs.Data[startLoc + j] == _runs.Data[startLoc])) {
+
+                  byte prevChar = _runs.Data[startLoc];
+                  int length = 0;
+                  for (int j = 1; j < currentLength; j++) {
+                     byte currentChar = _runs.Data[startLoc + j];
+                     length = (prevChar == currentChar) ? length + 1 : 0;
+                     prevChar = currentChar;
+                     if (length > 3) {
+                        break;
+                     }
+                  }
+
+                  if (length <= 3) {
                      if (_runs.IsFree(startLoc)) {
                         if (_runs.NextUsed(startLoc) > startLoc + currentLength) {
                            _runs.AddRun(startLoc, StringRun);

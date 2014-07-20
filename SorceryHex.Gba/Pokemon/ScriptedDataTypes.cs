@@ -235,7 +235,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void AddShortcut(string name, int location) { _commander.CreateJumpShortcut(name, location); }
 
       readonly IDictionary<string, Task> _tasks = new Dictionary<string, Task>();
-      public void WaitFor(string name) { _tasks[name].Wait(); }
+      public void WaitFor(string name) {
+         _tasks[name].Wait();
+      }
 
       #endregion
 

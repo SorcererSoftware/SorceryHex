@@ -48,11 +48,12 @@ namespace SorceryHex.Gba {
 
       readonly ISet<int> _deferredDestinations = new HashSet<int>();
       readonly IDictionary<int, IDataRun> _deferredDestinationsWithRuns = new Dictionary<int, IDataRun>();
-      void Defer(int destination) { _deferredDestinations.Add(destination); }
-      void Defer(int destination, IDataRun run) { _deferredDestinationsWithRuns[destination] = run; }
+      void Defer(int destination) { _deferredDestinations.Add(destination); Debug.Assert(_reversePointerSet.ContainsKey(destination)); }
+      void Defer(int destination, IDataRun run) { _deferredDestinationsWithRuns[destination] = run; Debug.Assert(_reversePointerSet.ContainsKey(destination)); }
 
       public void ClaimDeferred(IRunStorage storage) {
          foreach (var destination in _deferredDestinations) {
+            Debug.Assert(_reversePointerSet.ContainsKey(destination));
             var keys = _reversePointerSet[destination].ToArray();
             foreach (var key in keys) {
                if (storage.IsFree(key)) storage.AddRun(key, _pointerRun);
