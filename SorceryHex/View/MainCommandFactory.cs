@@ -12,6 +12,7 @@ namespace SorceryHex {
       void CreateJumpShortcut(string name, int location);
       void LinkToInterpretation(FrameworkElement element, FrameworkElement visual);
       void UnlinkFromInterpretation(FrameworkElement element);
+      void LogError(string errorInfo);
    }
 
    public class MainCommandFactory : ICommandFactory {
@@ -72,7 +73,15 @@ namespace SorceryHex {
 
       #endregion
 
+      readonly IList<string> _errorList = new List<string>();
+      public void LogError(string errorInfo) { _errorList.Add(errorInfo); }
+
       #endregion
+
+      public void ShowErrors(MultiBoxControl control) {
+         if (_errorList.Count == 0) return;
+         control.ShowErrors(_errorList);
+      }
 
       public void CheckJumpForMouseOver() {
          var element = _jumpers.Keys.FirstOrDefault(jumper => jumper.IsMouseOver);

@@ -61,7 +61,6 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          _scriptInfo.Scope.SetVariable("types", this);
          var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory + "/pokemon_datatypes/");
          var files = dir.EnumerateFiles("*.rb").OrderBy(file => file.Name).ToArray();
-         var errorList = new List<string>();
          foreach (var script in files) {
             var currentScript = script; // closure
             var t = new Task(() => {
@@ -71,14 +70,13 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
                      source.Execute(_scriptInfo.Scope);
                   }
                } catch (Exception e) {
-                  errorList.Add(currentScript.Name + ": " + e.Message);
+                  commander.LogError(currentScript.Name + ": " + e.Message);
                }
             });
             _tasks[currentScript.Name.Split('.')[0]] = t;
          }
          _tasks.Values.Foreach(t => t.Start());
          _tasks.Values.Foreach(t => t.Wait());
-         if (errorList.Count > 0) _scriptInfo.ShowScriptErrors(errorList);
          _runs.AddLabeler(this);
       }
 

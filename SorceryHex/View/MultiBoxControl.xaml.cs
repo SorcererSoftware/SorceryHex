@@ -76,11 +76,9 @@ namespace SorceryHex {
    public class ScriptInfo {
       public readonly ScriptEngine Engine;
       public readonly ScriptScope Scope;
-      public readonly Action<IList<string>> ShowScriptErrors;
-      public ScriptInfo(Action<IList<string>> errorFunc) {
+      public ScriptInfo() {
          Engine = Ruby.CreateEngine();
          Scope = Engine.CreateScope();
-         ShowScriptErrors = errorFunc;
       }
    }
 
@@ -90,7 +88,7 @@ namespace SorceryHex {
    public partial class MultiBoxControl : UserControl {
       readonly IAppCommands _appCommands;
       readonly Popup _popup;
-      readonly TextBlock _outputText;
+      readonly TextBox _outputText;
 
       IList<int> _findPositions;
       int _findIndex;
@@ -101,10 +99,11 @@ namespace SorceryHex {
          InitializeComponent();
          _appCommands = appCommands;
 
-         _outputText = new TextBlock {
+         _outputText = new TextBox {
             FontFamily = new FontFamily("Consolas"),
             FontSize = 14,
-            Background = Solarized.Theme.Instance.Backlight
+            Background = Solarized.Theme.Instance.Backlight,
+            IsReadOnly = true
          };
          _popup = new Popup {
             Child = _outputText,
@@ -114,7 +113,7 @@ namespace SorceryHex {
             StaysOpen = false
          };
 
-         ScriptInfo = new ScriptInfo(ShowScriptStartupErrors);
+         ScriptInfo = new ScriptInfo();
          SetupScope();
       }
 
@@ -129,6 +128,19 @@ namespace SorceryHex {
          _outputText.Foreground = Solarized.Theme.Instance.Emphasis;
          _outputText.Text = Parse(result);
          _popup.IsOpen = !string.IsNullOrEmpty(_outputText.Text);
+      }
+
+      public void ShowErrors(IList<string> errors) {
+         Debug.Assert(errors.Count > 0);
+         _outputText.Foreground = Solarized.Brushes.Red;
+         if (errors.Count == 1) {
+            _outputText.Text = "The following error occured while loading and parsing the ROM:" + Environment.NewLine;
+            _outputText.Text += errors[0];
+         } else {
+            _outputText.Text = "The following errors occured when loading and parsing the ROM:" + Environment.NewLine;
+            _outputText.Text += errors.Aggregate((a, b) => a + Environment.NewLine + b);
+         }
+         _popup.IsOpen = true;
       }
 
       public void AddLocationToBreadCrumb() {
@@ -172,21 +184,6 @@ namespace SorceryHex {
          if (!_scopeNeedsSetup) return;
          _scopeNeedsSetup = false;
          ScriptInfo.Scope.SetVariable("app", new ScriptCommands(this, _appCommands, ScriptInfo.Engine, ScriptInfo.Scope));
-      }
-
-      void ShowScriptStartupErrors(IList<string> errors) {
-         Dispatcher.Invoke((Action)(() => {
-            _outputText.Foreground = Solarized.Brushes.Red;
-            Debug.Assert(errors.Count > 0);
-            if (errors.Count == 1) {
-               _outputText.Text = "The following error occured when running startup scripts:" + Environment.NewLine;
-               _outputText.Text += errors[0];
-            } else {
-               _outputText.Text = "The following errors occured when running startup scripts:" + Environment.NewLine;
-               _outputText.Text += errors.Aggregate((a, b) => a + Environment.NewLine + b);
-            }
-            _popup.IsOpen = true;
-         }));
       }
 
       #endregion

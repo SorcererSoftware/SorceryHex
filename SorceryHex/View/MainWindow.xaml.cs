@@ -46,7 +46,7 @@ namespace SorceryHex {
 
       readonly IEnumerable<Grid> _bodies;
       readonly IEnumerable<IModelFactory> _factories;
-      readonly MultiBoxControl _multiBox;
+      public readonly MultiBoxControl _multiBox;
       readonly MainCommandFactory _commandFactory;
       readonly CursorController _cursorController;
       IDictionary<Key, Action> KeyActions;
@@ -313,6 +313,7 @@ namespace SorceryHex {
          JumpTo(Offset);
          _loadTimer.Dispose();
          _loadTimer = null;
+         _commandFactory.ShowErrors(_multiBox);
       }
 
       #endregion

@@ -51,9 +51,16 @@ namespace SorceryHex.Gba {
       void Defer(int destination) { _deferredDestinations.Add(destination); Debug.Assert(_reversePointerSet.ContainsKey(destination)); }
       void Defer(int destination, IDataRun run) { _deferredDestinationsWithRuns[destination] = run; Debug.Assert(_reversePointerSet.ContainsKey(destination)); }
 
-      public void ClaimDeferred(IRunStorage storage) {
+      public void ClaimDeferred(ICommandFactory commandFactory, IRunStorage storage) {
          foreach (var destination in _deferredDestinations) {
-            Debug.Assert(_reversePointerSet.ContainsKey(destination));
+            if (!_reversePointerSet.ContainsKey(destination)) {
+               commandFactory.LogError("Pointer confilct at " + destination.ToHexString() +
+               ": one part of the program marked it" + Environment.NewLine +
+               "- as a pointer destination and another marked it as impossible for" + Environment.NewLine +
+               "- a pointer destination. Check the location in the ROM. There may" + Environment.NewLine +
+               "- be an error in the ROM or in a script that caused this conflict.");
+               continue;
+            }
             var keys = _reversePointerSet[destination].ToArray();
             foreach (var key in keys) {
                if (storage.IsFree(key)) storage.AddRun(key, _pointerRun);
@@ -205,7 +212,7 @@ namespace SorceryHex.Gba {
          _base.Load(commander);
          using (AutoTimer.Time("Gba.PointerParser-post_base_load")) {
             _mapper.FilterPointer(dest => !_storage.IsWithinDataBlock(dest));
-            _mapper.ClaimDeferred(_storage);
+            _mapper.ClaimDeferred(commander, _storage);
             _mapper.ClaimRemainder(_storage);
             _loaded = true;
          }
