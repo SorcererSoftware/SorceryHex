@@ -2,7 +2,7 @@
 
 namespace SorceryHex {
    public delegate int[] JumpRule(byte[] data, int index);
-   public delegate FrameworkElement InterpretationRule(byte[] data, int index);
+   public delegate FrameworkElement InterpretationRule(ISegment segment);
 
    public interface IDataRun {
       InterpretationRule Interpret { get; }
@@ -10,7 +10,7 @@ namespace SorceryHex {
       IEditor Editor { get; }
       IElementProvider Provider { get; }
 
-      int GetLength(byte[] data, int startPoint);
+      ISegment GetLength(ISegment segment);
    }
 
    public class SimpleDataRun : IDataRun {
@@ -28,6 +28,6 @@ namespace SorceryHex {
          Editor = editor ?? DefaultEditor;
       }
 
-      public int GetLength(byte[] data, int startPoint) { return _length; }
+      public ISegment GetLength(ISegment segment) { return segment.Resize(_length); }
    }
 }

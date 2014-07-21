@@ -14,6 +14,7 @@ namespace SorceryHex {
       void Write(int offset, int length, int value);
       ISegment Inner(int offset);
       ISegment Follow(int offset);
+      ISegment Resize(int length);
    }
 
    public class Segment : ISegment {
@@ -36,5 +37,6 @@ namespace SorceryHex {
       }
       public ISegment Inner(int offset) { return new Segment(_data, Location + offset); }
       public ISegment Follow(int offset) { return null; }
+      public ISegment Resize(int length) { throw new NotImplementedException(); }
    }
 }

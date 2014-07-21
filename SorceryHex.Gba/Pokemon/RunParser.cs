@@ -179,8 +179,8 @@ namespace SorceryHex.Gba.Pokemon {
          }
       }
 
-      FrameworkElement GetInterpretation(byte[] data, int location) {
-         var result = ReadString(new GbaSegment(data, location)); // TODO push up
+      FrameworkElement GetInterpretation(ISegment segment) {
+         var result = ReadString(segment);
          return new TextBlock { Text = result, Foreground = Solarized.Theme.Instance.Primary, TextWrapping = TextWrapping.Wrap };
       }
    }
@@ -225,13 +225,9 @@ namespace SorceryHex.Gba.Pokemon {
          var paletteStart = data.ReadPointer(paletteTable + data[paletteOffset] * 8);
          var imageStart = data.ReadPointer(imageOffset);
 
-         var dataBytes = new byte[0x400];
-         Array.Copy(data, imageStart, dataBytes, 0, 0x400);
-         var paletteBytes = new byte[0x20];
-         Array.Copy(data, paletteStart, paletteBytes, 0, 0x20);
-         var palette = new ImageUtils.Palette(paletteBytes);
+         var palette = new ImageUtils.Palette(new GbaSegment(data, paletteStart, 0x20));
          int width = 32, height = 64;
-         return ImageUtils.Expand16bitImage(dataBytes, palette, width, height);
+         return ImageUtils.Expand16bitImage(new GbaSegment(data, imageStart, 0x400), palette, width, height);
       }
 
       public static ImageSource CropIcon(BitmapSource source) {
@@ -261,7 +257,7 @@ namespace SorceryHex.Gba.Pokemon {
          while (data[imageOffset + 3] == 0x08) {
             int i = index; // closure
             var run = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, MediaBrush), 0x400) {
-               Interpret = (d, dex) => {
+               Interpret = seg => {
                   var source = GetIcon(data, i);
                   var image = new Image { Source = source, Width = source.Width, Height = source.Height };
                   return image;
@@ -279,11 +275,7 @@ namespace SorceryHex.Gba.Pokemon {
          int paletteCount = palettes.Max() + 1;
          int pointersToPalettes = data.ReadPointer(table[Offset.IconPalette]);
          var paletteRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, MediaBrush), 0x20) {
-            Interpret = (d, dex) => {
-               var dataBytes = new byte[0x20];
-               Array.Copy(d, dex, dataBytes, 0, dataBytes.Length);
-               return Lz.InterpretPalette(dataBytes);
-            }
+            Interpret = Lz.InterpretUncompressedPalette
          };
          for (int i = 0; i < paletteCount; i++) _mapper.Claim(runs, paletteRun, data.ReadPointer(pointersToPalettes + i * 8));
 

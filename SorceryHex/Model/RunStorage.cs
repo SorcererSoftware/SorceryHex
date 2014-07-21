@@ -74,7 +74,7 @@ namespace SorceryHex {
             if (keyIndex < 0) return true;
             prev = _keys[keyIndex];
          }
-         int prevEnd = prev + _runs[prev].GetLength(Data, prev);
+         int prevEnd = prev + _runs[prev].GetLength(Segment.Inner(prev)).Length;
          return prevEnd <= location;
       }
 
@@ -95,7 +95,7 @@ namespace SorceryHex {
          lock (_keys) index = _keys.BinarySearch(location);
          if (index < 0) index = Math.Max(~index - 1, 0);
          int startPoint = _keys[index];
-         return startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null;
+         return startPoint + _runs[startPoint].GetLength(Segment.Inner(startPoint)).Length > location && startPoint <= location && _runs[startPoint].Editor != null;
       }
 
       public IEditor Editor { get { return this; } }
@@ -114,7 +114,7 @@ namespace SorceryHex {
          foreach (var key in _keys) {
             var run = _runs[key];
             Debug.Assert(key >= prevEnd);
-            prevEnd = key + _runs[key].GetLength(Data, key);
+            prevEnd = key + _runs[key].GetLength(Segment.Inner(key)).Length;
          }
 #endif
       }
@@ -142,11 +142,11 @@ namespace SorceryHex {
             if (dataIndex > loc) {
                var sectionLength = Math.Min(length - i, dataIndex - loc);
                i += sectionLength;
-            } else if (dataIndex + _runs[_keys[startIndex]].GetLength(Data, dataIndex) < loc) {
+            } else if (dataIndex + _runs[_keys[startIndex]].GetLength(Segment.Inner(dataIndex)).Length< loc) {
                startIndex++;
             } else {
                var currentRun = _runs[_keys[startIndex]];
-               int runEnd = dataIndex + currentRun.GetLength(Data, dataIndex);
+               int runEnd = dataIndex + currentRun.GetLength(Segment.Inner(dataIndex)).Length;
                runEnd = Math.Min(runEnd, start + length);
                int lengthInView = runEnd - loc;
                InterpretData(currentRun, dataIndex);
@@ -203,7 +203,7 @@ namespace SorceryHex {
             insertionPoint = ~insertionPoint - 1;
             startAddress = _keys[insertionPoint];
          }
-         return startAddress + _runs[startAddress].GetLength(Data, startAddress) > location;
+         return startAddress + _runs[startAddress].GetLength(Segment.Inner(startAddress)).Length > location;
       }
 
       public int GetDataBlockStart(int location) {
@@ -217,7 +217,7 @@ namespace SorceryHex {
 
       public int GetDataBlockLength(int location) {
          int startAddress = GetDataBlockStart(location);
-         return _runs[startAddress].GetLength(Data, startAddress);
+         return _runs[startAddress].GetLength(Segment.Inner(startAddress)).Length;
       }
 
       public FrameworkElement GetInterpretation(int location) {
@@ -237,7 +237,7 @@ namespace SorceryHex {
          var results = _runParsers.Select(parser => parser.Find(term) ?? new int[0]).Aggregate(Enumerable.Concat);
 
          var runStringResults = _runs.Keys.Where(key => {
-            var length = _runs[key].GetLength(Data, key);
+            var length = _runs[key].GetLength(Segment.Inner(key)).Length;
             var str = _runs[key].Provider.ProvideString(Data, key, length);
             if (string.IsNullOrEmpty(str)) return false;
             return str.ToLower() == lowerTerm;
@@ -251,19 +251,19 @@ namespace SorceryHex {
 
       public FrameworkElement CreateElementEditor(int location) {
          int startPoint = GetStart(location);
-         if (!(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null)) return null;
+         if (!(startPoint + _runs[startPoint].GetLength(Segment.Inner(startPoint)).Length > location && startPoint <= location && _runs[startPoint].Editor != null)) return null;
          return _runs[startPoint].Editor.CreateElementEditor(startPoint);
       }
 
       public void Edit(int location, char c) {
          int startPoint = GetStart(location);
-         Debug.Assert(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null);
+         Debug.Assert(startPoint + _runs[startPoint].GetLength(Segment.Inner(startPoint)).Length > location && startPoint <= location && _runs[startPoint].Editor != null);
          _runs[startPoint].Editor.Edit(location, c);
       }
 
       public void CompleteEdit(int location) {
          int startPoint = GetStart(location);
-         Debug.Assert(startPoint + _runs[startPoint].GetLength(Data, startPoint) > location && startPoint <= location && _runs[startPoint].Editor != null);
+         Debug.Assert(startPoint + _runs[startPoint].GetLength(Segment.Inner(startPoint)).Length > location && startPoint <= location && _runs[startPoint].Editor != null);
          _runs[startPoint].Editor.CompleteEdit(location);
       }
 
@@ -284,11 +284,12 @@ namespace SorceryHex {
       #region Helpers
 
       bool RunsAreEquivalent(IDataRun run1, IDataRun run2, int location) {
+         var innerSeg = Segment.Inner(location);
          var conditions = new[] {
             run1.Provider.IsEquivalent(run2.Provider),
             run1.Interpret == run2.Interpret,
             run1.Jump == run2.Jump,
-            run1.GetLength(Data, location) == run2.GetLength(Data, location)
+            run1.GetLength(innerSeg).Length == run2.GetLength(innerSeg).Length
          };
          return conditions.All(b => b);
       }
@@ -296,7 +297,7 @@ namespace SorceryHex {
       void InterpretData(IDataRun run, int dataIndex) {
          if (run.Interpret == null) return;
          if (!_interpretations.ContainsKey(dataIndex)) {
-            var interpretation = run.Interpret(Data, dataIndex);
+            var interpretation = run.Interpret(run.GetLength(Segment.Inner(dataIndex)));
             if (interpretation == null) return;
             _interpretations[dataIndex] = interpretation;
          }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,10 +27,10 @@ namespace SorceryHex.Gba {
          Color = color; Parser = parser;
       }
 
-      public int GetLength(byte[] data, int startPoint) {
+      public ISegment GetLength(ISegment segment) {
          int len = 0;
-         while (data[startPoint + len] != _endCharacter) len += _stride;
-         return len + _stride;
+         while (segment[len] != _endCharacter) len += _stride;
+         return segment.Resize(len + _stride);
       }
    }
 
@@ -64,7 +65,7 @@ namespace SorceryHex.Gba {
          int offset = 0;
          foreach (var run in _headerRuns) {
             runs.AddRun(offset, run);
-            offset += run.GetLength(runs.Data, offset);
+            offset += run.GetLength(new GbaSegment(runs.Data, offset)).Length;
          }
          _pointers.FilterPointer(i => i >= offset);
       }
@@ -85,14 +86,14 @@ namespace SorceryHex.Gba {
                    runs.Data[loc + 2] == 0x00 && runs.Data[loc + 3] == 0x00,
             loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] % 0x20 == 0
          };
-         var interpretations = new InterpretationRule[] { InterpretPalette, InterpretImage };
+         var interpretations = new InterpretationRule[] { InterpretCompressedPalette, InterpretImage };
 
          for (int i = 0; i < initialContitions.Length; i++) {
             int count = 0;
             foreach (var loc in _pointers.OpenDestinations) {
                if (!initialContitions[i](loc)) continue;
                int uncompressed, compressed;
-               ImageUtils.CalculateLZSizes(runs.Data, loc, out uncompressed, out compressed);
+               ImageUtils.CalculateLZSizes(new GbaSegment(runs.Data, loc), out uncompressed, out compressed);
                if (uncompressed == -1 || compressed == -1) continue;
                var run = LzRun(compressed, interpretations[i]);
                _pointers.Claim(runs, run, loc);
@@ -103,25 +104,26 @@ namespace SorceryHex.Gba {
 
       public IEnumerable<int> Find(string term) { return null; }
 
-      static FrameworkElement InterpretImage(byte[] data, int location) {
-         var dataBytes = ImageUtils.UncompressLZ(data, location);
+      static FrameworkElement InterpretImage(ISegment segment) {
+         var dataBytes = ImageUtils.UncompressLZ(segment);
+         Debug.Assert(dataBytes != null);
          int width, height; ImageUtils.GuessWidthHeight(dataBytes.Length, out width, out height);
          var source = ImageUtils.Expand16bitImage(dataBytes, ImageUtils.DefaultPalette, width, height);
          return new Image { Source = source, Width = width, Height = height };
       }
 
-      static FrameworkElement InterpretPalette(byte[] data, int location) {
-         var dataBytes = ImageUtils.UncompressLZ(data, location);
-         return InterpretPalette(dataBytes);
+      static FrameworkElement InterpretCompressedPalette(ISegment segment) {
+         var dataBytes = ImageUtils.UncompressLZ(segment);
+         return InterpretUncompressedPalette(dataBytes);
       }
 
-      public static FrameworkElement InterpretPalette(byte[] dataBytes) {
+      public static FrameworkElement InterpretUncompressedPalette(ISegment segment) {
          var grid = new Grid { Width = 40, Height = 40, Background = Brushes.Transparent };
          for (int i = 0; i < 4; i++) {
             grid.RowDefinitions.Add(new RowDefinition());
             grid.ColumnDefinitions.Add(new ColumnDefinition());
          }
-         var palette = new ImageUtils.Palette(dataBytes);
+         var palette = new ImageUtils.Palette(segment);
          for (int i = 0; i < 16; i++) {
             var rectangle = new Rectangle {
                Fill = new SolidColorBrush(palette.Colors[i]),

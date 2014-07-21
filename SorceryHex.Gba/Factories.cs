@@ -97,10 +97,8 @@ namespace SorceryHex.Gba {
          _pointers = pointers;
          _dispatcher = dispatcher;
          _guessRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, Solarized.Brushes.Cyan), ByteCount) {
-            Interpret = (data, location) => {
-               var dataBytes = new byte[ByteCount];
-               Array.Copy(data, location, dataBytes, 0, dataBytes.Length);
-               var source = ImageUtils.Expand16bitImage(dataBytes, ImageUtils.DefaultPalette, WidthHeight, WidthHeight);
+            Interpret = segment => {
+               var source = ImageUtils.Expand16bitImage(segment, ImageUtils.DefaultPalette, WidthHeight, WidthHeight);
                return new Image { Source = source, Width = WidthHeight * 1.5, Height = WidthHeight * 1.5 };
             }
          };
@@ -114,7 +112,7 @@ namespace SorceryHex.Gba {
             var loc = destinations[i];
             if (runs.Data[loc] != 0x00) continue;
 
-            var noise = ImageUtils.ImageNoise(runs.Data, loc, 32, 32);
+            var noise = ImageUtils.ImageNoise(new GbaSegment(runs.Data, loc), 32, 32);
             if (noise > 1) continue;
 
             // TODO reject if the noise level is higher than 1.
@@ -126,19 +124,19 @@ namespace SorceryHex.Gba {
             list.Add(loc);
          }
          _dispatcher.Invoke((Action)(() => {
-            foreach (var item in list) Items.Add(new ImageGuessResult(runs.Data, item, 2, 2));
+            // foreach (var item in list) Items.Add(new ImageGuessResult(runs.Data, item, 2, 2));
          }));
       }
    }
 
    public class ImageGuessResult : Image {
-      readonly byte[] _data;
-      readonly int _location;
+      readonly ISegment _segment;
       int width;
       int height;
-      public ImageGuessResult(byte[] data, int location, int initialX, int initialY) {
-         _data = data; _location = location; width = initialX; height = initialY;
-         ToolTip = Utils.ToHexString(_location);
+      public ImageGuessResult(ISegment segment, int initialX, int initialY) {
+         _segment = segment;
+         width = initialX; height = initialY;
+         ToolTip = Utils.ToHexString(segment.Location);
          BuildSource();
          Margin = new Thickness(2, 2, 2, 2);
       }
@@ -197,14 +195,12 @@ namespace SorceryHex.Gba {
       }
 
       void BuildSource() {
-         var dataBytes = new byte[width * height * 0x80];
-         Array.Copy(_data, _location, dataBytes, 0, dataBytes.Length);
-         var source = ImageUtils.Expand16bitImage(dataBytes, ImageUtils.DefaultPalette, width * 0x10, height * 0x10);
-         var noise = ImageUtils.ImageNoise(dataBytes, width * 0x10, height * 0x10);
+         var source = ImageUtils.Expand16bitImage(_segment, ImageUtils.DefaultPalette, width * 0x10, height * 0x10);
+         var noise = ImageUtils.ImageNoise(_segment, width * 0x10, height * 0x10);
          Source = source;
          Width = width * 0x18;
          Height = height * 0x18;
-         ToolTip = Utils.ToHexString(_location) + " : " + noise;
+         ToolTip = Utils.ToHexString(_segment.Location) + " : " + noise;
       }
    }
 }

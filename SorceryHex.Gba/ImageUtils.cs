@@ -53,16 +53,16 @@ namespace SorceryHex.Gba {
       /// Similar to UnCompressLZ, except it returns only the length of
       /// the compressed data instead of the full uncompressed data set.
       /// </summary>
-      public static void CalculateLZSizes(byte[] memory, int offset, out int uncompressed, out int compressed) {
+      public static void CalculateLZSizes(ISegment segment, out int uncompressed, out int compressed) {
          // all LZ compressed data starts with 0x10
-         if (memory[offset] != 0x10) {
+         if (segment[0] != 0x10) {
             uncompressed = compressed = -1;
             return;
          }
 
-         int length = (memory[offset + 3] << 16) | (memory[offset + 2] << 8) | (memory[offset + 1] << 0);
+         int length = segment.Read(1, 3);
          uncompressed = 0; compressed = 4;
-         offset += 4;
+         int offset = 4;
 
          while (true) {
             // always start with a bitfield
@@ -71,7 +71,7 @@ namespace SorceryHex.Gba {
             //     and the dictionary is the most recent decompressed data
             // "0" means its decompressed
             // this makes a fully compressed data stream only 12.5% longer than it was when it started (at worst).
-            var bitField = memory[offset++];
+            var bitField = segment[offset++];
             compressed++;
             var bits = new[] {
                (bitField & 0x80) != 0,
@@ -97,11 +97,11 @@ namespace SorceryHex.Gba {
                   //                  longer backtracks.
                   //                  possible final values: 1-4096
 
-                  var byte1 = memory[offset++];
+                  var byte1 = segment[offset++];
                   compressed++;
                   var runLength = (byte1 >> 4) + 3;
                   var runOffset_upper = (byte1 & 0xF) << 8;
-                  var runOffset_lower = memory[offset++];
+                  var runOffset_lower = segment[offset++];
                   compressed++;
                   var runOffset = (runOffset_lower | runOffset_upper) + 1;
                   if (runOffset > uncompressed) {
@@ -120,12 +120,14 @@ namespace SorceryHex.Gba {
          }
       }
 
-      public static byte[] UncompressLZ(byte[] memory, int offset) {
+      public static ISegment UncompressLZ(ISegment segment) {
+         Debug.Assert(segment.Length > 0);
+
          // all LZ compressed data starts with 0x10
-         if (memory[offset] != 0x10) return null;
-         int length = (memory[offset + 3] << 16) | (memory[offset + 2] << 8) | (memory[offset + 1] << 0);
+         if (segment[0] != 0x10) return null;
+         int length = segment.Read(1, 3);
          var uncompressed = new List<byte>();
-         offset += 4;
+         int offset = 4;
 
          while (true) {
             // always start with a bitfield
@@ -134,7 +136,7 @@ namespace SorceryHex.Gba {
             //     and the dictionary is the most recent decompressed data
             // "0" means its decompressed
             // this makes a fully compressed data stream only 12.5% longer than it was when it started (at worst).
-            var bitField = memory[offset++];
+            var bitField = segment[offset++];
             var bits = new[] {
                (bitField & 0x80) != 0,
                (bitField & 0x40) != 0,
@@ -159,20 +161,20 @@ namespace SorceryHex.Gba {
                   //                  longer backtracks.
                   //                  possible final values: 1-4096
 
-                  if (offset >= memory.Length) return null;
-                  var byte1 = memory[offset++];
+                  if (offset >= segment.Length) return null;
+                  var byte1 = segment[offset++];
                   var runLength = (byte1 >> 4) + 3;
                   var runOffset_upper = (byte1 & 0xF) << 8;
-                  var runOffset_lower = memory[offset++];
+                  var runOffset_lower = segment[offset++];
                   var runOffset = (runOffset_lower | runOffset_upper) + 1;
                   if (runOffset > uncompressed.Count) return null;
                   foreach (var i in Enumerable.Range(0, runLength)) {
                      uncompressed.Add(uncompressed[uncompressed.Count - runOffset]);
-                     if (uncompressed.Count == length) return uncompressed.ToArray();
+                     if (uncompressed.Count == length) return new GbaSegment(uncompressed.ToArray(), 0, length);
                   }
                } else {
-                  uncompressed.Add(memory[offset++]);
-                  if (uncompressed.Count == length) return uncompressed.ToArray();
+                  uncompressed.Add(segment[offset++]);
+                  if (uncompressed.Count == length) return new GbaSegment(uncompressed.ToArray(), 0, length);
                }
             }
          }
@@ -186,23 +188,17 @@ namespace SorceryHex.Gba {
          width *= 0x08; height *= 0x08;
       }
 
-      public static double ImageNoise(byte[] data, int location, int width, int height) {
-         int len = width * height / 2;
-         var array = new byte[len];
-         Array.Copy(data, location, array, 0, len);
-         return ImageNoise(array, width, height);
-      }
-
-      public static double ImageNoise(byte[] image16bit, int width, int height) {
+      public static double ImageNoise(ISegment segment, int width, int height) {
          var image4bit = new byte[width * height];
 
          // convert 1 byte to 2 pixels
-         for (int i = 0; i < image16bit.Length; i++) {
-            var paletteIndex = (byte)(image16bit[i] & 0xF);
+         int length = width * height / 2;
+         for (int i = 0; i < length; i++) {
+            var paletteIndex = (byte)(segment[i] & 0xF);
             var j = i * 2;
             image4bit[j] = paletteIndex;
 
-            paletteIndex = (byte)(image16bit[i] >> 4);
+            paletteIndex = (byte)(segment[i] >> 4);
             j++;
             image4bit[j] = paletteIndex;
          }
@@ -226,25 +222,25 @@ namespace SorceryHex.Gba {
          if (orderedImage[0, 1] != orderedImage[0, 0]) noise++;
 
          for (int x = 1; x < width; x++) for (int y = 1; y < height; y++) {
-            if (orderedImage[x, y] != orderedImage[x - 1, y]) noise++;
-            if (orderedImage[x, y] != orderedImage[x, y - 1]) noise++;
-         }
+               if (orderedImage[x, y] != orderedImage[x - 1, y]) noise++;
+               if (orderedImage[x, y] != orderedImage[x, y - 1]) noise++;
+            }
 
          return (double)noise / (width * height);
       }
 
-      public static BitmapSource Expand16bitImage(byte[] image16bit, Palette palette32bit, int width, int height) {
+      public static BitmapSource Expand16bitImage(ISegment segment, Palette palette32bit, int width, int height) {
          // image16bit is organized as follows:
          // each byte contains 2 pixels, values 0-0xF
          // each set of 8x8 pixels is stored in a block
          // so the image data is 8x8 blocks of 8x8 pixels
          // this might be to helps with compression
-         var image32bit = new byte[image16bit.Length * 8];
-         for (int i = 0; i < image16bit.Length; i++) {
-            int paletteIndex = image16bit[i] & 0xF;
+         var image32bit = new byte[segment.Length * 8];
+         for (int i = 0; i < segment.Length; i++) {
+            int paletteIndex = segment[i] & 0xF;
             palette32bit.Write(image32bit, i * 2 + 0, paletteIndex);
 
-            paletteIndex = image16bit[i] >> 4;
+            paletteIndex = segment[i] >> 4;
             palette32bit.Write(image32bit, i * 2 + 1, paletteIndex);
          }
 
@@ -255,12 +251,12 @@ namespace SorceryHex.Gba {
          readonly byte[] colors;
          public readonly Color[] Colors = new Color[0x10];
 
-         public Palette(byte[] palette) {
+         public Palette(ISegment palette) {
             Debug.Assert(palette.Length == 0x20);
             var length = palette.Length / 2;
             colors = new byte[length * 4];
             for (int i = 0; i < length; i++) {
-               var full = palette.ReadShort(i * 2);
+               var full = (short)palette.Read(i * 2, 2);
                byte blue = (byte)((full & 0x7C00) >> 7);
                byte green = (byte)((full & 0x03E0) >> 2);
                byte red = (byte)((full & 0x001F) << 3);

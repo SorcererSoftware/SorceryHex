@@ -130,7 +130,7 @@ namespace SorceryHex.Gba {
             // don't add it if it points into a used range
             if (pointerLocations.Count > 0) {
                var pointer = pointerLocations[index];
-               if (pointer < destination && destination < pointer + _pointedRuns[pointer].GetLength(storage.Data, pointer)) continue;
+               if (pointer < destination && destination < pointer + _pointedRuns[pointer].GetLength(new GbaSegment(storage.Data, pointer)).Length) continue;
             }
 
             var keys = _reversePointerSet[destination].ToArray();
@@ -171,9 +171,10 @@ namespace SorceryHex.Gba {
          return _destinations[destination];
       }
 
-      FrameworkElement InterpretPointer(byte[] data, int index) {
-         if (!_pointedRuns.ContainsKey(index) || _pointedRuns[index].Interpret == null) return null;
-         return _pointedRuns[index].Interpret(data, data.ReadPointer(index));
+      FrameworkElement InterpretPointer(ISegment segment) {
+         if (!_pointedRuns.ContainsKey(segment.Location) || _pointedRuns[segment.Location].Interpret == null) return null;
+         var run = _pointedRuns[segment.Location];
+         return run.Interpret(run.GetLength(segment.Follow(0)));
       }
 
       int[] JumpPointer(byte[] data, int index) {
@@ -317,6 +318,7 @@ namespace SorceryHex.Gba {
       public byte this[int index] { get { return _data[Location + index]; } }
 
       public GbaSegment(byte[] data, int location) { _data = data; Location = location; Length = -1; }
+      public GbaSegment(byte[] data, int location, int length) { _data = data; Location = location; Length = length; }
 
       public int Read(int offset, int length) { return _data.ReadData(length, Location + offset); }
       public void Write(int offset, int length, int value) {
@@ -333,5 +335,6 @@ namespace SorceryHex.Gba {
          if (value < 0 || value > _data.Length) return null;
          return new GbaSegment(_data, value);
       }
+      public ISegment Resize(int length) { return new GbaSegment(_data, Location, length); }
    }
 }
