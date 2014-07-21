@@ -33,6 +33,7 @@ namespace SorceryHex {
             _data[Location + offset] = (byte)value;
             value >>= 8;
             offset++;
+            length--;
          }
       }
       public ISegment Inner(int offset) { return new Segment(_data, Location + offset); }

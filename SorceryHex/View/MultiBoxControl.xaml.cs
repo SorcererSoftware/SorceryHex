@@ -53,12 +53,16 @@ namespace SorceryHex {
             var source = _engine.CreateScriptSourceFromFile(file);
             Task.Factory.StartNew(() => {
                _app.WriteStatus("Executing " + file);
-               source.Execute(_scope);
-               _app.WriteStatus("Done");
+               try {
+                  source.Execute(_scope);
+                  _app.WriteStatus("Done");
+               } catch (Exception e) {
+                  _app.WriteStatus("Error running " + filename + ": " + e.Message);
+               }
             });
             return;
          }
-         throw new FileNotFoundException("Couldn't find " + filename);
+         _app.WriteStatus("File not found: " + filename);
       }
       public IEnumerable<string> help() {
          yield return "app.help - show this document.";
