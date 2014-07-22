@@ -69,30 +69,30 @@ namespace SorceryHex.Gba.Pokemon {
 
       #region Editor
 
-      public FrameworkElement CreateElementEditor(int location) { return null; }
+      public FrameworkElement CreateElementEditor(ISegment segment) { return null; }
 
-      public void Edit(int location, char c) {
+      public void Edit(ISegment segment, char c) {
          if (c == ' ') {
-            _runs.Data[location] = 0;
-            MoveToNext(this, new UpdateLocationEventArgs(location));
+            segment.Write(0, 1, 0);
+            MoveToNext(this, new UpdateLocationEventArgs(segment.Location));
             return;
          } else if (c == '\n') {
-            _runs.Data[location] = 0;
-            MoveToNext(this, new UpdateLocationEventArgs(location));
+            segment.Write(0, 1, 0);
+            MoveToNext(this, new UpdateLocationEventArgs(segment.Location));
             return;
          }
 
          for (int i = 0x00; i <= 0xFF; i++) {
             if (_pcs[i] == null) continue;
             if (_pcs[i][0] != c) continue;
-            if (_runs.Data[location] == 0xFF) _runs.Data[location + 1] = 0xFF; // TODO this byte needs to show the update too
-            _runs.Data[location] = (byte)i;
-            MoveToNext(this, new UpdateLocationEventArgs(location, location + 1));
+            if (segment.Read(0, 1) == 0xFF) segment.Write(1, 1, 0xFF);
+            segment.Write(0, 1, i);
+            MoveToNext(this, new UpdateLocationEventArgs(segment.Location, segment.Location + 1));
             return;
          }
       }
 
-      public void CompleteEdit(int location) { }
+      public void CompleteEdit(ISegment segment) { }
 
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 

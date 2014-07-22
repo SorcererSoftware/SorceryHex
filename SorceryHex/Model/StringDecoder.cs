@@ -19,7 +19,7 @@ namespace SorceryHex {
       #region Partial Model
 
       public int Length { get { return _data.Length; } }
-      public bool CanEdit(int location) { return true; }
+      public bool CanEdit(ISegment segment) { return true; }
       public IEditor Editor { get { return this; } }
       public void Load(ICommandFactory commander) { }
 
@@ -74,23 +74,23 @@ namespace SorceryHex {
 
       #region Editor
 
-      public FrameworkElement CreateElementEditor(int location) { return null; }
+      public FrameworkElement CreateElementEditor(ISegment segment) { return null; }
 
-      public void Edit(int location, char c) {
-         if (location % Stride != 0) return;
+      public void Edit(ISegment segment, char c) {
+         if (segment.Location % Stride != 0) return;
          if (LowerCaseAlphabet.Contains(c)) {
-            lowerCaseStart = GetLowerStartFromLowerReference(_data[location], c);
+            lowerCaseStart = GetLowerStartFromLowerReference(segment[0], c);
          } else if (UpperCaseAlphabet.Contains(c)) {
-            upperCaseStart = GetUpperStartFromUpperReference(_data[location], c);
+            upperCaseStart = GetUpperStartFromUpperReference(segment[0], c);
          } else {
             var geo = new string(c, 1).ToGeometry();
             geo.Freeze();
-            _specialCharacters[_data[location]] = geo;
+            _specialCharacters[segment[0]] = geo;
          }
-         for (int i = 0; i < Stride; i++) MoveToNext(this, new UpdateLocationEventArgs(location, location + 1));
+         for (int i = 0; i < Stride; i++) MoveToNext(this, new UpdateLocationEventArgs(segment.Location, segment.Location + 1));
       }
 
-      public void CompleteEdit(int location) { }
+      public void CompleteEdit(ISegment segment) { }
 
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 

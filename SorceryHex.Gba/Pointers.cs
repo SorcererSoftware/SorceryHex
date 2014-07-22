@@ -48,8 +48,12 @@ namespace SorceryHex.Gba {
 
       readonly ISet<int> _deferredDestinations = new HashSet<int>();
       readonly IDictionary<int, IDataRun> _deferredDestinationsWithRuns = new Dictionary<int, IDataRun>();
-      void Defer(int destination) { _deferredDestinations.Add(destination); Debug.Assert(_reversePointerSet.ContainsKey(destination)); }
-      void Defer(int destination, IDataRun run) { _deferredDestinationsWithRuns[destination] = run; Debug.Assert(_reversePointerSet.ContainsKey(destination)); }
+      void Defer(int destination) {
+         _deferredDestinations.Add(destination); Debug.Assert(_reversePointerSet.ContainsKey(destination));
+      }
+      void Defer(int destination, IDataRun run) {
+         _deferredDestinationsWithRuns[destination] = run; Debug.Assert(_reversePointerSet.ContainsKey(destination));
+      }
 
       public void ClaimDeferred(ICommandFactory commandFactory, IRunStorage storage) {
          foreach (var destination in _deferredDestinations) {
@@ -71,6 +75,14 @@ namespace SorceryHex.Gba {
          _deferredDestinations.Clear();
 
          foreach (var destination in _deferredDestinationsWithRuns.Keys) {
+            if (!_reversePointerSet.ContainsKey(destination)) {
+               commandFactory.LogError("Pointer confilct at " + destination.ToHexString() +
+               ": one part of the program marked it" + Environment.NewLine +
+               "- as a pointer destination and another marked it as impossible for" + Environment.NewLine +
+               "- a pointer destination. Check the location in the ROM. There may" + Environment.NewLine +
+               "- be an error in the ROM or in a script that caused this conflict.");
+               continue;
+            }
             var keys = _reversePointerSet[destination].ToArray();
             foreach (var key in keys) {
                if (storage.IsFree(key)) {
@@ -130,7 +142,7 @@ namespace SorceryHex.Gba {
             // don't add it if it points into a used range
             if (pointerLocations.Count > 0) {
                var pointer = pointerLocations[index];
-               if (pointer < destination && destination < pointer + _pointedRuns[pointer].GetLength(new GbaSegment(storage.Data, pointer)).Length) continue;
+               if (pointer < destination && destination < pointer + _pointedRuns[pointer].GetLength(storage.Segment.Follow(pointer)).Length) continue;
             }
 
             var keys = _reversePointerSet[destination].ToArray();
@@ -199,7 +211,7 @@ namespace SorceryHex.Gba {
 
       #region Parser
 
-      public int Length { get { return _data.Length; } }
+      public ISegment Segment { get { return _base.Segment; } }
 
       public PointerParser(IModel fallback, byte[] data, RunStorage storage, PointerMapper mapper) {
          _data = data;
@@ -267,11 +279,11 @@ namespace SorceryHex.Gba {
 
       #region Editor
 
-      public FrameworkElement CreateElementEditor(int location) { return _base.CreateElementEditor(location); }
+      public FrameworkElement CreateElementEditor(ISegment segment) { return _base.CreateElementEditor(segment); }
 
-      public void Edit(int location, char c) { _base.Edit(location, c); }
+      public void Edit(ISegment segment, char c) { _base.Edit(segment, c); }
 
-      public void CompleteEdit(int location) { _base.CompleteEdit(location); }
+      public void CompleteEdit(ISegment segment) { _base.CompleteEdit(segment); }
 
       public event EventHandler<UpdateLocationEventArgs> MoveToNext {
          add { _base.MoveToNext += value; }
@@ -315,7 +327,12 @@ namespace SorceryHex.Gba {
       public bool HasLength { get { return Length != -1; } }
       public int Length { get; private set; }
       public int Location { get; private set; }
-      public byte this[int index] { get { return _data[Location + index]; } }
+      public byte this[int index] {
+         get {
+            if (HasLength && index >= Length) throw new IndexOutOfRangeException();
+            return _data[Location + index];
+         }
+      }
 
       public GbaSegment(byte[] data, int location) { _data = data; Location = location; Length = -1; }
       public GbaSegment(byte[] data, int location, int length) { _data = data; Location = location; Length = length; }
@@ -326,6 +343,7 @@ namespace SorceryHex.Gba {
             _data[Location + offset] = (byte)value;
             value >>= 8;
             offset++;
+            length--;
          }
       }
       public ISegment Inner(int offset) { return new GbaSegment(_data, Location + offset); }

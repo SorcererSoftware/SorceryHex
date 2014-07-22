@@ -76,7 +76,7 @@ namespace SorceryHex {
                var c = Utils.Convert(key);
                if (c == null) return false;
                int editLocation = _selectionStart;
-               _window.Holder.Edit(editLocation, (char)c);
+               _window.Holder.Edit(_window.Holder.Segment.Inner(editLocation), (char)c);
                _window.RefreshElement(editLocation);
                return true;
          }
@@ -121,7 +121,7 @@ namespace SorceryHex {
             return;
          }
          if (_selectionLength != 1) return;
-         var editor = _window.Holder.CreateElementEditor(_selectionStart);
+         var editor = _window.Holder.CreateElementEditor(_window.Holder.Segment.Inner(_selectionStart));
          if (editor == null) return;
          Grid.SetColumnSpan(editor, 3);
          int loc = _selectionStart - _window.Offset;

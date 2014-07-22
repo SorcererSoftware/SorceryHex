@@ -83,7 +83,7 @@ namespace SorceryHex {
       public event EventHandler JumpCompleted;
       public void JumpTo(int location, bool addToBreadcrumb = false) {
          if (addToBreadcrumb) _multiBox.AddLocationToBreadCrumb();
-         location = Math.Min(Math.Max(-MaxColumnCount, location), Holder.Length);
+         location = Math.Min(Math.Max(-MaxColumnCount, location), Holder.Segment.Length);
 
          foreach (FrameworkElement element in Body.Children) Recycle(element);
          _bodies.Foreach(body => body.Children.Clear());
@@ -125,7 +125,7 @@ namespace SorceryHex {
          Debug.Assert(Math.Abs(rows) <= CurrentRowCount);
          int all = CurrentColumnCount * CurrentRowCount;
          int add = CurrentColumnCount * rows;
-         if (Offset - add < -MaxColumnCount || Offset - add > Holder.Length) return;
+         if (Offset - add < -MaxColumnCount || Offset - add > Holder.Segment.Length) return;
 
          UpdateRows(Body, rows, Recycle);
          UpdateRows(BackgroundBody, rows, _cursorController.Recycle);
@@ -227,7 +227,7 @@ namespace SorceryHex {
       }
 
       void ShiftColumns(int shift) {
-         if (Offset - shift < -MaxColumnCount || Offset - shift > Holder.Length) return;
+         if (Offset - shift < -MaxColumnCount || Offset - shift > Holder.Segment.Length) return;
 
          ShiftColumns(Body, shift, Recycle);
          ShiftColumns(BackgroundBody, shift, _cursorController.Recycle);
@@ -298,7 +298,7 @@ namespace SorceryHex {
          _multiBox.ResetScope();
          Holder = factory.CreateModel(name, data, _multiBox.ScriptInfo);
          Holder.MoveToNext += _cursorController.HandleMoveNext;
-         ScrollBar.Maximum = Holder.Length;
+         ScrollBar.Maximum = Holder.Segment.Length;
          JumpTo(jump ? 0 : Offset);
          Parser.IsEnabled = false;
          if (jump) _multiBox.BreadCrumbBar.Children.Clear();

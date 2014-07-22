@@ -271,7 +271,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             Debug.Assert(SpeciesEnumEditor.Names.Length == names.Length && Enumerable.Range(0, names.Length).All(i => SpeciesEnumEditor.Names[i].ToString() == names[i].ToString()));
             return;
          }
-         SpeciesEnumEditor = new InlineComboEditor(Runs.Data, 2, names, "species");
+         SpeciesEnumEditor = new InlineComboEditor(2, names, "species");
          SpeciesRun = new SimpleDataRun(new SpeciesElementProvider(names), 2, SpeciesEnumEditor);
       }
 
@@ -320,7 +320,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public byte ByteEnum(string name, dynamic[] names) {
          var editor = _cache.ByteEnumEditors.FirstOrDefault(e => e.Names == names && e.HoverText == name);
          if (editor == null) {
-            editor = new InlineComboEditor(_cache.Runs.Data, 1, names, name);
+            editor = new InlineComboEditor(1, names, name);
             _cache.ByteEnumEditors.Add(editor);
          }
          var run = _cache.ByteEnumRuns.FirstOrDefault(r => r.Editor == editor);
@@ -339,7 +339,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       IEditor _inlineByteNumEditor;
       IEditor InlineByteNumEditor {
          get {
-            return _inlineByteNumEditor ?? (_inlineByteNumEditor = new InlineTextEditor(_cache.Runs.Data, 1, array => array[0].ToString(), str => new[] { byte.Parse(str) }));
+            return _inlineByteNumEditor ?? (_inlineByteNumEditor = new InlineTextEditor(1, array => array[0].ToString(), str => new[] { byte.Parse(str) }));
          }
       }
       public byte ByteNum(string name) {
@@ -361,7 +361,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public short ShortEnum(string name, dynamic[] names) {
          var editor = _cache.ShortEnumEditors.FirstOrDefault(e => e.Names == names && e.HoverText == name);
          if (editor == null) {
-            editor = new InlineComboEditor(_cache.Runs.Data, 2, names, name);
+            editor = new InlineComboEditor(2, names, name);
             _cache.ShortEnumEditors.Add(editor);
          }
          var run = _cache.ShortEnumRuns.FirstOrDefault(r => r.Editor == editor);
@@ -442,7 +442,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       public void InlineArray(string name, int length, ChildReader reader) {
          int start = _location;
          for (int i = 0; i < length; i++) {
-            var child = new Builder(_cache, _segment.Inner(0));
+            var child = new Builder(_cache, _segment.Inner(_location));
             reader(child);
             _location += child._location;
          }

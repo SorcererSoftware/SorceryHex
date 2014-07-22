@@ -42,7 +42,7 @@ namespace SorceryHex.Gba {
                // , imageguess
             );
             // new ImageSearchWindow(imageguess).Show();
-            IModel model = new CompositeModel(data, storage);
+            IModel model = new CompositeModel(new GbaSegment(data, 0, data.Length), storage);
             model = new PointerParser(model, data, storage, pointerMapper);
             return model;
          }
@@ -73,7 +73,7 @@ namespace SorceryHex.Gba {
             , new Gba.Header(pointerMapper)
             , new Gba.Lz(pointerMapper)
          );
-         IModel model = new CompositeModel(data, storage);
+         IModel model = new CompositeModel(new GbaSegment(data, 0, data.Length), storage);
          model = new Gba.PointerParser(model, data, storage, pointerMapper);
          return model;
       }
@@ -110,9 +110,9 @@ namespace SorceryHex.Gba {
          var list = new List<int>();
          for (int i = 0; i < destinations.Length; i++) {
             var loc = destinations[i];
-            if (runs.Data[loc] != 0x00) continue;
+            if (runs.Segment[loc] != 0x00) continue;
 
-            var noise = ImageUtils.ImageNoise(new GbaSegment(runs.Data, loc), 32, 32);
+            var noise = ImageUtils.ImageNoise(runs.Segment.Inner(loc), 32, 32);
             if (noise > 1) continue;
 
             // TODO reject if the noise level is higher than 1.

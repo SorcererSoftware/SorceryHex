@@ -90,8 +90,9 @@ namespace SorceryHex {
 
       #region PartialModel
 
-      public bool CanEdit(int location) {
+      public bool CanEdit(ISegment segment) {
          int index;
+         int location = segment.Location;
          lock (_keys) index = _keys.BinarySearch(location);
          if (index < 0) index = Math.Max(~index - 1, 0);
          int startPoint = _keys[index];
@@ -249,22 +250,25 @@ namespace SorceryHex {
 
       #region Editor
 
-      public FrameworkElement CreateElementEditor(int location) {
+      public FrameworkElement CreateElementEditor(ISegment segment) {
+         int location = segment.Location;
          int startPoint = GetStart(location);
          if (!(startPoint + _runs[startPoint].GetLength(Segment.Inner(startPoint)).Length > location && startPoint <= location && _runs[startPoint].Editor != null)) return null;
-         return _runs[startPoint].Editor.CreateElementEditor(startPoint);
+         return _runs[startPoint].Editor.CreateElementEditor(Segment.Inner(startPoint));
       }
 
-      public void Edit(int location, char c) {
+      public void Edit(ISegment segment, char c) {
+         int location = segment.Location;
          int startPoint = GetStart(location);
          Debug.Assert(startPoint + _runs[startPoint].GetLength(Segment.Inner(startPoint)).Length > location && startPoint <= location && _runs[startPoint].Editor != null);
-         _runs[startPoint].Editor.Edit(location, c);
+         _runs[startPoint].Editor.Edit(Segment.Inner(location), c);
       }
 
-      public void CompleteEdit(int location) {
+      public void CompleteEdit(ISegment segment) {
+         int location = segment.Location;
          int startPoint = GetStart(location);
          Debug.Assert(startPoint + _runs[startPoint].GetLength(Segment.Inner(startPoint)).Length > location && startPoint <= location && _runs[startPoint].Editor != null);
-         _runs[startPoint].Editor.CompleteEdit(location);
+         _runs[startPoint].Editor.CompleteEdit(Segment.Inner(location));
       }
 
       int GetStart(int location) {

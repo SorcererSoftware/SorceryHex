@@ -10,7 +10,7 @@ using System.Windows.Shapes;
 
 namespace SorceryHex {
    public interface IParser {
-      int Length { get; }
+      ISegment Segment { get; }
       void Load(ICommandFactory commander);
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
@@ -29,48 +29,45 @@ namespace SorceryHex {
    }
 
    public interface IEditor {
-      FrameworkElement CreateElementEditor(int location);
-      void Edit(int location, char c); // called because the user entered an edit key
-      void CompleteEdit(int location); // called because the user entered a key that signifies the end of an edit
+      FrameworkElement CreateElementEditor(ISegment segment);
+      void Edit(ISegment segment, char c); // called because the user entered an edit key
+      void CompleteEdit(ISegment segment); // called because the user entered a key that signifies the end of an edit
       event EventHandler<UpdateLocationEventArgs> MoveToNext; // sent up because the editor realizes it's done with the current edit
    }
 
    public class DisableEditor : IEditor {
-      public FrameworkElement CreateElementEditor(int location) { return null; }
-      public void Edit(int location, char c) { }
-      public void CompleteEdit(int location) { }
+      public FrameworkElement CreateElementEditor(ISegment segment) { return null; }
+      public void Edit(ISegment segment, char c) { }
+      public void CompleteEdit(ISegment segment) { }
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
    }
 
    public class InlineTextEditor : IEditor {
-      readonly byte[] _data;
-      readonly Func<byte[], string> _convertToString;
+      readonly Func<ISegment, string> _convertToString;
       readonly Func<string, byte[]> _convertToValue;
       readonly int _length;
 
       TextBox _box;
-      int _location;
+      ISegment _segment;
 
-      public InlineTextEditor(byte[] data, int length, Func<byte[], string> toString, Func<string, byte[]> toValue) {
-         _data = data; _length = length;
+      public InlineTextEditor(int length, Func<ISegment, string> toString, Func<string, byte[]> toValue) {
+         _length = length;
          _convertToString = toString;
          _convertToValue = toValue;
       }
 
-      public FrameworkElement CreateElementEditor(int location) {
-         _location = location;
+      public FrameworkElement CreateElementEditor(ISegment segment) {
+         _segment = segment;
          if (_box != null) _box.KeyDown -= KeyDown;
          _box = new TextBox();
-         byte[] temp = new byte[_length];
-         Array.Copy(_data, location, temp, 0, _length);
-         _box.Text = _convertToString(temp);
+         _box.Text = _convertToString(segment);
          _box.SelectAll();
          _box.KeyDown += KeyDown;
          return _box;
       }
 
-      public void Edit(int location, char c) { }
-      public void CompleteEdit(int location) { }
+      public void Edit(ISegment segment, char c) { }
+      public void CompleteEdit(ISegment segment) { }
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 
       void KeyDown(object sender, KeyEventArgs e) {
@@ -78,8 +75,11 @@ namespace SorceryHex {
          e.Handled = true;
          try {
             var result = _convertToValue(_box.Text);
-            Array.Copy(result, 0, _data, _location, _length);
-            MoveToNext(this, new UpdateLocationEventArgs(_location));
+            for (int i = 0; i < result.Length; i++) {
+               _segment.Write(i, 1, result[i]);
+            }
+
+            MoveToNext(this, new UpdateLocationEventArgs(_segment.Location));
          } catch (Exception) {
             // TODO some kind of error message
          }
@@ -89,20 +89,18 @@ namespace SorceryHex {
    public class InlineComboEditor : IEditor {
       public readonly dynamic[] Names;
       public readonly string HoverText;
-      readonly byte[] _data;
       readonly int _stride;
+      ISegment _segment;
       ComboBox _box;
-      int _location;
 
-      public InlineComboEditor(byte[] data, int stride, dynamic[] names, string hoverText) {
-         _data = data;
+      public InlineComboEditor(int stride, dynamic[] names, string hoverText) {
          _stride = stride;
          Names = names;
          HoverText = hoverText;
       }
 
-      public FrameworkElement CreateElementEditor(int location) {
-         _location = location;
+      public FrameworkElement CreateElementEditor(ISegment segment) {
+         _segment = segment;
          if (_box != null) {
             _box.DropDownClosed -= DropDownClosed;
          }
@@ -111,30 +109,27 @@ namespace SorceryHex {
             var option = EnumElementProvider.AsString(Names, i);
             _box.Items.Add(option);
          }
-         _box.SelectedIndex = _data.ReadData(_stride, location);
+         _box.SelectedIndex = _segment.Read(0, _stride);
          _box.IsDropDownOpen = true;
          _box.DropDownClosed += DropDownClosed;
          return _box;
       }
 
-      public void Edit(int location, char c) { }
-      public void CompleteEdit(int location) { }
+      public void Edit(ISegment segment, char c) { }
+      public void CompleteEdit(ISegment segment) { }
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 
       void DropDownClosed(object sender, EventArgs e) {
          int value = _box.SelectedIndex;
-         for (int i = 0; i < _stride; i++) {
-            _data[_location + i] = (byte)(value % 0x100);
-            value >>= 8;
-         }
-         MoveToNext(sender, new UpdateLocationEventArgs(_location));
+         _segment.Write(0, _stride, value);
+         MoveToNext(sender, new UpdateLocationEventArgs(_segment.Location));
       }
    }
 
    public interface IModel : IParser, IEditor { }
 
    public interface IPartialModel {
-      bool CanEdit(int location);
+      bool CanEdit(ISegment segment);
       string GetLabel(int location);
       IEditor Editor { get; }
       void Load(ICommandFactory commander);
@@ -150,14 +145,14 @@ namespace SorceryHex {
 
    public class CompositeModel : IModel {
       readonly IList<IPartialModel> _children;
-      readonly byte[] _data;
       readonly Queue<Path> _recycles = new Queue<Path>();
       bool _loaded;
 
-      public int Length { get { return _data.Length; } }
+      readonly ISegment _segment;
+      public ISegment Segment { get { return _segment; } }
 
-      public CompositeModel(byte[] data, params IPartialModel[] children) {
-         _data = data;
+      public CompositeModel(ISegment segment, params IPartialModel[] children) {
+         _segment = segment;
          _children = children;
          foreach (var child in _children) {
             if (child.Editor == null) continue;
@@ -184,7 +179,7 @@ namespace SorceryHex {
          int pre = 0, post = 0;
          if (start < 0) { pre = -start; start = 0; length -= pre; }
          if (length < 0) { pre += length; length = 0; }
-         if (start + length >= Length) { post = start + length - Length; length = Length - start; }
+         if (start + length >= _segment.Length) { post = start + length - _segment.Length; length = _segment.Length - start; }
          if (length < 0) { post += length; length = 0; }
 
          if (pre > 0) list.AddRange(Enumerable.Range(0, pre).Select(i => UseElement(null)));
@@ -242,15 +237,15 @@ namespace SorceryHex {
                .Select(i => (byte)sanitized.Substring(i * 2, 2).ParseAsHex())
                .ToArray();
 
-            for (int i = 0, j = 0; i < _data.Length; i++) {
-               j = _data[i] == searchTerm[j] ? j + 1 : 0;
+            for (int i = 0, j = 0; i < _segment.Length; i++) {
+               j = _segment[i] == searchTerm[j] ? j + 1 : 0;
                if (j < searchTerm.Length) continue;
                yield return i - j + 1;
                j = 0;
             }
          }
 
-         foreach(var childSearchResult in _children
+         foreach (var childSearchResult in _children
             .Select(child => child.Find(term) ?? new int[0])
             .Aggregate(Enumerable.Concat)) {
             yield return childSearchResult;
@@ -263,31 +258,31 @@ namespace SorceryHex {
 
       string _editBuffer = string.Empty;
 
-      public FrameworkElement CreateElementEditor(int location) {
-         return _children.Where(child => child.Editor != null).Select(child => child.Editor.CreateElementEditor(location)).FirstOrDefault();
+      public FrameworkElement CreateElementEditor(ISegment segment) {
+         return _children.Where(child => child.Editor != null).Select(child => child.Editor.CreateElementEditor(segment)).FirstOrDefault();
       }
 
-      public void Edit(int location, char c) {
+      public void Edit(ISegment segment, char c) {
          foreach (var child in _children) {
-            if (!child.CanEdit(location)) continue;
-            child.Editor.Edit(location, c);
+            if (!child.CanEdit(segment)) continue;
+            child.Editor.Edit(segment, c);
             return;
          }
 
          if (!Utils.Hex.Contains(c) && !Utils.Hex.ToLower().Contains(c)) return;
 
          _editBuffer += c;
-         _data[location] = (byte)_editBuffer.ParseAsHex();
+         segment.Write(0, 1, _editBuffer.ParseAsHex());
          if (_editBuffer.Length >= 2) {
-            MoveToNext(this, new UpdateLocationEventArgs(location));
+            MoveToNext(this, new UpdateLocationEventArgs(segment.Location));
             _editBuffer = string.Empty;
          }
       }
 
-      public void CompleteEdit(int location) {
+      public void CompleteEdit(ISegment segment) {
          foreach (var child in _children) {
-            if (!child.CanEdit(location)) continue;
-            child.Editor.CompleteEdit(location);
+            if (!child.CanEdit(segment)) continue;
+            child.Editor.CompleteEdit(segment);
             return;
          }
 
@@ -326,14 +321,14 @@ namespace SorceryHex {
             }
 
             int k = start + i;
-            if (element == null) element = UseElement(Utils.ByteFlyweights[_data[k]], IsLightweight(_data[k]));
+            if (element == null) element = UseElement(Utils.ByteFlyweights[_segment[k]], IsLightweight(_segment[k]));
             list.Add(element);
          }
          return list;
       }
 
       IEnumerable<FrameworkElement> CreateRawElements(ICommandFactory commander, int start, int length) {
-         return Enumerable.Range(start, length).Select(i => UseElement(Utils.ByteFlyweights[_data[i]], IsLightweight(_data[i])));
+         return Enumerable.Range(start, length).Select(i => UseElement(Utils.ByteFlyweights[_segment[i]], IsLightweight(_segment[i])));
       }
 
       FrameworkElement UseElement(Geometry data, bool lightweight = false) {

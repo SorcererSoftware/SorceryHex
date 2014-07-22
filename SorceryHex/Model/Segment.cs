@@ -20,12 +20,13 @@ namespace SorceryHex {
    public class Segment : ISegment {
       readonly byte[] _data;
 
-      public bool HasLength { get { return false; } }
-      public int Length { get { return -1; } }
+      public bool HasLength { get { return Length != -1; } }
+      public int Length { get; private set; }
       public int Location { get; private set; }
       public byte this[int index] { get { return _data[Location + index]; } }
 
-      public Segment(byte[] data, int location) { _data = data; Location = location; }
+      public Segment(byte[] data, int location) { _data = data; Location = location; Length = -1; }
+      public Segment(byte[] data, int location, int length) { _data = data; Location = location; Length = length; }
 
       public int Read(int offset, int length) { return _data.ReadData(length, Location + offset); }
       public void Write(int offset, int length, int value) {

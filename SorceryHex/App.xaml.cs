@@ -53,11 +53,10 @@ namespace SorceryHex {
       public string DisplayName { get { return "Simple"; } }
       public string Version { get { return "1.0"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
-      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { _data = data; return this; }
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { Segment = new Segment(data, 0, data.Length); return this; }
       public int CompareTo(IModelFactory other) { return -1; }
 
-      byte[] _data;
-      public int Length { get { return _data.Length; } }
+      public ISegment Segment { get; private set; }
       public void Load(ICommandFactory commander) { }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
@@ -68,11 +67,11 @@ namespace SorceryHex {
             start++;
          }
          int extra = 0;
-         while (start + length > _data.Length && length > 0) {
+         while (start + length > Segment.Length && length > 0) {
             extra++;
             length--;
          }
-         list.AddRange(Enumerable.Range(start, length).Select(i => UseElement(Utils.ByteFlyweights[_data[i]])));
+         list.AddRange(Enumerable.Range(start, length).Select(i => UseElement(Utils.ByteFlyweights[Segment[i]])));
          list.AddRange(Enumerable.Range(0, extra).Select(i => new TextBlock()));
          return list;
       }
@@ -96,9 +95,9 @@ namespace SorceryHex {
       public FrameworkElement GetInterpretation(int location) { return null; }
       public IEnumerable<int> Find(string term) { return null; }
 
-      public FrameworkElement CreateElementEditor(int location) { return null; }
-      public void Edit(int location, char c) { }
-      public void CompleteEdit(int location) { }
+      public FrameworkElement CreateElementEditor(ISegment segment) { return null; }
+      public void Edit(ISegment segment, char c) { }
+      public void CompleteEdit(ISegment segment) { }
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
    }
 
@@ -107,7 +106,7 @@ namespace SorceryHex {
       public string DisplayName { get { return "Default"; } }
       public string Version { get { return "1.0"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
-      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(data); }
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(new Segment(data, 0, data.Length)); }
       public int CompareTo(IModelFactory other) { return (other is SimpleFactory) ? 1 : -1; }
    }
 
@@ -116,7 +115,7 @@ namespace SorceryHex {
       public string DisplayName { get { return "StringFinder"; } }
       public string Version { get { return "1.0"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
-      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(data, new StringDecoder(data, 1)); }
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(new Segment(data, 0, data.Length), new StringDecoder(data, 1)); }
       public int CompareTo(IModelFactory other) { return -1; }
    }
 }
