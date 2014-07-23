@@ -145,7 +145,7 @@ namespace SorceryHex.Gba {
       public static Brush Media = Solarized.Brushes.Cyan;     // Complex/Long data, not meant to be hand-edited
       public static Brush Code = Solarized.Brushes.Blue;      // scripts or assembly
       public static Brush Strings = Solarized.Brushes.Violet; // variable length data with little to no internal structure
-      public static Brush BitField = Solarized.Brushes.Magenta;
+      public static Brush Enum = Solarized.Brushes.Magenta;   // in-line data with named elements
       public static Brush Unused = Solarized.Theme.Instance.Secondary;
    }
 }

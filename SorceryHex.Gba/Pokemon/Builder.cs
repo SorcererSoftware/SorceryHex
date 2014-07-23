@@ -13,7 +13,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       bool Assert(bool value, string message);
       byte Byte(string name);
       byte ByteNum(string name);
-      byte ByteEnum(string name, dynamic[] names);
+      byte ByteEnum(string name, IEnumerable<dynamic> enumerableNames);
       short Short(string name);
       short ShortEnum(string name, dynamic[] names);
       int Word(string name);
@@ -60,7 +60,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return result;
       }
 
-      public byte ByteEnum(string name, dynamic[] names) {
+      public byte ByteEnum(string name, IEnumerable<dynamic> enumerableNames) {
+         var names = enumerableNames.ToArray();
          var val = Byte(name);
          if (val >= names.Length) FaultReason = name + ": " + val + " larger than available range: " + names.Length;
          return val;
@@ -281,7 +282,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    class Builder : IBuilder {
       static IElementProvider hex(string hoverText = null) { return new GeometryElementProvider(Utils.ByteFlyweights, GbaBrushes.Number, hoverText: hoverText); }
       static IElementProvider nums(string hoverText = null) { return new GeometryElementProvider(Utils.NumericFlyweights, GbaBrushes.Number, hoverText: hoverText); }
-      static IElementProvider enums(dynamic[] names, int stride, string hoverText = null) { return new EnumElementProvider(names, stride, GbaBrushes.Number, hoverText: hoverText); }
+      static IElementProvider enums(dynamic[] names, int stride, string hoverText = null) { return new EnumElementProvider(names, stride, GbaBrushes.Enum, hoverText: hoverText); }
 
       static IDataRun Build(IDictionary<string, IDataRun> dict, Func<string, IElementProvider> func, int len, string hoverText = "", IEditor editor = null) {
          if (dict.ContainsKey(hoverText)) return dict[hoverText];
@@ -317,8 +318,10 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return value;
       }
 
-      public byte ByteEnum(string name, dynamic[] names) {
-         var editor = _cache.ByteEnumEditors.FirstOrDefault(e => e.Names == names && e.HoverText == name);
+      public byte ByteEnum(string name, IEnumerable<dynamic> enumerableNames) {
+         var names = enumerableNames.ToArray();
+         
+         var editor = _cache.ByteEnumEditors.FirstOrDefault(e => e.Names.Equals(names) && e.HoverText == name);
          if (editor == null) {
             editor = new InlineComboEditor(1, names, name);
             _cache.ByteEnumEditors.Add(editor);
@@ -501,7 +504,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public bool Assert(bool value, string message) { return true; }
       public byte Byte(string name) { return _segment[_location++]; }
-      public byte ByteEnum(string name, dynamic[] names) { return Byte(name); }
+      public byte ByteEnum(string name, IEnumerable<dynamic> enumerableNames) { return Byte(name); }
       public byte ByteNum(string name) { return Byte(name); }
       public short Short(string name) { return (short)_segment.Read(_location += 2, 2); }
       public short ShortEnum(string name, dynamic[] names) { return Short(name); }
