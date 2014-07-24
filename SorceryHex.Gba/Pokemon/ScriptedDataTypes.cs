@@ -99,7 +99,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       #region ITypes
 
-      public string Version { get { return Header.GetCode(_runs.Data); } }
+      public string Version { get { return Header.GetCode(_runs.Segment); } }
 
       const int MinVariableLength = 10;
       public Pointer FindVariableArray(string generalLayout, ChildReader reader) {

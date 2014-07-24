@@ -59,8 +59,8 @@ namespace SorceryHex.Gba.Pokemon {
             .Select(i => term[i] == ' ' ? (byte)0x00 : byteRange.First(key => _pcs[key] == upper.Substring(i, 1)))
             .ToArray();
 
-         for (int i = 0, j = 0; i < _runs.Data.Length; i++) {
-            j = _runs.Data[i] == searchTerm1[j] || _runs.Data[i] == searchTerm2[j] ? j + 1 : 0;
+         for (int i = 0, j = 0; i < _runs.Segment.Length; i++) {
+            j = _runs.Segment[i] == searchTerm1[j] || _runs.Segment[i] == searchTerm2[j] ? j + 1 : 0;
             if (j < searchTerm1.Length) continue;
             yield return i - j + 1;
             j = 0;
@@ -123,41 +123,41 @@ namespace SorceryHex.Gba.Pokemon {
       void FindStrings() {
          int currentLength = 0;
          int currentSkip;
-         for (int i = 0x200; i < _runs.Data.Length; i++) {
+         for (int i = 0x200; i < _runs.Segment.Length; i++) {
 
             // phase one: quickly find something that looks string-like
             currentSkip = 0;
-            while (currentLength == 0 && i < _runs.Data.Length && _pcs[_runs.Data[i]] == null) {
+            while (currentLength == 0 && i < _runs.Segment.Length && _pcs[_runs.Segment[i]] == null) {
                currentSkip = Math.Min(currentSkip + 1, 0x10);
                i += currentSkip;
             }
             if (currentSkip > 0) i -= currentSkip - 1;
 
             // phase two: read to see if it's a string
-            while (i < _runs.Data.Length) {
-               if (_pcs[_runs.Data[i]] != null) {
+            while (i < _runs.Segment.Length) {
+               if (_pcs[_runs.Segment[i]] != null) {
                   currentLength++;
                   i++;
                   continue;
                }
-               if (_runs.Data[i] == 0x00 && currentLength > 0) { // accept 0x00 if we've already started
+               if (_runs.Segment[i] == 0x00 && currentLength > 0) { // accept 0x00 if we've already started
                   currentLength++;
                   i++;
                   continue;
                }
-               if (_runs.Data[i] == 0xFD) { // accept 0xFD as the escape character
+               if (_runs.Segment[i] == 0xFD) { // accept 0xFD as the escape character
                   i += 2;
                   currentLength += 2;
                   continue;
                }
-               if (_runs.Data[i] == 0xFF && currentLength >= 3) {
+               if (_runs.Segment[i] == 0xFF && currentLength >= 3) {
                   // if there are more than 3 of the same character in a row, don't add the run.
                   int startLoc = i - currentLength;
 
-                  byte prevChar = _runs.Data[startLoc];
+                  byte prevChar = _runs.Segment[startLoc];
                   int length = 0;
                   for (int j = 1; j < currentLength; j++) {
-                     byte currentChar = _runs.Data[startLoc + j];
+                     byte currentChar = _runs.Segment[startLoc + j];
                      length = (prevChar == currentChar) ? length + 1 : 0;
                      prevChar = currentChar;
                      if (length > 3) {
@@ -212,22 +212,22 @@ namespace SorceryHex.Gba.Pokemon {
          { "BPGE", _fireredLeafgreen }
       };
 
-      public static BitmapSource GetIcon(byte[] data, int index) {
-         var code = Header.GetCode(data);
+      public static BitmapSource GetIcon(ISegment segment, int index) {
+         var code = Header.GetCode(segment);
          var table = _tables[code];
-         int imageOffset = data.ReadPointer(table[Offset.IconImage]);
-         int paletteOffset = data.ReadPointer(table[Offset.IconPaletteIndex]);
-         int paletteTable = data.ReadPointer(table[Offset.IconPalette]);
+         var imageOffset = segment.Follow(table[Offset.IconImage]);
+         var paletteOffset = segment.Follow(table[Offset.IconPaletteIndex]);
+         var paletteTable = segment.Follow(table[Offset.IconPalette]);
 
-         paletteOffset += index;
-         imageOffset += index * 4;
+         paletteOffset = paletteOffset.Inner(index);
+         imageOffset = imageOffset.Inner(index * 4);
 
-         var paletteStart = data.ReadPointer(paletteTable + data[paletteOffset] * 8);
-         var imageStart = data.ReadPointer(imageOffset);
+         var paletteStart = paletteTable.Follow(paletteOffset[0] * 8);
+         var imageStart = imageOffset.Follow(0);
 
-         var palette = new ImageUtils.Palette(new GbaSegment(data, paletteStart, 0x20));
+         var palette = new ImageUtils.Palette(paletteStart.Resize(0x20));
          int width = 32, height = 64;
-         return ImageUtils.Expand16bitImage(new GbaSegment(data, imageStart, 0x400), palette, width, height);
+         return ImageUtils.Expand16bitImage(imageStart.Resize(0x400), palette, width, height);
       }
 
       public static ImageSource CropIcon(BitmapSource source) {
@@ -246,41 +246,40 @@ namespace SorceryHex.Gba.Pokemon {
       public IEnumerable<int> Find(string term) { return null; }
 
       public void Load(ICommandFactory commander, IRunStorage runs) {
-         var data = runs.Data;
+         var data = runs.Segment;
          var code = Header.GetCode(data);
          var table = _tables[code];
 
-         int imageOffset = data.ReadPointer(table[Offset.IconImage]);
-         _mapper.Claim(runs, imageOffset);
+         var imageOffset = data.Follow(table[Offset.IconImage]);
+         _mapper.Claim(runs, imageOffset.Location);
 
          int index = 0;
-         while (data[imageOffset + 3] == 0x08) {
+         while (imageOffset[3] == 0x08) {
             int i = index; // closure
             var run = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, MediaBrush), 0x400) {
                Interpret = seg => {
-                  var source = GetIcon(data, i);
+                  var source = GetIcon(runs.Segment, i);
                   var image = new Image { Source = source, Width = source.Width, Height = source.Height };
                   return image;
                }
             };
 
-            _mapper.Claim(runs, run, data.ReadPointer(imageOffset));
+            _mapper.Claim(runs, run, imageOffset.Follow(0).Location);
 
-            imageOffset += 4;
+            imageOffset = imageOffset.Inner(4);
             index++;
          }
 
-         byte[] palettes = new byte[index];
-         Array.Copy(data, data.ReadPointer(table[Offset.IconPaletteIndex]), palettes, 0, index);
-         int paletteCount = palettes.Max() + 1;
-         int pointersToPalettes = data.ReadPointer(table[Offset.IconPalette]);
+         var palettes = data.Follow(table[Offset.IconPaletteIndex]).Resize(index);
+         int paletteCount = Enumerable.Range(0, palettes.Length).Select(i => palettes[i]).Max() + 1;
+         var pointersToPalettes = data.Follow(table[Offset.IconPalette]);
          var paletteRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, MediaBrush), 0x20) {
             Interpret = Lz.InterpretUncompressedPalette
          };
-         for (int i = 0; i < paletteCount; i++) _mapper.Claim(runs, paletteRun, data.ReadPointer(pointersToPalettes + i * 8));
+         for (int i = 0; i < paletteCount; i++) _mapper.Claim(runs, paletteRun, pointersToPalettes.Follow(i * 8).Location);
 
-         _mapper.Claim(runs, new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, MediaBrush), index), data.ReadPointer(table[Offset.IconPaletteIndex]));
-         _mapper.Claim(runs, data.ReadPointer(table[Offset.IconPalette]));
+         _mapper.Claim(runs, new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, MediaBrush), index), data.Follow(table[Offset.IconPaletteIndex]).Location);
+         _mapper.Claim(runs, data.Follow(table[Offset.IconPalette]).Location);
       }
    }
 }

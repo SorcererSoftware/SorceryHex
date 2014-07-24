@@ -17,7 +17,7 @@ namespace SorceryHex.Gba {
 
          public bool CanCreateModel(string name, byte[] data) {
             if (!name.ToLower().EndsWith("gba")) return false;
-            var code = Header.GetCode(data);
+            var code = Header.GetCode(new GbaSegment(data, 0));
 
             //           ruby            sapphire          emerald
             if (code == "AXVE" || code == "AXPE" || code == "BPEE") return true;

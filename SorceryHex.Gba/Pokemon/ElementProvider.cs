@@ -29,7 +29,7 @@ namespace SorceryHex.Gba.Pokemon {
          if (_cache.ContainsKey(index)) {
             source = _cache[index];
          } else {
-            source = Thumbnails.CropIcon(Thumbnails.GetIcon(data, data.ReadShort(runStart)));
+            source = Thumbnails.CropIcon(Thumbnails.GetIcon(new GbaSegment(data, 0), data.ReadShort(runStart)));
             source.Freeze();
             _cache[index] = source;
          }

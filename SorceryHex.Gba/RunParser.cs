@@ -35,7 +35,7 @@ namespace SorceryHex.Gba {
    }
 
    class Header : IRunParser {
-      public static string GetCode(byte[] rom) {
+      public static string GetCode(ISegment rom) {
          return new string(Enumerable.Range(0, 4).Select(i => (char)rom[0xAC + i]).ToArray());
       }
 
@@ -65,7 +65,7 @@ namespace SorceryHex.Gba {
          int offset = 0;
          foreach (var run in _headerRuns) {
             runs.AddRun(offset, run);
-            offset += run.GetLength(new GbaSegment(runs.Data, offset)).Length;
+            offset += run.GetLength(runs.Segment.Inner(offset)).Length;
          }
          _pointers.FilterPointer(i => i >= offset);
       }
@@ -82,9 +82,9 @@ namespace SorceryHex.Gba {
 
       public void Load(ICommandFactory commander, IRunStorage runs) {
          var initialContitions = new Func<int, bool>[]{
-            loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] == 0x20 &&
-                   runs.Data[loc + 2] == 0x00 && runs.Data[loc + 3] == 0x00,
-            loc => runs.Data[loc + 0] == 0x10 && runs.Data[loc + 1] % 0x20 == 0
+            loc => runs.Segment[loc + 0] == 0x10 && runs.Segment[loc + 1] == 0x20 &&
+                   runs.Segment[loc + 2] == 0x00 && runs.Segment[loc + 3] == 0x00,
+            loc => runs.Segment[loc + 0] == 0x10 && runs.Segment[loc + 1] % 0x20 == 0
          };
          var interpretations = new InterpretationRule[] { InterpretCompressedPalette, InterpretImage };
 
@@ -93,7 +93,7 @@ namespace SorceryHex.Gba {
             foreach (var loc in _pointers.OpenDestinations) {
                if (!initialContitions[i](loc)) continue;
                int uncompressed, compressed;
-               ImageUtils.CalculateLZSizes(new GbaSegment(runs.Data, loc), out uncompressed, out compressed);
+               ImageUtils.CalculateLZSizes(runs.Segment.Inner(loc), out uncompressed, out compressed);
                if (uncompressed == -1 || compressed == -1) continue;
                var run = LzRun(compressed, interpretations[i]);
                _pointers.Claim(runs, run, loc);
