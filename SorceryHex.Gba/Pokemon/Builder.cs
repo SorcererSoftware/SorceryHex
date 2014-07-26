@@ -54,7 +54,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public byte Byte(string name) {
          if (FaultReason != null) return 0;
-         var result = _runs.Data[_location];
+         var result = _runs.Segment[_location];
          _location++;
          _result[name] = result;
          return result;
@@ -69,7 +69,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public short Short(string name) {
          if (FaultReason != null) return 0;
-         var result = _runs.Data.ReadShort(_location);
+         var result = (short)_runs.Segment.Read(_location, 2);
          _location += 2;
          _result[name] = result;
          return result;
@@ -83,7 +83,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public int Word(string name) {
          if (FaultReason != null) return 0;
-         var result = _runs.Data.ReadData(4, _location);
+         var result = _runs.Segment.Read(_location, 4);
          _location += 4;
          _result[name] = result;
          return result;
@@ -94,9 +94,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public void Pointer(string name) {
          if (FaultReason != null) return;
-         var pointer = _runs.Data.ReadPointer(_location);
+         var pointer = _runs.Segment.Follow(_location);
          _location += 4;
-         if (pointer == -1) {
+         if (pointer == null) {
             FaultReason = name + ": not a pointer";
             return;
          }
@@ -105,13 +105,13 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public dynamic Pointer(string name, ChildReader reader) {
          if (FaultReason != null) return null;
-         var pointer = _runs.Data.ReadPointer(_location);
+         var pointer = _runs.Segment.Follow(_location);
          _location += 4;
-         if (pointer == -1) {
+         if (pointer == null) {
             FaultReason = name + ": not a pointer";
             return null;
          }
-         var child = new Parser(_runs, _pcs, pointer);
+         var child = new Parser(_runs, _pcs, pointer.Location);
          reader(child);
          FaultReason = child.FaultReason;
          if (FaultReason != null) return null;
@@ -121,13 +121,13 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public string StringPointer(string name) {
          if (FaultReason != null) return null;
-         var pointer = _runs.Data.ReadPointer(_location);
+         var pointer = _runs.Segment.Follow(_location);
          _location += 4;
-         if (pointer == -1) {
+         if (pointer == null) {
             FaultReason = name + ": not a pointer";
             return null;
          }
-         var str = _pcs.ReadString(new GbaSegment(_runs.Data, pointer)); // TODO push up
+         var str = _pcs.ReadString(pointer);
          if (str == null) {
             FaultReason = name + ": not a string";
             return null;
@@ -137,7 +137,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public void NullablePointer(string name) {
          if (FaultReason != null) return;
-         if (_runs.Data.ReadData(4, _location) == 0) {
+         if (_runs.Segment.Read(_location, 4) == 0) {
             _location += 4;
             _result[name] = null;
             return;
@@ -147,7 +147,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public dynamic NullablePointer(string name, ChildReader reader) {
          if (FaultReason != null) return null;
-         if (_runs.Data.ReadData(4, _location) == 0) {
+         if (_runs.Segment.Read(_location, 4) == 0) {
             _location += 4;
             _result[name] = null;
             return null;
@@ -168,18 +168,18 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public dynamic Array(string name, int length, ChildReader reader) {
          if (FaultReason != null) return null;
-         if (_runs.Data.ReadData(4, _location) == 0) {
+         if (_runs.Segment.Read(_location, 4) == 0) {
             _location += 4;
             _result[name] = null;
             return null;
          }
-         var pointer = _runs.Data.ReadPointer(_location);
+         var pointer = _runs.Segment.Follow(_location);
          _location += 4;
-         if (pointer == -1) {
+         if (pointer == null) {
             FaultReason = name + ": not a pointer";
             return null;
          }
-         var child = new Parser(_runs, _pcs, pointer);
+         var child = new Parser(_runs, _pcs, pointer.Location);
          var array = new dynamic[length];
          for (int i = 0; i < array.Length; i++) {
             reader(child);
@@ -193,7 +193,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public string String(int len, string name) {
          if (FaultReason != null) return null;
-         string result = _pcs.ReadString(new GbaSegment(_runs.Data, _location), len); // TODO push up
+         string result = _pcs.ReadString(_runs.Segment.Inner(_location), len);
          if (result == null) {
             FaultReason = name + " was not a string[" + len + "]";
             return null;
@@ -320,7 +320,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       public byte ByteEnum(string name, IEnumerable<dynamic> enumerableNames) {
          var names = enumerableNames.ToArray();
-         
+
          var editor = _cache.ByteEnumEditors.FirstOrDefault(e => e.Names.Equals(names) && e.HoverText == name);
          if (editor == null) {
             editor = new InlineComboEditor(1, names, name);
@@ -419,6 +419,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var pointer = _segment.Read(_location, 4) - 0x08000000;
          _cache.Mapper.Claim(_cache.Runs, _segment.Location + _location, pointer);
          var str = _cache.Pcs.ReadString(_segment.Follow(_location));
+         _cache.Runs.AddRun(pointer, _cache.Pcs.StringRun);
          _location += 4;
          Result.AppendStringPointer(name);
          return str;
