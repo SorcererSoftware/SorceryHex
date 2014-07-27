@@ -140,7 +140,7 @@ namespace SorceryHex {
             if (dataIndex > loc) {
                var sectionLength = Math.Min(length - i, dataIndex - loc);
                i += sectionLength;
-            } else if (dataIndex + _runs[_keys[startIndex]].GetLength(Segment.Inner(dataIndex)).Length< loc) {
+            } else if (dataIndex + _runs[_keys[startIndex]].GetLength(Segment.Inner(dataIndex)).Length < loc) {
                startIndex++;
             } else {
                var currentRun = _runs[_keys[startIndex]];
@@ -306,9 +306,11 @@ namespace SorceryHex {
 
       void UpdateList() {
          if (!_listNeedsUpdate) return;
-         lock (_keys) {
-            lock (_runs) _keys = _runs.Keys.ToList();
-            _keys.Sort();
+         lock (_runs) {
+            lock (_keys) {
+               _keys = _runs.Keys.ToList();
+               _keys.Sort();
+            }
          }
          _listNeedsUpdate = false;
       }
