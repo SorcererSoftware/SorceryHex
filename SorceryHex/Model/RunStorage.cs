@@ -38,11 +38,9 @@ namespace SorceryHex {
 
       #region Run Storage
 
-      public byte[] Data { get; private set; }
       public ISegment Segment { get; private set; }
 
-      public RunStorage(ISegment segment, byte[] data, params IRunParser[] runParsers) {
-         Data = data;
+      public RunStorage(ISegment segment, params IRunParser[] runParsers) {
          Segment = segment;
          _runParsers = runParsers;
       }
@@ -81,7 +79,7 @@ namespace SorceryHex {
          if (_runs.ContainsKey(location)) return location;
          lock (_keys) {
             int index = ~_keys.BinarySearch(location);
-            return index >= _keys.Count ? Data.Length : _keys[index];
+            return index >= _keys.Count ? Segment.Length : _keys[index];
          }
       }
 
@@ -151,7 +149,7 @@ namespace SorceryHex {
                int lengthInView = runEnd - loc;
                InterpretData(currentRun, dataIndex);
                for (int j = 0; j < lengthInView; j++) {
-                  var element = currentRun.Provider.ProvideElement(commander, Data, dataIndex, loc - dataIndex + j, runEnd - dataIndex + 1);
+                  var element = currentRun.Provider.ProvideElement(commander, Segment, dataIndex, loc - dataIndex + j, runEnd - dataIndex + 1);
                   if (element == null) continue;
                   element.Tag = currentRun.Provider;
 
@@ -161,7 +159,7 @@ namespace SorceryHex {
                   }
                   if (currentRun.Jump != null) {
                      _jumpLinks.Add(element);
-                     commander.CreateJumpCommand(element, currentRun.Jump(Data, dataIndex));
+                     commander.CreateJumpCommand(element, currentRun.Jump(Segment, dataIndex));
                   }
                   elements[i + j] = element;
                }
@@ -238,7 +236,7 @@ namespace SorceryHex {
 
          var runStringResults = _runs.Keys.Where(key => {
             var length = _runs[key].GetLength(Segment.Inner(key)).Length;
-            var str = _runs[key].Provider.ProvideString(Data, key, length);
+            var str = _runs[key].Provider.ProvideString(Segment, key, length);
             if (string.IsNullOrEmpty(str)) return false;
             return str.ToLower() == lowerTerm;
          });

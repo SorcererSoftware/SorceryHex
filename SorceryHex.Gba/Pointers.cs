@@ -189,8 +189,8 @@ namespace SorceryHex.Gba {
          return run.Interpret(run.GetLength(segment.Follow(0)));
       }
 
-      int[] JumpPointer(byte[] data, int index) {
-         return new[] { data.ReadPointer(index) };
+      int[] JumpPointer(ISegment segment, int index) {
+         return new[] { segment.Follow(index).Location };
       }
    }
 

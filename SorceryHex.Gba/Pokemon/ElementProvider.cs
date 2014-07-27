@@ -17,19 +17,19 @@ namespace SorceryHex.Gba.Pokemon {
 
       public bool IsEquivalent(IElementProvider other) { return other is SpeciesElementProvider && ((SpeciesElementProvider)other)._names == _names; }
 
-      public string ProvideString(byte[] data, int runStart, int runLength) {
-         return EnumElementProvider.AsString(_names, data.ReadData(runLength, runStart));
+      public string ProvideString(ISegment segment, int runStart, int runLength) {
+         return EnumElementProvider.AsString(_names, segment.Read(runStart, runLength));
       }
 
-      public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
+      public FrameworkElement ProvideElement(ICommandFactory commandFactory, ISegment segment, int runStart, int innerIndex, int runLength) {
          if (innerIndex == 1) return ProvideEmpty();
-         int index = data.ReadShort(runStart);
+         int index = segment.Read(runStart, 2);
          var image = ProvideImage();
          ImageSource source;
          if (_cache.ContainsKey(index)) {
             source = _cache[index];
          } else {
-            source = Thumbnails.CropIcon(Thumbnails.GetIcon(new GbaSegment(data, 0), data.ReadShort(runStart)));
+            source = Thumbnails.CropIcon(Thumbnails.GetIcon(segment, segment.Read(runStart, 2)));
             source.Freeze();
             _cache[index] = source;
          }
@@ -68,11 +68,11 @@ namespace SorceryHex.Gba.Pokemon {
          return _jump == that._jump;
       }
 
-      public string ProvideString(byte[] data, int runStart, int runLength) { return null; }
+      public string ProvideString(ISegment segment, int runStart, int runLength) { return null; }
 
-      public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
-         var element = _provider.ProvideElement(commandFactory, data, runStart, innerIndex, runLength);
-         var reader = new Reader(new GbaSegment(data, runStart)); // TODO push up
+      public FrameworkElement ProvideElement(ICommandFactory commandFactory, ISegment segment, int runStart, int innerIndex, int runLength) {
+         var element = _provider.ProvideElement(commandFactory, segment, runStart, innerIndex, runLength);
+         var reader = new Reader(segment.Inner(runStart)); // TODO push up
          int jump = _jump(reader);
          commandFactory.CreateJumpCommand(element, jump);
          return element;

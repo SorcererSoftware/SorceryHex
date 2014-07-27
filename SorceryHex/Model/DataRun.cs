@@ -1,7 +1,7 @@
 ﻿using System.Windows;
 
 namespace SorceryHex {
-   public delegate int[] JumpRule(byte[] data, int index);
+   public delegate int[] JumpRule(ISegment segment, int index);
    public delegate FrameworkElement InterpretationRule(ISegment segment);
 
    public interface IDataRun {

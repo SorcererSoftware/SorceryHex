@@ -7,8 +7,8 @@ using System.Windows.Shapes;
 
 namespace SorceryHex {
    public interface IElementProvider {
-      string ProvideString(byte[] data, int runStart, int runLength);
-      FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength);
+      string ProvideString(ISegment segment, int runStart, int runLength); // TODO absorb runStart and runLength into segment
+      FrameworkElement ProvideElement(ICommandFactory commandFactory, ISegment segment, int runStart, int innerIndex, int runLength); // TODO absorb runStart and runLength into the segment
       bool IsEquivalent(IElementProvider other);
       void Recycle(FrameworkElement element);
    }
@@ -27,10 +27,10 @@ namespace SorceryHex {
          _hoverText = hoverText;
       }
 
-      public string ProvideString(byte[] data, int runStart, int runLength) { return null; }
+      public string ProvideString(ISegment segment, int runStart, int runLength) { return null; }
 
-      public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
-         var geometry = _parser[data[runStart + innerIndex]];
+      public FrameworkElement ProvideElement(ICommandFactory commandFactory, ISegment segment, int runStart, int innerIndex, int runLength) {
+         var geometry = _parser[segment[runStart + innerIndex]];
          if (geometry == null) return null;
 
          var element = _recycles.Count > 0 ? _recycles.Dequeue() : new Border {
@@ -84,11 +84,11 @@ namespace SorceryHex {
          _hoverText = string.IsNullOrEmpty(hoverText) ? null : hoverText;
       }
 
-      public string ProvideString(byte[] data, int runStart, int runLength) {
-         return AsString(_names, data.ReadData(_stride, runStart));
+      public string ProvideString(ISegment segment, int runStart, int runLength) {
+         return AsString(_names, segment.Read(runStart, _stride));
       }
 
-      public FrameworkElement ProvideElement(ICommandFactory commandFactory, byte[] data, int runStart, int innerIndex, int runLength) {
+      public FrameworkElement ProvideElement(ICommandFactory commandFactory, ISegment segment, int runStart, int innerIndex, int runLength) {
          if (innerIndex != 0) {
             var rectangle = _rectangles.Count > 0 ? _rectangles.Dequeue() : new Rectangle();
             return rectangle;
@@ -102,7 +102,7 @@ namespace SorceryHex {
             Margin = new Thickness(2, 0, 2, 0),
             Foreground = _runColor
          };
-         var index = data.ReadData(_stride, runStart);
+         var index = segment.Read(runStart, _stride);
          string name = AsString(_names, index);
          block.Text = name;
          block.ToolTip = (_hoverText ?? string.Empty) + " : " + name;

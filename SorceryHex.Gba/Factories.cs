@@ -34,7 +34,7 @@ namespace SorceryHex.Gba {
             // TODO fix this
             // var imageguess = new ImageGuess(pointerMapper, new Rectangle().Dispatcher);
             var defaultSegment = new GbaSegment(data, 0, data.Length);
-            var storage = new RunStorage(defaultSegment, data
+            var storage = new RunStorage(defaultSegment
                , new Header(pointerMapper)
                , new Thumbnails(pointerMapper)
                , new Lz(pointerMapper)
@@ -70,7 +70,7 @@ namespace SorceryHex.Gba {
 
       public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
          var pointerMapper = new Gba.PointerMapper(data);
-         var storage = new RunStorage(new GbaSegment(data, 0), data
+         var storage = new RunStorage(new GbaSegment(data, 0)
             , new Gba.Header(pointerMapper)
             , new Gba.Lz(pointerMapper)
          );
