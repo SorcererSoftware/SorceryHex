@@ -44,13 +44,13 @@ namespace SorceryHex {
 
    public class InlineTextEditor : IEditor {
       readonly Func<ISegment, string> _convertToString;
-      readonly Func<string, byte[]> _convertToValue;
+      readonly Func<string, ISegment> _convertToValue;
       readonly int _length;
 
       TextBox _box;
       ISegment _segment;
 
-      public InlineTextEditor(int length, Func<ISegment, string> toString, Func<string, byte[]> toValue) {
+      public InlineTextEditor(int length, Func<ISegment, string> toString, Func<string, ISegment> toValue) {
          _length = length;
          _convertToString = toString;
          _convertToValue = toValue;

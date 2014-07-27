@@ -342,7 +342,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       IEditor _inlineByteNumEditor;
       IEditor InlineByteNumEditor {
          get {
-            return _inlineByteNumEditor ?? (_inlineByteNumEditor = new InlineTextEditor(1, array => array[0].ToString(), str => new[] { byte.Parse(str) }));
+            return _inlineByteNumEditor ?? (_inlineByteNumEditor = new InlineTextEditor(1, array => array[0].ToString(), str => new GbaSegment(new[] { byte.Parse(str) }, 0)));
          }
       }
       public byte ByteNum(string name) {

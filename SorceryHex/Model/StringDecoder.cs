@@ -8,27 +8,27 @@ using System.Windows.Shapes;
 
 namespace SorceryHex {
    class StringDecoder : IPartialModel, IEditor {
-      readonly byte[] _data;
+      readonly ISegment _segment;
       readonly Queue<Path> _recycles = new Queue<Path>();
       readonly IDictionary<byte, Geometry> _specialCharacters = new Dictionary<byte, Geometry>();
       readonly int Stride;
       int lowerCaseStart = -1, upperCaseStart = -1;
 
-      public StringDecoder(byte[] data, int stride) { _data = data; Stride = stride; }
+      public StringDecoder(ISegment segment, int stride) { _segment = segment; Stride = stride; }
 
       #region Partial Model
 
-      public int Length { get { return _data.Length; } }
+      public int Length { get { return _segment.Length; } }
       public bool CanEdit(ISegment segment) { return true; }
       public IEditor Editor { get { return this; } }
       public void Load(ICommandFactory commander) { }
 
-      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
+      public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) { // TODO push start and length into a segment
          var list = new FrameworkElement[length];
 
          for (int i = 0; i < length; i++) {
             if ((start + i) % Stride != 0) continue;
-            var data = _data[start + i];
+            var data = _segment[start + i];
             if (lowerCaseStart != -1 && lowerCaseStart <= data && data < lowerCaseStart + 26) {
                list[i] = UseElement(Utils.LowerCaseFlyweights[data - lowerCaseStart]);
             } else if (upperCaseStart != -1 && upperCaseStart <= data && data < upperCaseStart + 26) {
@@ -54,16 +54,16 @@ namespace SorceryHex {
       public IEnumerable<int> Find(string term) {
          byte[] searchTerm = null;
          if (term == term.ToUpper() && term.All(UpperCaseAlphabet.Contains)) {
-            upperCaseStart = SearchUpperCase(_data, term);
+            upperCaseStart = SearchUpperCase(_segment, term);
             searchTerm = term.Select(c => (byte)(((int)c) - 'A' + upperCaseStart)).ToArray();
          } else if (term == term.ToLower() && term.All(LowerCaseAlphabet.Contains)) {
-            lowerCaseStart = SearchLowerCase(_data, term);
+            lowerCaseStart = SearchLowerCase(_segment, term);
             searchTerm = term.Select(c => (byte)(((int)c) - 'a' + lowerCaseStart)).ToArray();
          }
 
          if (searchTerm == null) yield break;
-         for (int i = 0, j = 0; i < _data.Length; i += Stride) {
-            j = _data[i] == searchTerm[j] || _data[i] == searchTerm[j] ? j + 1 : 0;
+         for (int i = 0, j = 0; i < _segment.Length; i += Stride) {
+            j = _segment[i] == searchTerm[j] || _segment[i] == searchTerm[j] ? j + 1 : 0;
             if (j < searchTerm.Length) continue;
             yield return i - j + 1;
             j = 0;
@@ -114,19 +114,19 @@ namespace SorceryHex {
 
       // assuming a-z are continuous, searches for a set of bytes that could represent the same-case string provided.
       // returns the expceted byte for 'a'
-      static byte SearchLowerCase(byte[] value, string search) {
+      static byte SearchLowerCase(ISegment value, string search) {
          Debug.Assert(search.Length >= 4);
          Debug.Assert(search == search.ToLower());
          return SearchGenericCase(value, search, 'a');
       }
 
-      static byte SearchUpperCase(byte[] value, string search) {
+      static byte SearchUpperCase(ISegment value, string search) {
          Debug.Assert(search.Length >= 4);
          Debug.Assert(search == search.ToUpper());
          return SearchGenericCase(value, search, 'A');
       }
 
-      static byte SearchGenericCase(byte[] value, string search, char firstLetterInCase) {
+      static byte SearchGenericCase(ISegment value, string search, char firstLetterInCase) {
          int[] deltas = new int[search.Length - 1];
          for (int i = 0; i < deltas.Length; i++) deltas[i] = search[i + 1] - search[i];
          int[] success = new int[256];

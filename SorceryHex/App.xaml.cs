@@ -115,7 +115,10 @@ namespace SorceryHex {
       public string DisplayName { get { return "StringFinder"; } }
       public string Version { get { return "1.0"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
-      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(new Segment(data, 0, data.Length), new StringDecoder(data, 1)); }
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
+         var segment = new Segment(data, 0, data.Length);
+         return new CompositeModel(segment, new StringDecoder(segment, 1));
+      }
       public int CompareTo(IModelFactory other) { return -1; }
    }
 }
