@@ -33,12 +33,12 @@ namespace SorceryHex.Gba {
 
       public List<int> MappedDestinations { get { lock (_destinations) return _destinations.Keys.ToList(); } }
 
-      public PointerMapper(byte[] data) {
+      public PointerMapper(ISegment segment) {
          _pointerRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, Brush, true), 4) { Interpret = InterpretPointer, Jump = JumpPointer };
 
-         for (int i = 3; i < data.Length; i += 4) {
-            if (data[i] != 0x08) continue;
-            var address = data.ReadPointer(i - 3);
+         for (int i = 3; i < segment.Length; i += 4) {
+            if (segment[i] != 0x08) continue;
+            var address = segment.Follow(i - 3).Location;
             if (address % 4 != 0) continue;
             _pointerSet.Add(i - 3, address);
             if (!_reversePointerSet.ContainsKey(address)) _reversePointerSet[address] = new List<int>();

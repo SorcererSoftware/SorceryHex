@@ -29,11 +29,11 @@ namespace SorceryHex.Gba {
          }
 
          public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
-            var pointerMapper = new PointerMapper(data);
+            var defaultSegment = new GbaSegment(data, 0, data.Length);
+            var pointerMapper = new PointerMapper(defaultSegment);
             var pcs = new PCS();
             // TODO fix this
             // var imageguess = new ImageGuess(pointerMapper, new Rectangle().Dispatcher);
-            var defaultSegment = new GbaSegment(data, 0, data.Length);
             var storage = new RunStorage(defaultSegment
                , new Header(pointerMapper)
                , new Thumbnails(pointerMapper)
@@ -69,12 +69,13 @@ namespace SorceryHex.Gba {
       }
 
       public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
-         var pointerMapper = new Gba.PointerMapper(data);
-         var storage = new RunStorage(new GbaSegment(data, 0)
+         var defaultSegment = new GbaSegment(data, 0, data.Length);
+         var pointerMapper = new Gba.PointerMapper(defaultSegment);
+         var storage = new RunStorage(defaultSegment
             , new Gba.Header(pointerMapper)
             , new Gba.Lz(pointerMapper)
          );
-         IModel model = new CompositeModel(new GbaSegment(data, 0, data.Length), storage);
+         IModel model = new CompositeModel(defaultSegment, storage);
          model = new Gba.PointerParser(model, storage, pointerMapper);
          return model;
       }
