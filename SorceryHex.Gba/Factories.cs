@@ -33,7 +33,8 @@ namespace SorceryHex.Gba {
             var pcs = new PCS();
             // TODO fix this
             // var imageguess = new ImageGuess(pointerMapper, new Rectangle().Dispatcher);
-            var storage = new RunStorage(new GbaSegment(data, 0), data
+            var defaultSegment = new GbaSegment(data, 0, data.Length);
+            var storage = new RunStorage(defaultSegment, data
                , new Header(pointerMapper)
                , new Thumbnails(pointerMapper)
                , new Lz(pointerMapper)
@@ -42,7 +43,7 @@ namespace SorceryHex.Gba {
                // , imageguess
             );
             // new ImageSearchWindow(imageguess).Show();
-            IModel model = new CompositeModel(new GbaSegment(data, 0, data.Length), storage);
+            IModel model = new CompositeModel(defaultSegment, storage);
             model = new PointerParser(model, data, storage, pointerMapper);
             return model;
          }

@@ -75,8 +75,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             });
             _tasks[currentScript.Name.Split('.')[0]] = t;
          }
-         _tasks.Values.Foreach(t => t.Start());
-         _tasks.Values.Foreach(t => t.Wait());
+         _tasks.Values.Foreach(t => t.RunSynchronously());
+         // _tasks.Values.Foreach(t => t.Start());
+         // _tasks.Values.Foreach(t => t.Wait());
          _runs.AddLabeler(this);
       }
 
@@ -111,8 +112,8 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var matchingLengths = new List<int>();
          foreach (var address in addressesList) {
             int elementCount1 = 0, elementCount2 = 0;
-            while (GeneralMatch(address + elementCount1 * stride, generalLayout)) elementCount1++;
-            if (address + stride * elementCount1 >= _runs.Data.Length) continue;
+            while (GeneralMatch(_runs.Segment.Inner(address + elementCount1 * stride), generalLayout)) elementCount1++;
+            if (address + stride * elementCount1 >= _runs.Segment.Length) continue;
             if (elementCount1 < MinVariableLength) continue;
 
             var parser = new Parser(_runs, _pcs, location: address);
@@ -144,13 +145,13 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var matchingLengths = new List<int>();
          foreach (var address in addressesList) {
             int elementCount = 0;
-            while (address + stride * elementCount < _runs.Data.Length && _runs.Data[address + stride * elementCount] != ender) {
+            while (address + stride * elementCount < _runs.Segment.Length && _runs.Segment[address + stride * elementCount] != ender) {
                elementCount++;
             }
 
-            if (address + stride * elementCount >= _runs.Data.Length) continue;
+            if (address + stride * elementCount >= _runs.Segment.Length) continue;
             if (elementCount < MinVariableLength) continue;
-            if (Enumerable.Range(0, elementCount).Any(i => !GeneralMatch(address + i * stride, generalLayout))) continue;
+            if (Enumerable.Range(0, elementCount).Any(i => !GeneralMatch(_runs.Segment.Inner(address + i * stride), generalLayout))) continue;
 
             var parser = new Parser(_runs, _pcs, location: address);
             for (int i = 0; i < elementCount; i++) {
@@ -172,10 +173,10 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
       }
 
       public BuildableObject[] ReadArray(int length, int location, ChildReader reader) {
-         var destination = _runs.Data.ReadPointer(location);
-         if (destination == -1) return null;
-         var parser = new Parser(_runs, _pcs, location: destination);
-         var builder = new Builder(_cache, new GbaSegment(_runs.Data, destination));
+         var destination = _runs.Segment.Follow(location);
+         if (destination == null) return null;
+         var parser = new Parser(_runs, _pcs, location: destination.Location);
+         var builder = new Builder(_cache, destination);
          var array = new BuildableObject[length];
          for (int i = 0; i < length; i++) {
             reader(parser);
@@ -184,13 +185,13 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             reader(builder);
             array[i] = builder.Result;
          }
-         _mapper.Claim(_runs, location, destination);
+         _mapper.Claim(_runs, location, destination.Location);
          return array;
       }
 
       public Pointer ReadPointer(int location, string generalLayout, ChildReader reader) {
-         int destination = _runs.Data.ReadPointer(location);
-         if (destination == -1) return null;
+         var destination = _runs.Segment.Follow(location);
+         if (destination == null) return null;
          return ReadPointerHelper(destination, generalLayout, reader);
       }
 
@@ -198,7 +199,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var matchingPointers = new List<Pointer>();
          var addressesList = _mapper.OpenDestinations.ToList();
          foreach (var address in addressesList) {
-            var p = ReadPointerHelper(address, generalLayout, reader);
+            var p = ReadPointerHelper(_runs.Segment.Inner(address), generalLayout, reader);
             if (p == null) continue;
             matchingPointers.Add(p);
          }
@@ -217,7 +218,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             var p = new Pointer {
                source = pointers.First(),
                destination = destination.source,
-               data = new AutoArray(_runs.Data, locations, destination.source)
+               data = new AutoArray(_runs.Segment.Inner(destination.source), locations)
             };
             pointerSet.Add(p);
          }
@@ -241,15 +242,15 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
 
       #region Helpers
 
-      bool GeneralMatch(int address, string layout) {
+      bool GeneralMatch(ISegment segment, string layout) {
          layout = layout.ToLower();
-         if (address + layout.Length * 4 > _runs.Data.Length) return false;
+         if (segment.Location + layout.Length * 4 > _runs.Segment.Length) return false;
          for (int i = 0; i < layout.Length; i++) {
             Debug.Assert(layout[i] == 'p' || layout[i] == 'w');
             if (layout[i] != 'p') continue;
-            int value = _runs.Data.ReadData(4, address + i * 4);
-            int pointer = _runs.Data.ReadPointer(address + i * 4);
-            if (pointer == -1 && value != 0) return false;
+            int value = segment.Read(i * 4, 4);
+            var pointer = segment.Follow(i * 4);
+            if (pointer == null && value != 0) return false;
          }
          return true;
       }
@@ -260,9 +261,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             var layout = matchingLayouts[i];
             var length = matchingLengths[i];
             int repeatCount = 0;
-            byte prev = _runs.Data[layout];
+            byte prev = _runs.Segment[layout];
             for (int j = 1; j < length; j++) {
-               var current = _runs.Data[layout + j];
+               var current = _runs.Segment[layout + j];
                if (prev == current) repeatCount++;
                prev = current;
             }
@@ -273,7 +274,7 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          var index = counts.IndexOf(least);
 
          int offset = matchingLayouts[index];
-         var factory = new Builder(_cache, new GbaSegment(_runs.Data, offset));
+         var factory = new Builder(_cache, _runs.Segment.Inner(offset));
          var data = new BuildableObject[matchingLengths[index]];
          for (int i = 0; i < matchingLengths[index]; i++) {
             factory.Clear();
@@ -287,17 +288,17 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
          return new Pointer { source = matchingPointers[index], destination = matchingLayouts[index], data = data };
       }
 
-      Pointer ReadPointerHelper(int destination, string generalLayout, ChildReader reader) {
-         if (!GeneralMatch(destination, generalLayout)) return null;
-         var parser = new Parser(_runs, _pcs, location: destination);
+      Pointer ReadPointerHelper(ISegment segment, string generalLayout, ChildReader reader) {
+         if (!GeneralMatch(segment, generalLayout)) return null;
+         var parser = new Parser(_runs, _pcs, location: segment.Location);
          reader(parser);
          if (parser.FaultReason != null) return null; ;
-         var factory = new Builder(_cache, new GbaSegment(_runs.Data, destination));
+         var factory = new Builder(_cache, segment);
          reader(factory);
 
          return new Pointer {
-            source = _mapper.PointersFromDestination(destination).First(),
-            destination = destination,
+            source = _mapper.PointersFromDestination(segment.Location).First(),
+            destination = segment.Location,
             data = factory.Result
          };
       }
@@ -306,21 +307,18 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
    }
 
    public class AutoArray {
-      readonly byte[] _data;
+      readonly ISegment _data;
       readonly IList<Pointer> _pointers;
-      public readonly int destination;
-      public AutoArray(byte[] data, IList<Pointer> pointers, int loc) { _data = data; _pointers = pointers; destination = loc; }
+      public AutoArray(ISegment data, IList<Pointer> pointers) { _data = data; _pointers = pointers; }
       public dynamic this[int i] {
          get {
-            var loc = destination + i * 4;
-            var r = _pointers.FirstOrDefault(p => p.destination == _data.ReadPointer(loc));
+            var r = _pointers.FirstOrDefault(p => p.destination == _data.Follow(i * 4).Location);
             if (r != null) return r.data;
             return null;
          }
       }
       public int destinationof(int i) {
-         var loc = destination + i * 4;
-         var r = _pointers.FirstOrDefault(p => p.destination == _data.ReadPointer(loc));
+         var r = _pointers.FirstOrDefault(p => p.destination == _data.Follow(i * 4).Location);
          return r.destination;
       }
    }

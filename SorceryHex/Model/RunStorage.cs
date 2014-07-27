@@ -16,7 +16,6 @@ namespace SorceryHex {
    }
 
    public interface IRunStorage {
-      byte[] Data { get; }
       ISegment Segment { get; }
       void AddRun(int location, IDataRun run);
       void AddLabeler(ILabeler labeler);
