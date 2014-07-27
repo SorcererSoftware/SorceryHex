@@ -200,7 +200,7 @@ namespace SorceryHex.Gba {
       static readonly Geometry Hat = Geometry.Parse("m0,0 l0,-1 1,0 z");
 
       readonly IModel _base;
-      readonly byte[] _data;
+      readonly ISegment _data;
       readonly Queue<Grid> _spareContainers = new Queue<Grid>();
       readonly Queue<Path> _spareHats = new Queue<Path>();
       readonly RunStorage _storage;
@@ -213,8 +213,7 @@ namespace SorceryHex.Gba {
 
       public ISegment Segment { get { return _base.Segment; } }
 
-      public PointerParser(IModel fallback, byte[] data, RunStorage storage, PointerMapper mapper) {
-         _data = data;
+      public PointerParser(IModel fallback, RunStorage storage, PointerMapper mapper) {
          _base = fallback;
          _storage = storage;
          _mapper = mapper;

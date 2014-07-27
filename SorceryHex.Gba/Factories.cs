@@ -44,7 +44,7 @@ namespace SorceryHex.Gba {
             );
             // new ImageSearchWindow(imageguess).Show();
             IModel model = new CompositeModel(defaultSegment, storage);
-            model = new PointerParser(model, data, storage, pointerMapper);
+            model = new PointerParser(model, storage, pointerMapper);
             return model;
          }
 
@@ -75,7 +75,7 @@ namespace SorceryHex.Gba {
             , new Gba.Lz(pointerMapper)
          );
          IModel model = new CompositeModel(new GbaSegment(data, 0, data.Length), storage);
-         model = new Gba.PointerParser(model, data, storage, pointerMapper);
+         model = new Gba.PointerParser(model, storage, pointerMapper);
          return model;
       }
 
