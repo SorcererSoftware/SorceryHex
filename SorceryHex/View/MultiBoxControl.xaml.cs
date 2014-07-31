@@ -16,8 +16,8 @@ using System.Windows.Media;
 
 namespace SorceryHex {
    public interface IAppCommands {
-      int Offset { get; }
       byte[] Data { get; }
+      DataTab CurrentTab { get; }
       void MainFocus();
       void JumpTo(int location, bool addToBreadCrumbs = false);
       void JumpTo(string label, bool addToBreadCrumbs = false);
@@ -36,7 +36,7 @@ namespace SorceryHex {
          _engine = engine;
          _scope = scope;
       }
-      public int offset { get { return _app.Offset; } }
+      public int offset { get { return _app.CurrentTab.Offset; } }
       public int[] find(string term) { return _app.Find(term).ToArray(); }
       public byte[] data { get { return _app.Data; } }
       public void @goto(int offset) { _app.JumpTo(offset, true); }
@@ -152,7 +152,7 @@ namespace SorceryHex {
             ((Button)BreadCrumbBar.Children[0]).Click -= BackExecuted;
             BreadCrumbBar.Children.RemoveAt(0);
          }
-         var hex = _appCommands.Offset.ToHexString();
+         var hex = _appCommands.CurrentTab.Offset.ToHexString();
          while (hex.Length < 6) hex = "0" + hex;
          var button = new Button { Content = hex };
          button.Click += BackExecuted;

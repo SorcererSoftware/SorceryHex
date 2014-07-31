@@ -46,25 +46,22 @@ namespace SorceryHex {
 
       readonly IEnumerable<Grid> _bodies;
       readonly IEnumerable<IModelFactory> _factories;
-      public readonly MultiBoxControl _multiBox;
+      readonly MultiBoxControl _multiBox;
       readonly MainCommandFactory _commandFactory;
       readonly CursorController _cursorController;
-      IDictionary<Key, Action> KeyActions;
 
+      IDictionary<Key, Action> _keyActions;
       string _filename;
       DateTime _filestamp;
+      byte[] _fileBytes;
       byte[] _filehash;
 
-      public int Offset { get; private set; }
-      public IModel Holder { get; private set; }
-      public byte[] Data { get; private set; }
-
-      public int CurrentColumnCount { get; private set; }
-      public int CurrentRowCount { get; private set; }
+      public byte[] Data { get { return _fileBytes; } }
+      public DataTab CurrentTab { get; private set; }
 
       public MainWindow(IEnumerable<IModelFactory> factories, string fileName, byte[] data) {
          _factories = factories;
-         Data = data;
+         _fileBytes = data;
          _commandFactory = new MainCommandFactory(this);
          InitializeComponent();
          _bodies = new[] { BackgroundBody, Body, EditBody };
@@ -83,14 +80,14 @@ namespace SorceryHex {
       public event EventHandler JumpCompleted;
       public void JumpTo(int location, bool addToBreadcrumb = false) {
          if (addToBreadcrumb) _multiBox.AddLocationToBreadCrumb();
-         location = Math.Min(Math.Max(-MaxColumnCount, location), Holder.Segment.Length);
+         location = Math.Min(Math.Max(-MaxColumnCount, location), CurrentTab.Model.Segment.Length);
 
          foreach (FrameworkElement element in Body.Children) Recycle(element);
          _bodies.Foreach(body => body.Children.Clear());
 
-         Offset = location;
-         Add(0, CurrentColumnCount * CurrentRowCount);
-         ScrollBar.Value = Offset;
+         CurrentTab.Offset = location;
+         Add(0, CurrentTab.Columns * CurrentTab.Rows);
+         ScrollBar.Value = CurrentTab.Offset;
          JumpCompleted(this, EventArgs.Empty);
          UpdateHeaderText();
       }
@@ -104,51 +101,51 @@ namespace SorceryHex {
          throw new ArgumentException("There is no '" + label + "' to jump to");
       }
 
-      public IEnumerable<int> Find(string term) { return this.Holder.Find(term); }
+      public IEnumerable<int> Find(string term) { return CurrentTab.Model.Find(term); }
 
       public void HighlightFromLocation(int combinedLocation) {
-         int location = Offset + combinedLocation;
-         Debug.Assert(Holder.IsStartOfDataBlock(location) || Holder.IsWithinDataBlock(location));
-         _cursorController.UpdateSelection(Holder, location);
+         int location = CurrentTab.Offset + combinedLocation;
+         Debug.Assert(CurrentTab.Model.IsStartOfDataBlock(location) || CurrentTab.Model.IsWithinDataBlock(location));
+         _cursorController.UpdateSelection(CurrentTab.Model, location);
       }
 
       public void UpdateHeaderText() {
-         int cols = CurrentColumnCount;
+         int cols = CurrentTab.Columns;
          foreach (TextBlock block in Headers.Children) {
-            int location = Grid.GetRow(block) * cols + Offset;
-            block.Text = Holder.GetLabel(location);
+            int location = Grid.GetRow(block) * cols + CurrentTab.Offset;
+            block.Text = CurrentTab.Model.GetLabel(location);
          }
          _cursorController.UpdateSelection();
       }
 
       public void ShiftRows(int rows) {
-         Debug.Assert(Math.Abs(rows) <= CurrentRowCount);
-         int all = CurrentColumnCount * CurrentRowCount;
-         int add = CurrentColumnCount * rows;
-         if (Offset - add < -MaxColumnCount || Offset - add > Holder.Segment.Length) return;
+         Debug.Assert(Math.Abs(rows) <= CurrentTab.Rows);
+         int all = CurrentTab.Columns * CurrentTab.Rows;
+         int add = CurrentTab.Columns * rows;
+         if (CurrentTab.Offset - add < -MaxColumnCount || CurrentTab.Offset - add > CurrentTab.Model.Segment.Length) return;
 
          UpdateRows(Body, rows, Recycle);
          UpdateRows(BackgroundBody, rows, _cursorController.Recycle);
          UpdateRows(EditBody, rows, (element) => { });
 
-         Offset -= add;
+         CurrentTab.Offset -= add;
          if (rows > 0) Add(0, add);
          else Add(all + add, -add);
       }
 
       public void ShiftColumns(Panel panel, int shift, Action<FrameworkElement> removeAction) {
-         Debug.Assert(Math.Abs(shift) < CurrentColumnCount);
-         int all = CurrentRowCount * CurrentColumnCount;
+         Debug.Assert(Math.Abs(shift) < CurrentTab.Columns);
+         int all = CurrentTab.Rows * CurrentTab.Columns;
          var children = new FrameworkElement[panel.Children.Count];
          for (int i = 0; i < children.Length; i++) children[i] = (FrameworkElement)panel.Children[i];
          foreach (var element in children) {
-            int loc = CombineLocation(element, CurrentColumnCount);
+            int loc = CombineLocation(element, CurrentTab.Columns);
             loc += shift;
             if (loc < 0 || loc >= all) {
                panel.Children.Remove(element);
                removeAction(element);
             } else {
-               SplitLocation(element, CurrentColumnCount, loc);
+               SplitLocation(element, CurrentTab.Columns, loc);
             }
          }
       }
@@ -158,17 +155,17 @@ namespace SorceryHex {
       }
 
       public void RefreshElement(int location) {
-         Debug.Assert(0 <= location - Offset && location - Offset < CurrentColumnCount * CurrentRowCount);
+         Debug.Assert(0 <= location - CurrentTab.Offset && location - CurrentTab.Offset < CurrentTab.Columns * CurrentTab.Rows);
          var children = new FrameworkElement[Body.Children.Count];
          for (int i = 0; i < children.Length; i++) children[i] = (FrameworkElement)Body.Children[i];
          foreach (var element in children) {
-            int loc = CombineLocation(element, CurrentColumnCount);
-            if (loc + Offset == location) {
+            int loc = CombineLocation(element, CurrentTab.Columns);
+            if (loc + CurrentTab.Offset == location) {
                Body.Children.Remove(element);
                Recycle(element);
             }
          }
-         Add(location - Offset, 1);
+         Add(location - CurrentTab.Offset, 1);
       }
 
       public void WriteStatus(string status) {
@@ -186,7 +183,7 @@ namespace SorceryHex {
          foreach (var element in children) {
             int row = Grid.GetRow(element);
             row += rows;
-            if (row < 0 || row >= CurrentRowCount) {
+            if (row < 0 || row >= CurrentTab.Rows) {
                panel.Children.Remove(element);
                updateAction(element);
             } else {
@@ -196,8 +193,8 @@ namespace SorceryHex {
       }
 
       void Add(int start, int length) {
-         int rows = CurrentRowCount, cols = CurrentColumnCount;
-         var elements = Holder.CreateElements(_commandFactory, Offset + start, length).ToArray();
+         int rows = CurrentTab.Rows, cols = CurrentTab.Columns;
+         var elements = CurrentTab.Model.CreateElements(_commandFactory, CurrentTab.Offset + start, length).ToArray();
          Debug.Assert(elements.Length == length);
          for (var i = 0; i < elements.Length; i++) {
             SplitLocation(elements[i], cols, start + i);
@@ -212,7 +209,7 @@ namespace SorceryHex {
 
          // add new header rows
          for (int i = oldRows; i < newRows; i++) {
-            var headerText = Holder.GetLabel(Offset + i * CurrentColumnCount);
+            var headerText = CurrentTab.Model.GetLabel(CurrentTab.Offset + i * CurrentTab.Columns);
             var block = new TextBlock { Text = headerText, HorizontalAlignment = HorizontalAlignment.Right };
             Grid.SetRow(block, i);
             Headers.Children.Add(block);
@@ -227,33 +224,33 @@ namespace SorceryHex {
       }
 
       void ShiftColumns(int shift) {
-         if (Offset - shift < -MaxColumnCount || Offset - shift > Holder.Segment.Length) return;
+         if (CurrentTab.Offset - shift < -MaxColumnCount || CurrentTab.Offset - shift > CurrentTab.Model.Segment.Length) return;
 
          ShiftColumns(Body, shift, Recycle);
          ShiftColumns(BackgroundBody, shift, _cursorController.Recycle);
          ShiftColumns(EditBody, shift, (element) => { });
 
-         Offset -= shift;
+         CurrentTab.Offset -= shift;
          if (shift > 0) Add(0, shift);
-         else Add(CurrentRowCount * CurrentColumnCount + shift, -shift);
+         else Add(CurrentTab.Rows * CurrentTab.Columns + shift, -shift);
       }
 
       void Scroll(int dif) {
          if (dif == 0) return;
          var sign = Math.Sign(dif);
          var magn = Math.Abs(dif);
-         magn -= magn % CurrentColumnCount; // discard the column portion
-         int all = CurrentColumnCount * CurrentRowCount;
-         if (magn > all) { JumpTo(Offset - (magn * sign)); return; }
+         magn -= magn % CurrentTab.Columns; // discard the column portion
+         int all = CurrentTab.Columns * CurrentTab.Rows;
+         if (magn > all) { JumpTo(CurrentTab.Offset - (magn * sign)); return; }
 
-         int rowPart = magn / CurrentColumnCount;
+         int rowPart = magn / CurrentTab.Columns;
          ShiftRows(rowPart * sign);
          UpdateHeaderText();
-         ScrollBar.Value = Offset;
+         ScrollBar.Value = CurrentTab.Offset;
       }
 
       void Recycle(FrameworkElement element) {
-         Holder.Recycle(_commandFactory, element);
+         CurrentTab.Model.Recycle(_commandFactory, element);
       }
 
       IModelFactory[] Sort(IList<IModelFactory> factories) {
@@ -271,9 +268,9 @@ namespace SorceryHex {
       void LoadBestMatch(string filename) {
          _filename = filename;
          _filestamp = File.GetLastWriteTime(filename);
-         _filehash = new Hashing.Murmur3().ComputeHash(Data);
+         _filehash = new Hashing.Murmur3().ComputeHash(_fileBytes);
          Title = filename.Split('\\').Last();
-         var array = _factories.Where(f => f.CanCreateModel(filename, Data)).ToArray();
+         var array = _factories.Where(f => f.CanCreateModel(filename, _fileBytes)).ToArray();
          array = Sort(array);
          foreach (MenuItem item in Parser.Items) item.Click -= SwitchParserClick;
          Parser.Items.Clear();
@@ -287,30 +284,33 @@ namespace SorceryHex {
             Parser.Visibility = Visibility.Visible;
             ((MenuItem)Parser.Items[Parser.Items.Count - 1]).IsChecked = true;
          }
-         LoadParser(array.Last(), filename, Data, jump: true);
+         LoadParser(array.Last(), filename, _fileBytes, jump: true);
       }
 
       void LoadParser(IModelFactory factory, string name, byte[] data, bool jump = false) {
          foreach (FrameworkElement element in Body.Children) Recycle(element);
          AutoTimer.ClearReport();
+         // TODO clear tabs
          _bodies.Foreach(body => body.Children.Clear());
-         if (Holder != null) Holder.MoveToNext -= _cursorController.HandleMoveNext;
+         // if (Holder != null) Holder.MoveToNext -= _cursorController.HandleMoveNext;
          _multiBox.ResetScope();
-         Holder = factory.CreateModel(name, data, _multiBox.ScriptInfo);
-         Holder.MoveToNext += _cursorController.HandleMoveNext;
-         ScrollBar.Maximum = Holder.Segment.Length;
-         JumpTo(jump ? 0 : Offset);
+         var model = factory.CreateModel(name, data, _multiBox.ScriptInfo);
+         model.MoveToNext += _cursorController.HandleMoveNext;
+         ScrollBar.Maximum = model.Segment.Length;
+         // JumpTo(jump ? 0 : Offset); // TODO glean from previous current tab
          Parser.IsEnabled = false;
          if (jump) _multiBox.BreadCrumbBar.Children.Clear();
          GotoItem.Items.Clear();
          _loadTimer = AutoTimer.Time("Full Load Time");
-         Task.Factory.StartNew(() => Holder.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke((Action)LoadComplete));
+         Task.Factory.StartNew(() => model.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke((Action)LoadComplete));
+         CurrentTab = new DataTab(model, 0, Body.ColumnDefinitions.Count, Body.RowDefinitions.Count);
+         DataTabBar.Children.Add(CurrentTab);
       }
 
       AutoTimer _loadTimer;
       void LoadComplete() {
          Parser.IsEnabled = true;
-         JumpTo(Offset);
+         JumpTo(CurrentTab.Offset);
          _loadTimer.Dispose();
          _loadTimer = null;
          _commandFactory.ShowErrors(_multiBox);
@@ -321,7 +321,7 @@ namespace SorceryHex {
       #region Events
 
       void Resize(object sender, EventArgs e) {
-         int oldRows = CurrentRowCount, oldCols = CurrentColumnCount;
+         int oldRows = CurrentTab.Rows, oldCols = CurrentTab.Columns;
          var newSize = DesiredWorkArea(ResizeGrid);
          int newCols = (int)newSize.Width, newRows = (int)newSize.Height;
          newCols = Math.Min(newCols, MaxColumnCount);
@@ -337,7 +337,7 @@ namespace SorceryHex {
          };
 
          // update container sizes
-         CurrentColumnCount = newCols; CurrentRowCount = newRows;
+         CurrentTab.Columns = newCols; CurrentTab.Rows = newRows;
          updateSize(Body);
          updateSize(BackgroundBody);
          updateSize(EditBody);
@@ -371,18 +371,18 @@ namespace SorceryHex {
             ScrollBar.Value = 0;
          }
 
-         int dif = Offset - (int)ScrollBar.Value;
+         int dif = CurrentTab.Offset - (int)ScrollBar.Value;
          Scroll(dif);
       }
 
       void ScrollWheel(object sender, MouseWheelEventArgs e) {
          ShiftRows(Math.Sign(e.Delta));
-         ScrollBar.Value = Offset;
+         ScrollBar.Value = CurrentTab.Offset;
          UpdateHeaderText();
       }
 
       void InitializeKeyActions() {
-         KeyActions = new Dictionary<Key, Action> {
+         _keyActions = new Dictionary<Key, Action> {
             { Key.Left,     () => ShiftColumns(-1) },
             { Key.Right,    () => ShiftColumns(1) },
             { Key.Down,     () => ShiftRows(1) },
@@ -395,11 +395,11 @@ namespace SorceryHex {
          if (EditBody.IsKeyboardFocusWithin) return;
          if (Keyboard.Modifiers == ModifierKeys.Control) {
             e.Handled = true;
-            if (KeyActions.ContainsKey(e.Key)) {
-               KeyActions[e.Key]();
+            if (_keyActions.ContainsKey(e.Key)) {
+               _keyActions[e.Key]();
                UpdateHeaderText();
             } else if (arrowKeys.Contains(e.Key)) {
-               ScrollBar.Value = Offset;
+               ScrollBar.Value = CurrentTab.Offset;
                UpdateHeaderText();
             } else {
                e.Handled = false;
@@ -425,18 +425,18 @@ namespace SorceryHex {
          var newstamp = File.GetLastWriteTime(_filename);
          if (newstamp == _filestamp) return;
          _filestamp = newstamp;
-         Data = Utils.LoadFile(out _filename, new[] { _filename });
-         _filehash = new Hashing.Murmur3().ComputeHash(Data);
+         _fileBytes = Utils.LoadFile(out _filename, new[] { _filename });
+         _filehash = new Hashing.Murmur3().ComputeHash(_fileBytes);
          IModelFactory factory = null;
          foreach (MenuItem item in Parser.Items) if (item.IsChecked) factory = (IModelFactory)item.Tag;
-         LoadParser(factory, Title, Data);
+         LoadParser(factory, Title, _fileBytes);
       }
 
       void SaveData(object sender, EventArgs e) {
          Hashing.Murmur3 hasher = new Hashing.Murmur3();
-         byte[] hash = hasher.ComputeHash(Data);
+         byte[] hash = hasher.ComputeHash(_fileBytes);
          if (Enumerable.SequenceEqual(hash, _filehash)) return;
-         File.WriteAllBytes(_filename, Data);
+         File.WriteAllBytes(_filename, _fileBytes);
          _filestamp = File.GetLastWriteTime(_filename);
          _filehash = hash;
       }
@@ -479,11 +479,11 @@ namespace SorceryHex {
       }
 
       void OpenExecuted(object sender, RoutedEventArgs e) {
-         Holder.MoveToNext -= _cursorController.HandleMoveNext;
+         CurrentTab.Model.MoveToNext -= _cursorController.HandleMoveNext;
          string fileName;
          var data = Utils.LoadFile(out fileName);
          if (data == null) return;
-         Data = data;
+         _fileBytes = data;
          LoadBestMatch(fileName);
       }
 
@@ -491,7 +491,7 @@ namespace SorceryHex {
          var element = (FrameworkElement)sender;
          var factory = (IModelFactory)element.Tag;
          foreach (MenuItem item in Parser.Items) item.IsChecked = element == item;
-         LoadParser(factory, Title, Data);
+         LoadParser(factory, Title, _fileBytes);
       }
 
       void CloseExecuted(object sender, RoutedEventArgs e) { Close(); }

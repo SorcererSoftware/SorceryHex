@@ -120,7 +120,7 @@ namespace SorceryHex {
          var visual = (FrameworkElement)sender;
 
          var element = FindElementInBody(_interpretations.Keys.First(key => _interpretations[key] == visual));
-         int loc = MainWindow.CombineLocation(element, _window.CurrentColumnCount);
+         int loc = MainWindow.CombineLocation(element, _window.CurrentTab.Columns);
          _window.HighlightFromLocation(loc);
       }
 
@@ -130,7 +130,7 @@ namespace SorceryHex {
          var keysForInterpretation = _interpretations.Keys.Where(key => _interpretations[key] == interpretation).ToList();
          Debug.Assert(keysForInterpretation.Count() == _interpretationReferenceCounts[interpretation]);
          // wrapped elements are not directly in the body and don't have a row/column.
-         return keysForInterpretation.Select(FindElementInBody).Select(key => MainWindow.CombineLocation(key, _window.CurrentColumnCount)).Min();
+         return keysForInterpretation.Select(FindElementInBody).Select(key => MainWindow.CombineLocation(key, _window.CurrentTab.Columns)).Min();
       }
 
       FrameworkElement FindElementInBody(FrameworkElement element) {

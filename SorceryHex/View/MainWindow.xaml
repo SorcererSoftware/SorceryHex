@@ -54,9 +54,12 @@
                 </MenuItem>
             </Menu>
         </DockPanel>
+        <StackPanel DockPanel.Dock="Top" Name="DataTabBar" Orientation="Horizontal"/>
         <Grid DockPanel.Dock="Bottom" Background="{Binding Backlight, Source={StaticResource Theme}}" Height="24">
             <TextBlock Name="StatusBar" VerticalAlignment="Center" Foreground="{Binding Secondary, Source={StaticResource Theme}}"/>
         </Grid>
+        <StackPanel Name="InterpretationPane" DockPanel.Dock="Right" Width="100" Visibility="Collapsed"/>
+        <Rectangle Width="1" DockPanel.Dock="Right" Stroke="{Binding Secondary, Source={StaticResource Theme}}" Visibility="{Binding Visibility, ElementName=InterpretationPane}"/>
         <UserControl Background="{Binding Backlight, Source={StaticResource Theme}}" DockPanel.Dock="Left">
             <Grid x:Name="Headers" HorizontalAlignment="Right" VerticalAlignment="Top" Width="90">
                 <Grid.Resources>
@@ -71,13 +74,10 @@
             </Grid>
         </UserControl>
         <ScrollBar x:Name="ScrollBar" DockPanel.Dock="Right" Scroll="OnScroll"/>
-        <DockPanel Background="{Binding Source={StaticResource Theme}, Path=Background}">
-            <StackPanel Name="InterpretationPane" DockPanel.Dock="Right" Width="100" Visibility="Collapsed"/>
-            <Grid x:Name="ResizeGrid" SizeChanged="Resize" Style="{StaticResource PanelStyle}" KeyDown="HandleKey" Focusable="True">
-                <Grid x:Name="BackgroundBody" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-                <Grid x:Name="Body" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-                <Grid x:Name="EditBody" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-            </Grid>
-        </DockPanel>
+        <Grid x:Name="ResizeGrid" SizeChanged="Resize" Style="{StaticResource PanelStyle}" KeyDown="HandleKey" Focusable="True">
+            <Grid x:Name="BackgroundBody" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+            <Grid x:Name="Body" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+            <Grid x:Name="EditBody" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+        </Grid>
     </DockPanel>
 </Window>

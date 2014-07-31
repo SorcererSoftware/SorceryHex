@@ -36,14 +36,14 @@ namespace SorceryHex {
          ClearBackground();
 
          for (int i = 0; i < _selectionLength; i++) {
-            int loc = _selectionStart + i - _window.Offset;
+            int loc = _selectionStart + i - _window.CurrentTab.Offset;
             if (loc < 0) continue;
-            if (loc >= _window.CurrentColumnCount * _window.CurrentRowCount) continue;
+            if (loc >= _window.CurrentTab.Columns * _window.CurrentTab.Rows) continue;
             var rectangle = _interpretationBackgrounds.Count > 0 ? _interpretationBackgrounds.Dequeue() : new Border {
                Background = Solarized.Theme.Instance.Backlight
             };
             rectangle.SetCreator(this);
-            MainWindow.SplitLocation(rectangle, _window.CurrentColumnCount, loc);
+            MainWindow.SplitLocation(rectangle, _window.CurrentTab.Columns, loc);
             _window.BackgroundBody.Children.Add(rectangle);
          }
       }
@@ -58,18 +58,18 @@ namespace SorceryHex {
             case Key.Up:
             case Key.PageUp:
             case Key.Home:
-               if (key == Key.Up) add = _window.CurrentColumnCount;
-               if (key == Key.PageUp) add = _window.CurrentColumnCount * _window.CurrentRowCount;
-               if (key == Key.Home) add = (_currentCursorLocation - _window.Offset) % _window.CurrentColumnCount;
+               if (key == Key.Up) add = _window.CurrentTab.Columns;
+               if (key == Key.PageUp) add = _window.CurrentTab.Columns* _window.CurrentTab.Columns;
+               if (key == Key.Home) add = (_currentCursorLocation - _window.CurrentTab.Offset) % _window.CurrentTab.Columns;
                _currentCursorLocation -= add;
                break;
             case Key.Right:
             case Key.Down:
             case Key.PageDown:
             case Key.End:
-               if (key == Key.Down) add = _window.CurrentColumnCount;
-               if (key == Key.PageDown) add = _window.CurrentColumnCount * _window.CurrentRowCount;
-               if (key == Key.End) add = _window.CurrentColumnCount - (_currentCursorLocation - _window.Offset) % _window.CurrentColumnCount - 1;
+               if (key == Key.Down) add = _window.CurrentTab.Columns;
+               if (key == Key.PageDown) add = _window.CurrentTab.Columns * _window.CurrentTab.Rows;
+               if (key == Key.End) add = _window.CurrentTab.Columns - (_currentCursorLocation - _window.CurrentTab.Offset) % _window.CurrentTab.Columns - 1;
                _currentCursorLocation += add;
                break;
             default:
@@ -77,7 +77,7 @@ namespace SorceryHex {
                var c = Utils.Convert(key);
                if (c == null) return false;
                int editLocation = _currentCursorLocation;
-               _window.Holder.Edit(_window.Holder.Segment.Inner(editLocation), (char)c);
+               _window.CurrentTab.Model.Edit(_window.CurrentTab.Model.Segment.Inner(editLocation), (char)c);
                _window.RefreshElement(editLocation);
                return true;
          }
@@ -121,14 +121,14 @@ namespace SorceryHex {
             return;
          }
          if (_selectionLength != 1) return;
-         var editor = _window.Holder.CreateElementEditor(_window.Holder.Segment.Inner(_currentCursorLocation));
+         var editor = _window.CurrentTab.Model.CreateElementEditor(_window.CurrentTab.Model.Segment.Inner(_currentCursorLocation));
          if (editor == null) return;
          Grid.SetColumnSpan(editor, 3);
-         int loc = _currentCursorLocation - _window.Offset;
-         MainWindow.SplitLocation(editor, _window.CurrentColumnCount, loc);
+         int loc = _currentCursorLocation - _window.CurrentTab.Offset;
+         MainWindow.SplitLocation(editor, _window.CurrentTab.Columns, loc);
          int currentColumn = Grid.GetColumn(editor);
          if (currentColumn > 0) Grid.SetColumn(editor, currentColumn - 1);
-         if (currentColumn > _window.CurrentColumnCount - 3) Grid.SetColumn(editor, _window.CurrentColumnCount - 3);
+         if (currentColumn > _window.CurrentTab.Columns - 3) Grid.SetColumn(editor, _window.CurrentTab.Columns - 3);
          _window.EditBody.Children.Add(editor);
       }
 
@@ -143,7 +143,7 @@ namespace SorceryHex {
       }
 
       public void HandleJumpCompleted(object sender, EventArgs e) {
-         _currentCursorLocation = _window.Offset;
+         _currentCursorLocation = _window.CurrentTab.Offset;
          _selectionLength = 1;
       }
 
@@ -189,21 +189,21 @@ namespace SorceryHex {
          var position = e.GetPosition(_window.Body);
          int row = (int)(position.Y / MainWindow.ElementHeight);
          int col = (int)(position.X / MainWindow.ElementWidth);
-         return row * _window.CurrentColumnCount + col + _window.Offset;
+         return row * _window.CurrentTab.Columns + col + _window.CurrentTab.Offset;
       }
 
       void UpdateSelectionFromMovement() {
-         if (_currentCursorLocation < _window.Offset) {
-            int rowCount = (int)Math.Ceiling((double)(_window.Offset - _currentCursorLocation) / _window.CurrentColumnCount);
-            if (rowCount > _window.CurrentRowCount) {
-               _window.JumpTo(_window.Offset - rowCount * _window.CurrentColumnCount);
+         if (_currentCursorLocation < _window.CurrentTab.Offset) {
+            int rowCount = (int)Math.Ceiling((double)(_window.CurrentTab.Offset - _currentCursorLocation) / _window.CurrentTab.Columns);
+            if (rowCount > _window.CurrentTab.Columns) {
+               _window.JumpTo(_window.CurrentTab.Offset - rowCount * _window.CurrentTab.Columns);
             } else {
                _window.ShiftRows(rowCount);
             }
-         } else if (_currentCursorLocation >= _window.Offset + _window.CurrentColumnCount * _window.CurrentRowCount) {
-            int rowCount = (int)Math.Floor((double)(_currentCursorLocation - (_window.Offset + _window.CurrentRowCount * _window.CurrentColumnCount)) / _window.CurrentColumnCount + 1);
-            if (rowCount > _window.CurrentRowCount) {
-               _window.JumpTo(_window.Offset + rowCount * _window.CurrentColumnCount);
+         } else if (_currentCursorLocation >= _window.CurrentTab.Offset + _window.CurrentTab.Columns * _window.CurrentTab.Rows) {
+            int rowCount = (int)Math.Floor((double)(_currentCursorLocation - (_window.CurrentTab.Offset + _window.CurrentTab.Rows * _window.CurrentTab.Columns)) / _window.CurrentTab.Columns + 1);
+            if (rowCount > _window.CurrentTab.Rows) {
+               _window.JumpTo(_window.CurrentTab.Offset + rowCount * _window.CurrentTab.Columns);
             } else {
                _window.ShiftRows(-rowCount);
             }

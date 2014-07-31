@@ -86,6 +86,7 @@
       <DependentUpon>AboutDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="View\CursorController.cs" />
+    <Compile Include="View\DataTab.cs" />
     <Compile Include="View\Icon.xaml.cs">
       <DependentUpon>Icon.xaml</DependentUpon>
     </Compile>
