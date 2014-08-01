@@ -79,13 +79,20 @@ namespace SorceryHex {
 
       public event EventHandler JumpCompleted;
       public void JumpTo(int location, bool addToBreadcrumb = false) {
-         if (addToBreadcrumb) _multiBox.AddLocationToBreadCrumb();
+         // if (addToBreadcrumb) _multiBox.AddLocationToBreadCrumb();
          location = Math.Min(Math.Max(-MaxColumnCount, location), CurrentTab.Model.Segment.Length);
 
          foreach (FrameworkElement element in Body.Children) Recycle(element);
          _bodies.Foreach(body => body.Children.Clear());
 
-         CurrentTab.Offset = location;
+         if (addToBreadcrumb) {
+            var tab = new DataTab(CurrentTab.Model, location, CurrentTab.Columns, CurrentTab.Rows);
+            CurrentTab = tab;
+            DataTabBar.Children.Add(tab);
+         } else {
+            CurrentTab.Offset = location;
+         }
+
          Add(0, CurrentTab.Columns * CurrentTab.Rows);
          ScrollBar.Value = CurrentTab.Offset;
          JumpCompleted(this, EventArgs.Empty);

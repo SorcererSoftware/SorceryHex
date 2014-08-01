@@ -147,6 +147,7 @@ namespace SorceryHex {
          _popup.IsOpen = true;
       }
 
+      [Obsolete("Once the data tabs work, delete this.")]
       public void AddLocationToBreadCrumb() {
          if (BreadCrumbBar.Children.Count >= 5) {
             ((Button)BreadCrumbBar.Children[0]).Click -= BackExecuted;
