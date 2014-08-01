@@ -1,27 +1,39 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex {
+
+   public interface IDataTabContainer {
+      void SelectTab(DataTab tab);
+      void RemoveTab(DataTab tab);
+   }
+
    /// <summary>
    /// Controls scrollbar.
    /// Controls Headers.
    /// Watches panel width/height.
    /// </summary>
    public class DataTab : UserControl {
+      public readonly IDataTabContainer Container;
       public readonly IModel Model;
+      public readonly bool IsHomeTab;
       public int Offset { get; set; }
       public int Columns { get; set; }
       public int Rows { get; set; }
       public int CursorStart { get; set; }
       public int CursorLocation { get; set; }
 
-      public DataTab(IModel model, int offset, int columns, int rows) {
+      public DataTab(IDataTabContainer container, IModel model, int offset, int columns, int rows, bool isHomeTab = false) {
+         Container = container;
          Model = model;
          Offset = offset;
          Columns = columns;
          Rows = rows;
+         IsHomeTab = isHomeTab;
          CursorStart = CursorLocation = 0;
 
          Width = 60; Height = 18;
@@ -49,6 +61,18 @@ namespace SorceryHex {
       public void Resize(int columns, int rows) {
          Columns = columns;
          Rows = rows;
+      }
+
+      protected override void OnMouseDown(MouseButtonEventArgs e) {
+         base.OnMouseDown(e);
+         if (e.LeftButton == MouseButtonState.Pressed) {
+            Container.SelectTab(this);
+            e.Handled = true;
+         } else if (e.MiddleButton == MouseButtonState.Pressed && !IsHomeTab) {
+            Container.RemoveTab(this);
+            e.Handled = true;
+         }
+         // currently no rightclick options
       }
    }
 }

@@ -36,6 +36,7 @@ namespace SorceryHex {
 
       public void UpdateSelection() {
          ClearBackground();
+         UpdateSelectionStartFromCursorLocation();
 
          for (int i = 0; i < _selectionLength; i++) {
             int loc = _selectionStart + i - _window.CurrentTab.Offset;
@@ -114,7 +115,6 @@ namespace SorceryHex {
          if (e.LeftButton != MouseButtonState.Pressed) return;
 
          _window.CurrentTab.CursorLocation = ByteOffsetForMouse(e);
-         UpdateSelectionStartFromCursorLocation();
          UpdateSelection();
       }
 

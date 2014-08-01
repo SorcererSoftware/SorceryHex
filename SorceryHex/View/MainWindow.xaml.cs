@@ -13,7 +13,7 @@ namespace SorceryHex {
    /// <summary>
    /// Interaction logic for MainWindow.xaml
    /// </summary>
-   partial class MainWindow : Window, IAppCommands {
+   partial class MainWindow : Window, IAppCommands, IDataTabContainer {
       #region Utils
 
       const int MaxColumnCount = 0x30;
@@ -86,7 +86,7 @@ namespace SorceryHex {
          _bodies.Foreach(body => body.Children.Clear());
 
          if (addToBreadcrumb) {
-            var tab = new DataTab(CurrentTab.Model, location, CurrentTab.Columns, CurrentTab.Rows);
+            var tab = new DataTab(this, CurrentTab.Model, location, CurrentTab.Columns, CurrentTab.Rows);
             CurrentTab = tab;
             DataTabBar.Children.Add(tab);
          } else {
@@ -97,6 +97,7 @@ namespace SorceryHex {
          ScrollBar.Value = CurrentTab.Offset;
          JumpCompleted(this, EventArgs.Empty);
          UpdateHeaderText();
+         _cursorController.UpdateSelection();
       }
 
       public void JumpTo(string label, bool addToBreadcrumb = false) {
@@ -177,6 +178,24 @@ namespace SorceryHex {
 
       public void WriteStatus(string status) {
          Dispatcher.Invoke((Action)(() => { StatusBar.Text = status; }));
+      }
+
+      #endregion
+
+      #region DataTabContainer
+
+      public void SelectTab(DataTab tab) {
+         CurrentTab = tab;
+         JumpTo(tab.Offset);
+      }
+
+      public void RemoveTab(DataTab tab) {
+         DataTabBar.Children.Remove(tab);
+         if (CurrentTab == tab) {
+            var tabs = new List<DataTab>();
+            foreach (DataTab child in DataTabBar.Children) tabs.Add(child);
+            SelectTab(tabs.First(t => t.IsHomeTab));
+         }
       }
 
       #endregion
@@ -310,7 +329,7 @@ namespace SorceryHex {
          GotoItem.Items.Clear();
          _loadTimer = AutoTimer.Time("Full Load Time");
          Task.Factory.StartNew(() => model.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke((Action)LoadComplete));
-         CurrentTab = new DataTab(model, 0, Body.ColumnDefinitions.Count, Body.RowDefinitions.Count);
+         CurrentTab = new DataTab(this, model, 0, Body.ColumnDefinitions.Count, Body.RowDefinitions.Count, isHomeTab: true);
          DataTabBar.Children.Add(CurrentTab);
       }
 
