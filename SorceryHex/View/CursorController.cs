@@ -11,7 +11,7 @@ namespace SorceryHex {
       readonly MainCommandFactory _commandFactory;
       readonly Queue<FrameworkElement> _interpretationBackgrounds = new Queue<FrameworkElement>();
 
-      int _selectionStart, _selectionLength = 1; // TODO move the first two into DataTab
+      int _selectionStart, _selectionLength = 1;
       int _clickCount;
       Point _mouseDownPosition;
 
@@ -30,7 +30,7 @@ namespace SorceryHex {
          _selectionStart = model.GetDataBlockStart(location);
          _window.CurrentTab.CursorStart = _selectionStart;
          _selectionLength = model.GetDataBlockLength(location);
-         _window.CurrentTab.CursorLocation = _window.CurrentTab.CursorLocation + _selectionLength;
+         _window.CurrentTab.CursorLocation = _window.CurrentTab.CursorStart + _selectionLength - 1;
          UpdateSelection();
       }
 
@@ -60,19 +60,27 @@ namespace SorceryHex {
             case Key.Up:
             case Key.PageUp:
             case Key.Home:
-               if (key == Key.Up) add = _window.CurrentTab.Columns;
-               if (key == Key.PageUp) add = _window.CurrentTab.Columns * _window.CurrentTab.Columns;
-               if (key == Key.Home) add = (_window.CurrentTab.CursorLocation - _window.CurrentTab.Offset) % _window.CurrentTab.Columns;
-               _window.CurrentTab.CursorLocation -= add;
+               if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && _selectionLength > 1) {
+                  _window.CurrentTab.CursorLocation = _selectionStart;
+               } else {
+                  if (key == Key.Up) add = _window.CurrentTab.Columns;
+                  if (key == Key.PageUp) add = _window.CurrentTab.Columns * _window.CurrentTab.Columns;
+                  if (key == Key.Home) add = (_window.CurrentTab.CursorLocation - _window.CurrentTab.Offset) % _window.CurrentTab.Columns;
+                  _window.CurrentTab.CursorLocation -= add;
+               }
                break;
             case Key.Right:
             case Key.Down:
             case Key.PageDown:
             case Key.End:
-               if (key == Key.Down) add = _window.CurrentTab.Columns;
-               if (key == Key.PageDown) add = _window.CurrentTab.Columns * _window.CurrentTab.Rows;
-               if (key == Key.End) add = _window.CurrentTab.Columns - (_window.CurrentTab.CursorLocation - _window.CurrentTab.Offset) % _window.CurrentTab.Columns - 1;
-               _window.CurrentTab.CursorLocation += add;
+               if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && _selectionLength > 1) {
+                  _window.CurrentTab.CursorLocation = _selectionStart + _selectionLength - 1;
+               } else {
+                  if (key == Key.Down) add = _window.CurrentTab.Columns;
+                  if (key == Key.PageDown) add = _window.CurrentTab.Columns * _window.CurrentTab.Rows;
+                  if (key == Key.End) add = _window.CurrentTab.Columns - (_window.CurrentTab.CursorLocation - _window.CurrentTab.Offset) % _window.CurrentTab.Columns - 1;
+                  _window.CurrentTab.CursorLocation += add;
+               }
                break;
             default:
                if (_selectionLength > 1) return false;
@@ -145,8 +153,7 @@ namespace SorceryHex {
       }
 
       public void HandleJumpCompleted(object sender, EventArgs e) {
-         _window.CurrentTab.CursorLocation = _window.CurrentTab.Offset;
-         _selectionLength = 1;
+         // don't move the cursor after a jump - leave it where it was instead
       }
 
       #endregion
