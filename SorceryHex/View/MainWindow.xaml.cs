@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 
 namespace SorceryHex {
    /// <summary>
@@ -57,7 +58,7 @@ namespace SorceryHex {
       byte[] _filehash;
 
       public byte[] Data { get { return _fileBytes; } }
-      public DataTab CurrentTab { get; private set; }
+      public IDataTab CurrentTab { get; private set; }
 
       public MainWindow(IEnumerable<IModelFactory> factories, string fileName, byte[] data) {
          _factories = factories;
@@ -86,9 +87,10 @@ namespace SorceryHex {
          _bodies.Foreach(body => body.Children.Clear());
 
          if (addToBreadcrumb) {
-            var tab = new DataTab(this, CurrentTab.Model, location, CurrentTab.Columns, CurrentTab.Rows);
+            var tab = new DataTab(this, CurrentTab.Model, CurrentTab.Columns, CurrentTab.Rows, location);
             CurrentTab = tab;
             DataTabBar.Children.Add(tab);
+            UpdateTabHighlight();
          } else {
             CurrentTab.Offset = location;
          }
@@ -184,19 +186,28 @@ namespace SorceryHex {
 
       #region DataTabContainer
 
-      public void SelectTab(DataTab tab) {
+      public void SelectTab(IDataTab tab) {
          CurrentTab = tab;
+         UpdateTabHighlight();
          JumpTo(tab.Offset);
       }
 
-      public void RemoveTab(DataTab tab) {
-         DataTabBar.Children.Remove(tab);
-         if (CurrentTab == tab) {
-            var tabs = new List<DataTab>();
-            foreach (DataTab child in DataTabBar.Children) tabs.Add(child);
-            SelectTab(tabs.First(t => t.IsHomeTab));
-         }
+      public void RemoveTab(IDataTab tab) {
+         var uitab = DataTabBar.Children.Where((FrameworkElement child) => child == tab).First();
+
+         var animation = new DoubleAnimation(0, new Duration(TimeSpan.FromMilliseconds(250)));
+         animation.Completed += (sender, e) => {
+            DataTabBar.Children.Remove(uitab);
+            if (CurrentTab == tab) {
+               var tabs = new List<IDataTab>();
+               foreach (IDataTab child in DataTabBar.Children) tabs.Add(child);
+               SelectTab(tabs.First(t => t.IsHomeTab));
+            }
+         };
+         uitab.BeginAnimation(WidthProperty, animation);
       }
+
+      void UpdateTabHighlight() { foreach (ToggleButton button in DataTabBar.Children) button.IsChecked = button == CurrentTab; }
 
       #endregion
 
@@ -329,8 +340,10 @@ namespace SorceryHex {
          GotoItem.Items.Clear();
          _loadTimer = AutoTimer.Time("Full Load Time");
          Task.Factory.StartNew(() => model.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke((Action)LoadComplete));
-         CurrentTab = new DataTab(this, model, 0, Body.ColumnDefinitions.Count, Body.RowDefinitions.Count, isHomeTab: true);
-         DataTabBar.Children.Add(CurrentTab);
+         var tab = new DataTab(this, model, Body.ColumnDefinitions.Count, Body.RowDefinitions.Count, 0, isHomeTab: true);
+         DataTabBar.Children.Add(tab);
+         CurrentTab = tab;
+         UpdateTabHighlight();
       }
 
       AutoTimer _loadTimer;
@@ -349,26 +362,30 @@ namespace SorceryHex {
       void Resize(object sender, EventArgs e) {
          int oldRows = CurrentTab.Rows, oldCols = CurrentTab.Columns;
          var newSize = DesiredWorkArea(ResizeGrid);
-         int newCols = (int)newSize.Width, newRows = (int)newSize.Height;
-         newCols = Math.Min(newCols, MaxColumnCount);
-         ScrollBar.SmallChange = newCols;
-         ScrollBar.LargeChange = newCols * newRows;
+         int oldTotal = CurrentTab.Columns * CurrentTab.Rows;
+         {
+            int newCols = (int)newSize.Width, newRows = (int)newSize.Height;
+            newCols = Math.Min(newCols, MaxColumnCount);
+            ScrollBar.SmallChange = newCols;
+            ScrollBar.LargeChange = newCols * newRows;
 
-         int oldTotal = oldCols * oldRows, newTotal = newCols * newRows;
-         if (oldTotal == newTotal) return;
+            if (oldCols == newCols && oldRows == newRows) return;
 
+            if (!CurrentTab.Resize(newCols, newRows)) return;
+         }
+
+         int newTotal = CurrentTab.Columns * CurrentTab.Rows;
          Action<Grid> updateSize = g => {
-            UpdateWidthHeight(g, newCols, newRows);
-            UpdateColumnsRows(g, newCols - oldCols, newRows - oldRows);
+            UpdateWidthHeight(g, CurrentTab.Columns, CurrentTab.Rows);
+            UpdateColumnsRows(g, CurrentTab.Columns - oldCols, CurrentTab.Rows - oldRows);
          };
 
          // update container sizes
-         CurrentTab.Columns = newCols; CurrentTab.Rows = newRows;
          updateSize(Body);
          updateSize(BackgroundBody);
          updateSize(EditBody);
-         UpdateRows(Headers, newRows - oldRows);
-         Headers.Height = newRows * ElementHeight;
+         UpdateRows(Headers, CurrentTab.Rows - oldRows);
+         Headers.Height = CurrentTab.Rows * ElementHeight;
 
          // update element locations (remove excess elements)
          IList<FrameworkElement> children = new List<FrameworkElement>();
@@ -379,14 +396,14 @@ namespace SorceryHex {
                Body.Children.Remove(element);
                Recycle(element);
             } else {
-               SplitLocation(element, newCols, loc);
+               SplitLocation(element, CurrentTab.Columns, loc);
             }
          }
 
          // update header column
-         UpdateHeaderRows(oldRows, newRows);
+         UpdateHeaderRows(oldRows, CurrentTab.Rows);
 
-         if (oldCols != newCols) UpdateHeaderText();
+         if (oldCols != CurrentTab.Columns) UpdateHeaderText();
 
          // add more elements if needed
          if (oldTotal < newTotal) Add(oldTotal, newTotal - oldTotal);

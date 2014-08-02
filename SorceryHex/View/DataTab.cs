@@ -8,8 +8,20 @@ using System.Windows.Shapes;
 namespace SorceryHex {
 
    public interface IDataTabContainer {
-      void SelectTab(DataTab tab);
-      void RemoveTab(DataTab tab);
+      void SelectTab(IDataTab tab);
+      void RemoveTab(IDataTab tab);
+   }
+
+   public interface IDataTab {
+      IModel Model { get; }
+      int Offset { get; set; }
+      int Columns { get; }
+      int Rows { get; }
+      int CursorStart { get; set; }
+      int CursorLocation { get; set; }
+      bool IsHomeTab { get; }
+
+      bool Resize(int columns, int rows);
    }
 
    /// <summary>
@@ -17,23 +29,25 @@ namespace SorceryHex {
    /// Controls Headers.
    /// Watches panel width/height.
    /// </summary>
-   public class DataTab : UserControl {
-      public readonly IDataTabContainer Container;
-      public readonly IModel Model;
-      public readonly bool IsHomeTab;
+   public class DataTab1 : UserControl, IDataTab {
+      private readonly IDataTabContainer _container;
+      private readonly bool _isHomeTab;
+
+      public IModel Model { get; private set; }
       public int Offset { get; set; }
-      public int Columns { get; set; }
-      public int Rows { get; set; }
+      public int Columns { get; private set; }
+      public int Rows { get; private set; }
       public int CursorStart { get; set; }
       public int CursorLocation { get; set; }
+      public bool IsHomeTab { get { return _isHomeTab; } }
 
-      public DataTab(IDataTabContainer container, IModel model, int offset, int columns, int rows, bool isHomeTab = false) {
-         Container = container;
+      public DataTab1(IDataTabContainer container, IModel model, int offset, int columns, int rows, bool isHomeTab = false) {
+         _container = container;
          Model = model;
          Offset = offset;
          Columns = columns;
          Rows = rows;
-         IsHomeTab = isHomeTab;
+         _isHomeTab = isHomeTab;
          CursorStart = CursorLocation = 0;
 
          Width = 60; Height = 18;
@@ -58,18 +72,19 @@ namespace SorceryHex {
          });
       }
 
-      public void Resize(int columns, int rows) {
+      public bool Resize(int columns, int rows) {
          Columns = columns;
          Rows = rows;
+         return true;
       }
 
       protected override void OnMouseDown(MouseButtonEventArgs e) {
          base.OnMouseDown(e);
          if (e.LeftButton == MouseButtonState.Pressed) {
-            Container.SelectTab(this);
+            _container.SelectTab(this);
             e.Handled = true;
          } else if (e.MiddleButton == MouseButtonState.Pressed && !IsHomeTab) {
-            Container.RemoveTab(this);
+            _container.RemoveTab(this);
             e.Handled = true;
          }
          // currently no rightclick options

@@ -87,6 +87,9 @@
     </Compile>
     <Compile Include="View\CursorController.cs" />
     <Compile Include="View\DataTab.cs" />
+    <Compile Include="View\DataTab.xaml.cs">
+      <DependentUpon>DataTab.xaml</DependentUpon>
+    </Compile>
     <Compile Include="View\Icon.xaml.cs">
       <DependentUpon>Icon.xaml</DependentUpon>
     </Compile>
@@ -99,6 +102,10 @@
     <Compile Include="Model\StringDecoder.cs" />
     <Compile Include="Utils.cs" />
     <Page Include="View\AboutDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="View\DataTab.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

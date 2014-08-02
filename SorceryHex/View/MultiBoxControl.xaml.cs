@@ -17,7 +17,7 @@ using System.Windows.Media;
 namespace SorceryHex {
    public interface IAppCommands {
       byte[] Data { get; }
-      DataTab CurrentTab { get; }
+      IDataTab CurrentTab { get; }
       void MainFocus();
       void JumpTo(int location, bool addToBreadCrumbs = false);
       void JumpTo(string label, bool addToBreadCrumbs = false);
