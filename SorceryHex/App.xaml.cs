@@ -99,6 +99,10 @@ namespace SorceryHex {
       public void Edit(ISegment segment, char c) { }
       public void CompleteEdit(ISegment segment) { }
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
+
+      public IModel Duplicate(int start, int length) {
+         return new SimpleFactory { Segment = Segment.Duplicate(start, length) };
+      }
    }
 
    [Export(typeof(IModelFactory))]

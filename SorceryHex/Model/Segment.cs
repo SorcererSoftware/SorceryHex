@@ -15,6 +15,7 @@ namespace SorceryHex {
       ISegment Inner(int offset);
       ISegment Follow(int offset);
       ISegment Resize(int length);
+      ISegment Duplicate(int offset, int length);
    }
 
    public class Segment : ISegment {
@@ -40,5 +41,10 @@ namespace SorceryHex {
       public ISegment Inner(int offset) { return new Segment(_data, Location + offset); }
       public ISegment Follow(int offset) { return null; }
       public ISegment Resize(int length) { throw new NotImplementedException(); }
+      public ISegment Duplicate(int offset, int length) {
+         var data = new byte[length];
+         Array.Copy(_data, offset, data, 0, length);
+         return new Segment(data, 0, length);
+      }
    }
 }

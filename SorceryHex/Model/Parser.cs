@@ -126,13 +126,16 @@ namespace SorceryHex {
       }
    }
 
-   public interface IModel : IParser, IEditor { }
+   public interface IModel : IParser, IEditor {
+      IModel Duplicate(int start, int length);
+   }
 
    public interface IPartialModel {
       bool CanEdit(ISegment segment);
       string GetLabel(int location);
       IEditor Editor { get; }
       void Load(ICommandFactory commander);
+      IPartialModel CreateNew(ISegment segment);
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsStartOfDataBlock(int location);
@@ -158,6 +161,11 @@ namespace SorceryHex {
             if (child.Editor == null) continue;
             child.Editor.MoveToNext += ChainMoveToNext;
          }
+      }
+
+      public IModel Duplicate(int start, int length) {
+         var segment = _segment.Duplicate(start, length);
+         return new CompositeModel(segment, _children.Select(child => child.CreateNew(segment)).ToArray());
       }
 
       #region Parser

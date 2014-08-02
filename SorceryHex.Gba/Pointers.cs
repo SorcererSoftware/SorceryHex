@@ -209,6 +209,8 @@ namespace SorceryHex.Gba {
 
       #endregion
 
+      public IModel Duplicate(int start, int length) { return _base.Duplicate(start, length); }
+
       #region Parser
 
       public ISegment Segment { get { return _base.Segment; } }
@@ -320,6 +322,7 @@ namespace SorceryHex.Gba {
       #endregion
    }
 
+   // TODO this is very similar to Segment. Can we come up with some kind of SegmentPointerStrategy for the different parts?
    class GbaSegment : ISegment {
       readonly byte[] _data;
 
@@ -353,5 +356,10 @@ namespace SorceryHex.Gba {
          return new GbaSegment(_data, value);
       }
       public ISegment Resize(int length) { return new GbaSegment(_data, Location, length); }
+      public ISegment Duplicate(int offset, int length) {
+         var data = new byte[length];
+         Array.Copy(_data, offset, data, 0, length);
+         return new GbaSegment(data, 0, length);
+      }
    }
 }

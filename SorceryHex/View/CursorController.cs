@@ -19,6 +19,7 @@ namespace SorceryHex {
          _window = window;
          _commandFactory = commandFactory;
          _window.ResizeGrid.MouseLeftButtonDown += BodyMouseDown;
+         _window.ResizeGrid.MouseRightButtonDown += BodyRightMouseDown;
          _window.ResizeGrid.MouseMove += BodyMouseMove;
          _window.ResizeGrid.MouseLeftButtonUp += BodyMouseUp;
          _window.JumpCompleted += HandleJumpCompleted;
@@ -108,6 +109,18 @@ namespace SorceryHex {
          if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) _window.CurrentTab.CursorStart = ByteOffsetForMouse(e);
          _window.Body.CaptureMouse();
          _clickCount = e.ClickCount;
+      }
+
+      void BodyRightMouseDown(object sender, MouseButtonEventArgs e) {
+         var position = ByteOffsetForMouse(e);
+         if (_selectionStart <= position && position < _selectionStart + _selectionLength) {
+            _window.BodyContextMenu.Items.Clear();
+            var item = new MenuItem { Header = "Duplicate" };
+            item.Click += (sender1, e1) => {
+               _window.Duplicate(_selectionStart, _selectionLength);               
+            };
+            _window.BodyContextMenu.Items.Add(item);
+         }
       }
 
       void BodyMouseMove(object sender, MouseEventArgs e) {

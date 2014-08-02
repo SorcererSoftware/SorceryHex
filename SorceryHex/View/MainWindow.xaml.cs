@@ -56,6 +56,7 @@ namespace SorceryHex {
       DateTime _filestamp;
       byte[] _fileBytes;
       byte[] _filehash;
+      IDataTab _previousTab;
 
       public byte[] Data { get { return _fileBytes; } }
       public IDataTab CurrentTab { get; private set; }
@@ -88,6 +89,7 @@ namespace SorceryHex {
 
          if (addToBreadcrumb) {
             var tab = new DataTab(this, CurrentTab.Model, CurrentTab.Columns, CurrentTab.Rows, location);
+            _previousTab = tab;
             CurrentTab = tab;
             DataTabBar.Children.Add(tab);
             UpdateTabHighlight();
@@ -182,14 +184,25 @@ namespace SorceryHex {
          Dispatcher.Invoke((Action)(() => { StatusBar.Text = status; }));
       }
 
+      public void Duplicate(int start, int length) {
+         // var copy = new byte[length];
+         // Array.Copy(Data, start, copy, 0, length);
+         IModel model = CurrentTab.Model.Duplicate(start, length);
+         var tab = new DataTab(this, model, CurrentTab.Columns, CurrentTab.Rows, 0);
+         DataTabBar.Children.Add(tab);
+         SelectTab(tab);
+      }
+
       #endregion
 
       #region DataTabContainer
 
       public void SelectTab(IDataTab tab) {
+         _previousTab = CurrentTab;
          CurrentTab = tab;
          UpdateTabHighlight();
          JumpTo(tab.Offset);
+         _previousTab = CurrentTab;
       }
 
       public void RemoveTab(IDataTab tab) {
@@ -287,7 +300,7 @@ namespace SorceryHex {
       }
 
       void Recycle(FrameworkElement element) {
-         CurrentTab.Model.Recycle(_commandFactory, element);
+         _previousTab.Model.Recycle(_commandFactory, element);
       }
 
       IModelFactory[] Sort(IList<IModelFactory> factories) {
@@ -341,7 +354,9 @@ namespace SorceryHex {
          _loadTimer = AutoTimer.Time("Full Load Time");
          Task.Factory.StartNew(() => model.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke((Action)LoadComplete));
          var tab = new DataTab(this, model, Body.ColumnDefinitions.Count, Body.RowDefinitions.Count, 0, isHomeTab: true);
+         DataTabBar.Children.Clear();
          DataTabBar.Children.Add(tab);
+         _previousTab = tab;
          CurrentTab = tab;
          UpdateTabHighlight();
       }
