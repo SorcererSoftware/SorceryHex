@@ -81,14 +81,17 @@ namespace SorceryHex {
 
       public event EventHandler JumpCompleted;
       public void JumpTo(int location, bool addToBreadcrumb = false) {
+         IDataTab hometab = null;
+         foreach (IDataTab datatab in DataTabBar.Children) hometab = datatab.IsHomeTab ? datatab : hometab;
+
          // if (addToBreadcrumb) _multiBox.AddLocationToBreadCrumb();
-         location = Math.Min(Math.Max(-MaxColumnCount, location), CurrentTab.Model.Segment.Length);
+         location = Math.Min(Math.Max(-MaxColumnCount, location), hometab.Model.Segment.Length);
 
          foreach (FrameworkElement element in Body.Children) Recycle(element);
          _bodies.Foreach(body => body.Children.Clear());
 
          if (addToBreadcrumb) {
-            var tab = new DataTab(this, CurrentTab.Model, CurrentTab.Columns, CurrentTab.Rows, location);
+            var tab = new DataTab(this, hometab.Model, CurrentTab.Columns, CurrentTab.Rows, location);
             _previousTab = tab;
             CurrentTab = tab;
             DataTabBar.Children.Add(tab);
