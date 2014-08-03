@@ -31,7 +31,8 @@ namespace SorceryHex {
       readonly HashSet<FrameworkElement> _jumpLinks = new HashSet<FrameworkElement>();
       readonly HashSet<IDataRun> _runSet = new HashSet<IDataRun>();
       readonly IRunParser[] _runParsers;
-      IList<ILabeler> _labelers = new List<ILabeler>();
+      readonly List<ILabeler> _labelers = new List<ILabeler>();
+      readonly int _labelOffset = 0;
 
       List<int> _keys = new List<int>();
       bool _listNeedsUpdate;
@@ -43,6 +44,11 @@ namespace SorceryHex {
       public RunStorage(ISegment segment, params IRunParser[] runParsers) {
          Segment = segment;
          _runParsers = runParsers;
+      }
+
+      RunStorage(ISegment segment, int labelOffset, params IRunParser[] runParsers)
+         : this(segment, runParsers) {
+         _labelOffset = labelOffset;
       }
 
       public void AddRun(int location, IDataRun run) {
@@ -120,7 +126,7 @@ namespace SorceryHex {
       public IPartialModel CreateNew(ISegment segment, int start) {
          Debug.Assert(segment.HasLength);
          UpdateList();
-         var newStorage = new RunStorage(segment, _runParsers);
+         var newStorage = new RunStorage(segment, start, _runParsers);
 
          int startIndex;
          lock (_keys) {
@@ -158,6 +164,7 @@ namespace SorceryHex {
                i += lengthInView;
             }
          }
+         newStorage._labelers.AddRange(_labelers);
 
          return newStorage;
       }
@@ -230,7 +237,7 @@ namespace SorceryHex {
       }
 
       public string GetLabel(int location) {
-         return _labelers.Select(lbl => lbl.GetLabel(location)).Where(str => !string.IsNullOrEmpty(str)).FirstOrDefault();
+         return _labelers.Select(lbl => lbl.GetLabel(location + _labelOffset)).Where(str => !string.IsNullOrEmpty(str)).FirstOrDefault();
       }
 
       public bool IsStartOfDataBlock(int location) {
