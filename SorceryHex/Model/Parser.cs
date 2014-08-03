@@ -135,7 +135,14 @@ namespace SorceryHex {
       string GetLabel(int location);
       IEditor Editor { get; }
       void Load(ICommandFactory commander);
-      IPartialModel CreateNew(ISegment segment);
+
+      /// <param name="segment">The new data segment for the new partial model</param>
+      /// <param name="start">
+      ///   The location of the new segment in relation to the current partial model's segment,
+      ///   assuming that the new segment is a partial copy of the current segment.
+      /// </param>
+      /// <returns></returns>
+      IPartialModel CreateNew(ISegment segment, int start);
       IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length);
       void Recycle(ICommandFactory commander, FrameworkElement element);
       bool IsStartOfDataBlock(int location);
@@ -165,7 +172,8 @@ namespace SorceryHex {
 
       public IModel Duplicate(int start, int length) {
          var segment = _segment.Duplicate(start, length);
-         return new CompositeModel(segment, _children.Select(child => child.CreateNew(segment)).ToArray());
+         var dup = new CompositeModel(segment, _children.Select(child => child.CreateNew(segment, start)).ToArray()) { _loaded = true };
+         return dup;
       }
 
       #region Parser

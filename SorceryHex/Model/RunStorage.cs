@@ -117,6 +117,51 @@ namespace SorceryHex {
 #endif
       }
 
+      public IPartialModel CreateNew(ISegment segment, int start) {
+         Debug.Assert(segment.HasLength);
+         UpdateList();
+         var newStorage = new RunStorage(segment, _runParsers);
+
+         int startIndex;
+         lock (_keys) {
+            startIndex = _keys.BinarySearch(start);
+            if (startIndex < 0) startIndex = ~startIndex - 1; // not in list: give me the one that starts just before here
+
+            if (startIndex == _keys.Count) return newStorage;
+         }
+
+         for (int i = 0; i < segment.Length; ) {
+            int loc = start + i;
+            if (startIndex >= _keys.Count) {
+               i = segment.Length;
+               continue;
+            }
+
+            int dataIndex = _keys[startIndex];
+            if (dataIndex > loc) {
+               var sectionLength = Math.Min(segment.Length - i, dataIndex - loc);
+               i += sectionLength;
+            } else if (dataIndex + _runs[_keys[startIndex]].GetLength(Segment.Inner(dataIndex)).Length < loc) {
+               startIndex++;
+            } else {
+               var currentRun = _runs[_keys[startIndex]];
+               int runEnd = dataIndex + currentRun.GetLength(Segment.Inner(dataIndex)).Length;
+               runEnd = Math.Min(runEnd, start + segment.Length);
+               int lengthInView = runEnd - loc;
+               newStorage._keys.Add(_keys[startIndex] - start);
+               newStorage._runs[_keys[startIndex] - start] = currentRun;
+               if (!newStorage._runSet.Contains(currentRun) && currentRun.Editor != null) {
+                  currentRun.Editor.MoveToNext += ChainMoveNext;
+                  newStorage._runSet.Add(currentRun);
+               }
+               startIndex++;
+               i += lengthInView;
+            }
+         }
+
+         return newStorage;
+      }
+
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
          UpdateList();
          var elements = new FrameworkElement[length];

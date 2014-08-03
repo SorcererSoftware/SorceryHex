@@ -325,6 +325,8 @@ namespace SorceryHex.Gba {
    // TODO this is very similar to Segment. Can we come up with some kind of SegmentPointerStrategy for the different parts?
    class GbaSegment : ISegment {
       readonly byte[] _data;
+      readonly GbaSegment _parent;
+      readonly int _parentOffset;
 
       public bool HasLength { get { return Length != -1; } }
       public int Length { get; private set; }
@@ -337,7 +339,12 @@ namespace SorceryHex.Gba {
       }
 
       public GbaSegment(byte[] data, int location) { _data = data; Location = location; Length = -1; }
-      public GbaSegment(byte[] data, int location, int length) { _data = data; Location = location; Length = length; }
+      public GbaSegment(byte[] data, int location, int length) : this(data, location) { Length = length; }
+      GbaSegment(GbaSegment parent, int parentOffset, byte[] data, int location, int length)
+         : this(data, location, length) {
+         _parent = parent;
+         _parentOffset = parentOffset;
+      }
 
       public int Read(int offset, int length) { return _data.ReadData(length, Location + offset); }
       public void Write(int offset, int length, int value) {
@@ -350,6 +357,7 @@ namespace SorceryHex.Gba {
       }
       public ISegment Inner(int offset) { return new GbaSegment(_data, Location + offset); }
       public ISegment Follow(int offset) {
+         if (_parent != null) return _parent.Follow(_parentOffset + offset);
          if (Read(offset + 3, 1) != 0x08) return null;
          int value = Read(offset, 3);
          if (value < 0 || value > _data.Length) return null;
@@ -359,7 +367,7 @@ namespace SorceryHex.Gba {
       public ISegment Duplicate(int offset, int length) {
          var data = new byte[length];
          Array.Copy(_data, offset, data, 0, length);
-         return new GbaSegment(data, 0, length);
+         return new GbaSegment(this, offset, data, 0, length);
       }
    }
 }
