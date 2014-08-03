@@ -90,6 +90,9 @@
     <Compile Include="View\DataTab.xaml.cs">
       <DependentUpon>DataTab.xaml</DependentUpon>
     </Compile>
+    <Compile Include="View\DuplicateTab.xaml.cs">
+      <DependentUpon>DuplicateTab.xaml</DependentUpon>
+    </Compile>
     <Compile Include="View\Icon.xaml.cs">
       <DependentUpon>Icon.xaml</DependentUpon>
     </Compile>
@@ -106,6 +109,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="View\DataTab.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="View\DuplicateTab.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

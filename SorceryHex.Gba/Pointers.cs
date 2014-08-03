@@ -211,6 +211,8 @@ namespace SorceryHex.Gba {
 
       public IModel Duplicate(int start, int length) { return _base.Duplicate(start, length); }
 
+      public void Append(int length) { _base.Append(length); }
+
       #region Parser
 
       public ISegment Segment { get { return _base.Segment; } }

@@ -6,12 +6,20 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace SorceryHex {
-
    public interface IDataTabContainer {
       void SelectTab(IDataTab tab);
       void RemoveTab(IDataTab tab);
+
+      void PushData(DuplicateTab duplicateTab, int _originalOffset);
+      int FindFreeSpace(int length);
+      void Repoint(int originalOffset, int newOffset);
    }
 
+   /// <summary>
+   /// Controls scrollbar.
+   /// Controls Headers.
+   /// Watches panel width/height.
+   /// </summary>
    public interface IDataTab {
       IModel Model { get; }
       int Offset { get; set; }
@@ -24,11 +32,6 @@ namespace SorceryHex {
       bool Resize(int columns, int rows);
    }
 
-   /// <summary>
-   /// Controls scrollbar.
-   /// Controls Headers.
-   /// Watches panel width/height.
-   /// </summary>
    public class DataTab1 : UserControl, IDataTab {
       private readonly IDataTabContainer _container;
       private readonly bool _isHomeTab;

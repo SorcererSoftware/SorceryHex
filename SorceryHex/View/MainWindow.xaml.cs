@@ -188,10 +188,8 @@ namespace SorceryHex {
       }
 
       public void Duplicate(int start, int length) {
-         // var copy = new byte[length];
-         // Array.Copy(Data, start, copy, 0, length);
          IModel model = CurrentTab.Model.Duplicate(start, length);
-         var tab = new DataTab(this, model, CurrentTab.Columns, CurrentTab.Rows, 0);
+         var tab = new DuplicateTab(this, model, CurrentTab.Columns, CurrentTab.Rows, start);
          DataTabBar.Children.Add(tab);
          SelectTab(tab);
       }
@@ -221,6 +219,23 @@ namespace SorceryHex {
             }
          };
          uitab.BeginAnimation(WidthProperty, animation);
+      }
+
+      public void PushData(DuplicateTab duplicateTab, int offset) {
+         // get the hometab
+         // push the data from the duplicate tab into the hometab
+         // access to the original offset, new offset, original length and new length will help delete extra data
+         throw new NotImplementedException();
+      }
+
+      public int FindFreeSpace(int length) {
+         // TODO ask the hometab's model
+         throw new NotImplementedException();
+      }
+
+      public void Repoint(int originalOffset, int newOffset) {
+         // TODO ask the hometab's model
+         throw new NotImplementedException();
       }
 
       void UpdateTabHighlight() { foreach (ToggleButton button in DataTabBar.Children) button.IsChecked = button == CurrentTab; }

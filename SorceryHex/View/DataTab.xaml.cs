@@ -6,12 +6,11 @@ namespace SorceryHex {
    /// <summary>
    /// Interaction logic for DataTab.xaml
    /// </summary>
-   public partial class DataTab : IDataTab {
+   partial class DataTab : IDataTab {
       private readonly IDataTabContainer _container;
       private readonly bool _isHomeTab;
 
       public readonly int OriginalOffset;
-      public readonly bool ColumnsFixed = false; // TODO
 
       public IModel Model { get; private set; }
       public int Columns { get; private set; }
@@ -30,6 +29,7 @@ namespace SorceryHex {
          _isHomeTab = isHomeTab;
 
          InitializeComponent();
+
          this.Content = new TextBlock {
             Foreground = Solarized.Theme.Instance.Emphasis,
             Text = OriginalOffset.ToHexString(6),
@@ -38,7 +38,6 @@ namespace SorceryHex {
       }
 
       public bool Resize(int columns, int rows) {
-         if (ColumnsFixed) return false;
          Columns = columns;
          Rows = rows;
          return true;

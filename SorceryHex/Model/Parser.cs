@@ -127,6 +127,7 @@ namespace SorceryHex {
    }
 
    public interface IModel : IParser, IEditor {
+      void Append(int length); // append length bytes to the end of the
       IModel Duplicate(int start, int length);
    }
 
@@ -174,6 +175,11 @@ namespace SorceryHex {
          var segment = _segment.Duplicate(start, length);
          var dup = new CompositeModel(segment, _children.Select(child => child.CreateNew(segment, start)).ToArray()) { _loaded = true };
          return dup;
+      }
+
+      public void Append(int length) {
+         // TODO
+
       }
 
       #region Parser
