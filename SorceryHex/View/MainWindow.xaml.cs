@@ -10,6 +10,8 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 
+// TODO keep reference to the home tab at all times
+
 namespace SorceryHex {
    /// <summary>
    /// Interaction logic for MainWindow.xaml
@@ -93,7 +95,9 @@ namespace SorceryHex {
          if (addToBreadcrumb) {
             var tab = new DataTab(this, hometab.Model, CurrentTab.Columns, CurrentTab.Rows, location);
             _previousTab = tab;
+            CurrentTab.Model.MoveToNext -= _cursorController.HandleMoveNext;
             CurrentTab = tab;
+            tab.Model.MoveToNext += _cursorController.HandleMoveNext;
             DataTabBar.Children.Add(tab);
             UpdateTabHighlight();
          } else {
@@ -189,7 +193,7 @@ namespace SorceryHex {
 
       public void Duplicate(int start, int length) {
          IModel model = CurrentTab.Model.Duplicate(start, length);
-         var tab = new DuplicateTab(this, model, CurrentTab.Columns, CurrentTab.Rows, start);
+         var tab = new DuplicateTab(this, _commandFactory, model, CurrentTab.Columns, CurrentTab.Rows, start);
          DataTabBar.Children.Add(tab);
          SelectTab(tab);
       }
@@ -200,7 +204,9 @@ namespace SorceryHex {
 
       public void SelectTab(IDataTab tab) {
          _previousTab = CurrentTab;
+         CurrentTab.Model.MoveToNext -= _cursorController.HandleMoveNext;
          CurrentTab = tab;
+         tab.Model.MoveToNext += _cursorController.HandleMoveNext;
          UpdateTabHighlight();
          JumpTo(tab.Offset);
          _previousTab = CurrentTab;

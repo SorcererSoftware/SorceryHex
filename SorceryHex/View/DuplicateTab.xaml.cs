@@ -18,12 +18,12 @@ namespace SorceryHex {
       readonly IModel _model;
       readonly ButtonBase _addButton = new Button { Content = "+", HorizontalContentAlignment = HorizontalAlignment.Center };
 
-      public AddLineDecorator(IModel model, int lineLength) {
+      public AddLineDecorator(ICommandFactory commander, IModel model, int lineLength) {
          _model = model;
          _model.MoveToNext += (sender, e) => MoveToNext(sender, e);
          _addButton.Click += (sender, e) => {
-            _model.Append(lineLength);
-            MoveToNext(this, new UpdateLocationEventArgs(Enumerable.Range(_model.Segment.Length - lineLength, lineLength).ToArray()));
+            _model.Append(commander, lineLength);
+            MoveToNext(this, new UpdateLocationEventArgs(Enumerable.Range(_model.Segment.Length - lineLength, lineLength + 1).ToArray()));
          };
       }
 
@@ -40,7 +40,7 @@ namespace SorceryHex {
       public FrameworkElement GetInterpretation(int location) { return _model.GetInterpretation(location); }
       public IEnumerable<int> Find(string term) { return _model.Find(term); }
       public FrameworkElement CreateElementEditor(ISegment segment) { return _model.CreateElementEditor(segment); }
-      public void Append(int length) { _model.Append(length); }
+      public void Append(ICommandFactory commander, int length) { _model.Append(commander, length); }
       public void Edit(ISegment segment, char c) { _model.Edit(segment, c); }
       public void CompleteEdit(ISegment segment) { _model.CompleteEdit(segment); }
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
@@ -70,9 +70,9 @@ namespace SorceryHex {
       public int CursorLocation { get; set; }
       public bool IsHomeTab { get { return false; } }
 
-      public DuplicateTab(IDataTabContainer container, IModel model, int columns, int rows, int duplicateFrom) {
+      public DuplicateTab(IDataTabContainer container, ICommandFactory commander, IModel model, int columns, int rows, int duplicateFrom) {
          _container = container;
-         Model = new AddLineDecorator(model, columns);
+         Model = new AddLineDecorator(commander, model, columns);
          Columns = columns;
          Rows = rows;
          OriginalOffset = duplicateFrom;

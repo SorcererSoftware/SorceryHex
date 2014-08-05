@@ -103,7 +103,7 @@ namespace SorceryHex {
       public IModel Duplicate(int start, int length) {
          return new SimpleFactory { Segment = Segment.Duplicate(start, length) };
       }
-      public void Append(int length) { throw new NotImplementedException(); }
+      public void Append(ICommandFactory commander, int length) { throw new NotImplementedException(); }
    }
 
    [Export(typeof(IModelFactory))]

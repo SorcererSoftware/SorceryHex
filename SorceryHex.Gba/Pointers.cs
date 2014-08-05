@@ -211,7 +211,7 @@ namespace SorceryHex.Gba {
 
       public IModel Duplicate(int start, int length) { return _base.Duplicate(start, length); }
 
-      public void Append(int length) { _base.Append(length); }
+      public void Append(ICommandFactory commander, int length) { _base.Append(commander, length); }
 
       #region Parser
 
@@ -326,9 +326,10 @@ namespace SorceryHex.Gba {
 
    // TODO this is very similar to Segment. Can we come up with some kind of SegmentPointerStrategy for the different parts?
    class GbaSegment : ISegment {
-      readonly byte[] _data;
       readonly GbaSegment _parent;
       readonly int _parentOffset;
+
+      IList<byte> _data;
 
       public bool HasLength { get { return Length != -1; } }
       public int Length { get; private set; }
@@ -340,15 +341,27 @@ namespace SorceryHex.Gba {
          }
       }
 
-      public GbaSegment(byte[] data, int location) { _data = data; Location = location; Length = -1; }
-      public GbaSegment(byte[] data, int location, int length) : this(data, location) { Length = length; }
-      GbaSegment(GbaSegment parent, int parentOffset, byte[] data, int location, int length)
+      public GbaSegment(IList<byte> data, int location) {
+         _data = (data is byte[]) ? data.ToList() : data;
+         Location = location;
+         Length = -1;
+      }
+      public GbaSegment(IList<byte> data, int location, int length) : this(data, location) { Length = length; }
+      GbaSegment(GbaSegment parent, int parentOffset, IList<byte> data, int location, int length)
          : this(data, location, length) {
          _parent = parent;
          _parentOffset = parentOffset;
       }
 
-      public int Read(int offset, int length) { return _data.ReadData(length, Location + offset); }
+      public int Read(int offset, int length) {
+         int value = 0;
+         while (length > 0) {
+            value <<= 8;
+            value |= _data[Location + offset + length - 1];
+            length--;
+         }
+         return value;
+      }
       public void Write(int offset, int length, int value) {
          while (length > 0) {
             _data[Location + offset] = (byte)value;
@@ -357,18 +370,22 @@ namespace SorceryHex.Gba {
             length--;
          }
       }
+      public void Append(int length) {
+         for (int i = 0; i < length; i++) _data.Add(_data[_data.Count - length]);
+         Length += length;
+      }
       public ISegment Inner(int offset) { return new GbaSegment(_data, Location + offset); }
       public ISegment Follow(int offset) {
          if (_parent != null) return _parent.Follow(_parentOffset + offset);
          if (Read(offset + 3, 1) != 0x08) return null;
          int value = Read(offset, 3);
-         if (value < 0 || value > _data.Length) return null;
+         if (value < 0 || value > _data.Count) return null;
          return new GbaSegment(_data, value);
       }
       public ISegment Resize(int length) { return new GbaSegment(_data, Location, length); }
       public ISegment Duplicate(int offset, int length) {
          var data = new byte[length];
-         Array.Copy(_data, offset, data, 0, length);
+         for (int i = 0; i < length; i++) data[i] = _data[offset + i];
          return new GbaSegment(this, offset, data, 0, length);
       }
    }

@@ -75,9 +75,9 @@ namespace SorceryHex.Gba.Pokemon.DataTypes {
             });
             _tasks[currentScript.Name.Split('.')[0]] = t;
          }
-         _tasks.Values.Foreach(t => t.RunSynchronously());
-         // _tasks.Values.Foreach(t => t.Start());
-         // _tasks.Values.Foreach(t => t.Wait());
+         // _tasks.Values.Foreach(t => t.RunSynchronously());
+         _tasks.Values.Foreach(t => t.Start());
+         _tasks.Values.Foreach(t => t.Wait());
          _runs.AddLabeler(this);
       }
 

@@ -12,6 +12,7 @@ namespace SorceryHex {
 
       int Read(int offset, int length);
       void Write(int offset, int length, int value);
+      void Append(int length);
       ISegment Inner(int offset);
       ISegment Follow(int offset);
       ISegment Resize(int length);
@@ -19,7 +20,7 @@ namespace SorceryHex {
    }
 
    public class Segment : ISegment {
-      readonly byte[] _data;
+      byte[] _data;
 
       public bool HasLength { get { return Length != -1; } }
       public int Length { get; private set; }
@@ -37,6 +38,12 @@ namespace SorceryHex {
             offset++;
             length--;
          }
+      }
+      public void Append(int length) {
+         var old = _data;
+         _data = new byte[_data.Length + length];
+         Array.Copy(old, _data, old.Length);
+         Array.Copy(old, old.Length - length, _data, old.Length, length);
       }
       public ISegment Inner(int offset) { return new Segment(_data, Location + offset); }
       public ISegment Follow(int offset) { return null; }

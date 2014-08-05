@@ -117,7 +117,7 @@ namespace SorceryHex {
             _window.BodyContextMenu.Items.Clear();
             var item = new MenuItem { Header = "Duplicate" };
             item.Click += (sender1, e1) => {
-               _window.Duplicate(_selectionStart, _selectionLength);               
+               _window.Duplicate(_selectionStart, _selectionLength);
             };
             _window.BodyContextMenu.Items.Add(item);
          }
@@ -156,7 +156,7 @@ namespace SorceryHex {
       }
 
       public void HandleMoveNext(object sender, UpdateLocationEventArgs e) {
-         if (_window.EditBody.Children.Count > 0) {
+         if (_window.EditBody.Children.Count > 0 || e.UpdateList.Count() > 0) {
             _window.EditBody.Children.Clear();
             e.UpdateList.Foreach(_window.RefreshElement);
             return;

@@ -127,7 +127,7 @@ namespace SorceryHex {
    }
 
    public interface IModel : IParser, IEditor {
-      void Append(int length); // append length bytes to the end of the
+      void Append(ICommandFactory commander, int length); // append length bytes to the end of the
       IModel Duplicate(int start, int length);
    }
 
@@ -136,6 +136,7 @@ namespace SorceryHex {
       string GetLabel(int location);
       IEditor Editor { get; }
       void Load(ICommandFactory commander);
+      void LoadAppended(ICommandFactory commander, int length);
 
       /// <param name="segment">The new data segment for the new partial model</param>
       /// <param name="start">
@@ -155,6 +156,8 @@ namespace SorceryHex {
    }
 
    public class CompositeModel : IModel {
+      static int _idFactory;
+      public readonly int ID = _idFactory++;
       readonly IList<IPartialModel> _children;
       readonly Queue<Path> _recycles = new Queue<Path>();
       bool _loaded;
@@ -177,9 +180,9 @@ namespace SorceryHex {
          return dup;
       }
 
-      public void Append(int length) {
-         // TODO
-
+      public void Append(ICommandFactory commander, int length) {
+         _segment.Append(length);
+         _children.Foreach(child => child.LoadAppended(commander, length));
       }
 
       #region Parser
@@ -313,7 +316,7 @@ namespace SorceryHex {
 
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 
-      void ChainMoveToNext(object sender, UpdateLocationEventArgs e) { MoveToNext(sender, e); }
+      void ChainMoveToNext(object sender, UpdateLocationEventArgs e) { if (MoveToNext != null) MoveToNext(sender, e); }
 
       #endregion
 

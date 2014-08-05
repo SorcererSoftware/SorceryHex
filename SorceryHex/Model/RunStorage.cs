@@ -123,6 +123,15 @@ namespace SorceryHex {
 #endif
       }
 
+      public void LoadAppended(ICommandFactory commander, int length) {
+         lock (_runs) {
+            lock (_keys) {
+               _keys.Where(key => key >= Segment.Length - length * 2).Foreach(key => _runs[key + length] = _runs[key]);
+               _listNeedsUpdate = true;
+            }
+         }
+      }
+
       public IPartialModel CreateNew(ISegment segment, int start) {
          Debug.Assert(segment.HasLength);
          UpdateList();
