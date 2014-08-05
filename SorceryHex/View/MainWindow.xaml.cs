@@ -59,6 +59,7 @@ namespace SorceryHex {
       byte[] _fileBytes;
       byte[] _filehash;
       IDataTab _previousTab;
+      IDataTab _homeTab;
 
       public byte[] Data { get { return _fileBytes; } }
       public IDataTab CurrentTab { get; private set; }
@@ -83,17 +84,14 @@ namespace SorceryHex {
 
       public event EventHandler JumpCompleted;
       public void JumpTo(int location, bool addToBreadcrumb = false) {
-         IDataTab hometab = null;
-         foreach (IDataTab datatab in DataTabBar.Children) hometab = datatab.IsHomeTab ? datatab : hometab;
-
          // if (addToBreadcrumb) _multiBox.AddLocationToBreadCrumb();
-         location = Math.Min(Math.Max(-MaxColumnCount, location), hometab.Model.Segment.Length);
+         location = Math.Min(Math.Max(-MaxColumnCount, location), _homeTab.Model.Segment.Length);
 
          foreach (FrameworkElement element in Body.Children) Recycle(element);
          _bodies.Foreach(body => body.Children.Clear());
 
          if (addToBreadcrumb) {
-            var tab = new DataTab(this, hometab.Model, CurrentTab.Columns, CurrentTab.Rows, location);
+            var tab = new DataTab(this, _homeTab.Model, CurrentTab.Columns, CurrentTab.Rows, location);
             _previousTab = tab;
             CurrentTab.Model.MoveToNext -= _cursorController.HandleMoveNext;
             CurrentTab = tab;
@@ -219,9 +217,7 @@ namespace SorceryHex {
          animation.Completed += (sender, e) => {
             DataTabBar.Children.Remove(uitab);
             if (CurrentTab == tab) {
-               var tabs = new List<IDataTab>();
-               foreach (IDataTab child in DataTabBar.Children) tabs.Add(child);
-               SelectTab(tabs.First(t => t.IsHomeTab));
+               SelectTab(_homeTab);
             }
          };
          uitab.BeginAnimation(WidthProperty, animation);
@@ -379,6 +375,7 @@ namespace SorceryHex {
          Task.Factory.StartNew(() => model.Load(_commandFactory)).ContinueWith(t => Dispatcher.Invoke((Action)LoadComplete));
          var tab = new DataTab(this, model, Body.ColumnDefinitions.Count, Body.RowDefinitions.Count, 0, isHomeTab: true);
          DataTabBar.Children.Clear();
+         _homeTab = tab;
          DataTabBar.Children.Add(tab);
          _previousTab = tab;
          CurrentTab = tab;
