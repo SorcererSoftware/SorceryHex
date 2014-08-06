@@ -88,7 +88,10 @@ namespace SorceryHex {
          };
       }
 
-      public bool Resize(int columns, int rows) { return false; }
+      public bool Resize(int columns, int rows) {
+         Rows = rows;
+         return true;
+      }
 
       protected override void OnMouseDown(MouseButtonEventArgs e) {
          base.OnMouseDown(e);

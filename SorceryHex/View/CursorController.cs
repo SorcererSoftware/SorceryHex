@@ -158,7 +158,11 @@ namespace SorceryHex {
       public void HandleMoveNext(object sender, UpdateLocationEventArgs e) {
          if (_window.EditBody.Children.Count > 0 || e.UpdateList.Count() > 0) {
             _window.EditBody.Children.Clear();
-            e.UpdateList.Foreach(_window.RefreshElement);
+            e.UpdateList.Foreach(index => {
+               if (0 <= index - _window.CurrentTab.Offset && index - _window.CurrentTab.Offset < _window.CurrentTab.Columns * _window.CurrentTab.Rows) {
+                  _window.RefreshElement(index);
+               }
+            });
             return;
          }
          _window.CurrentTab.CursorLocation++;
