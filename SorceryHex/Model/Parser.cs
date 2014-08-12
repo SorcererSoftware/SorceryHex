@@ -130,6 +130,7 @@ namespace SorceryHex {
       void Append(ICommandFactory commander, int length); // append length bytes to the end of the
       int Repoint(int initialLocation, int newLocation);
       IModel Duplicate(int start, int length);
+      void Replace(int originalOffset, int originalLength, IModel model, int newOffset);
    }
 
    public interface IPartialModel {
@@ -188,6 +189,12 @@ namespace SorceryHex {
          var ops = new DefaultModelOperations();
          var dup = new CompositeModel(segment, ops, _children.Select(child => child.CreateNew(segment, start)).ToArray()) { _loaded = true };
          return dup;
+      }
+
+      public void Replace(int originalOffset, int originalLength, IModel model, int newOffset) {
+         // TODO remove all the data at originalOffset, up to originalLength
+         Enumerable.Range(newOffset, model.Segment.Length).Foreach(i => _segment.Write(i, 1, model.Segment[i - newOffset]));
+         // TODO add all formatting from previous model
       }
 
       #region Parser

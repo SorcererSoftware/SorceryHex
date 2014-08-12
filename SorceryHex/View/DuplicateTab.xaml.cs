@@ -28,10 +28,11 @@ namespace SorceryHex {
       }
 
       #region Boilerplate
-      public void Append(ICommandFactory commander, int length) { _model.Append(commander, length); }
-      public int Repoint(int initialLocation, int newLocation) { return _model.Repoint(initialLocation,newLocation); }
-      public IModel Duplicate(int start, int length) { return _model.Duplicate(start, length); }
       public ISegment Segment { get { return _model.Segment; } }
+      public void Append(ICommandFactory commander, int length) { _model.Append(commander, length); }
+      public int Repoint(int initialLocation, int newLocation) { return _model.Repoint(initialLocation, newLocation); }
+      public IModel Duplicate(int start, int length) { return _model.Duplicate(start, length); }
+      public void Replace(int originalOffset, int originalLength, IModel model, int newOffset) { _model.Replace(originalOffset, originalLength, model, newOffset); }
       public void Load(ICommandFactory commander) { _model.Load(commander); }
       public void Recycle(ICommandFactory commander, FrameworkElement element) { if (element != _addButton) _model.Recycle(commander, element); }
       public bool IsStartOfDataBlock(int location) { return _model.IsStartOfDataBlock(location); }
@@ -77,6 +78,7 @@ namespace SorceryHex {
          Columns = columns;
          Rows = rows;
          OriginalOffset = duplicateFrom;
+         OriginalLength = model.Segment.Length;
          Offset = CursorStart = CursorLocation = 0;
 
          InitializeComponent();

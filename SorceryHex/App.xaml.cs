@@ -105,6 +105,11 @@ namespace SorceryHex {
       public IModel Duplicate(int start, int length) {
          return new SimpleFactory { Segment = Segment.Duplicate(start, length) };
       }
+      public void Replace(int originalOffset, int originalLength, IModel model, int newOffset) {
+         Segment.Write(originalOffset, originalLength, 0);
+         // Enumerable.Range(originalOffset, originalLength).Foreach(i => Segment.Write(i, 1, 0));
+         Enumerable.Range(newOffset, model.Segment.Length).Foreach(i => Segment.Write(i, 1, model.Segment[i - newOffset]));
+      }
    }
 
    public class DefaultModelOperations : IModelOperations {

@@ -223,11 +223,11 @@ namespace SorceryHex {
          uitab.BeginAnimation(WidthProperty, animation);
       }
 
-      public void PushData(DuplicateTab duplicateTab, int offset) {
+      public void PushData(DuplicateTab duplicateTab, int newOffset) {
          // get the hometab
          // push the data from the duplicate tab into the hometab
          // access to the original offset, new offset, original length and new length will help delete extra data
-         throw new NotImplementedException();
+         _homeTab.Model.Replace(duplicateTab.OriginalOffset, duplicateTab.OriginalLength, duplicateTab.Model, newOffset);
       }
 
       public int FindFreeSpace(int length) {

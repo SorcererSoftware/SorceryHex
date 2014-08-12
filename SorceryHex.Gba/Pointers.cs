@@ -239,6 +239,8 @@ namespace SorceryHex.Gba {
 
       public IModel Duplicate(int start, int length) { return _base.Duplicate(start, length); }
 
+      public void Replace(int originalOffset, int originalLength, IModel model, int newOffset) { _base.Replace(originalOffset, originalLength, model, newOffset); }
+
       #region Parser
 
       public ISegment Segment { get { return _base.Segment; } }
