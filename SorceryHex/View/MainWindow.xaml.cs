@@ -236,8 +236,8 @@ namespace SorceryHex {
       }
 
       public void Repoint(int originalOffset, int newOffset) {
-         // TODO ask the hometab's model
-         throw new NotImplementedException();
+         // in order for this to be meaningful, the model has to understand pointers.
+         _homeTab.Model.Repoint(originalOffset, newOffset);
       }
 
       void UpdateTabHighlight() { foreach (ToggleButton button in DataTabBar.Children) button.IsChecked = button == CurrentTab; }

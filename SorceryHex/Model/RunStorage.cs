@@ -23,6 +23,10 @@ namespace SorceryHex {
       int NextUsed(int location);
    }
 
+   public interface IModelOperations {
+      int Repoint(int initialLocation, int newLocation);
+   }
+
    public class RunStorage : IPartialModel, IRunStorage, IEditor {
       readonly IDictionary<int, IDataRun> _runs = new Dictionary<int, IDataRun>();
       readonly Queue<Border> _recycles = new Queue<Border>();

@@ -128,6 +128,7 @@ namespace SorceryHex {
 
    public interface IModel : IParser, IEditor {
       void Append(ICommandFactory commander, int length); // append length bytes to the end of the
+      int Repoint(int initialLocation, int newLocation);
       IModel Duplicate(int start, int length);
    }
 
@@ -156,17 +157,18 @@ namespace SorceryHex {
    }
 
    public class CompositeModel : IModel {
-      static int _idFactory;
-      public readonly int ID = _idFactory++;
+      readonly ISegment _segment;
+      readonly IModelOperations _operations;
       readonly IList<IPartialModel> _children;
       readonly Queue<Path> _recycles = new Queue<Path>();
+
       bool _loaded;
 
-      readonly ISegment _segment;
       public ISegment Segment { get { return _segment; } }
 
-      public CompositeModel(ISegment segment, params IPartialModel[] children) {
+      public CompositeModel(ISegment segment, IModelOperations operations, params IPartialModel[] children) {
          _segment = segment;
+         _operations = operations;
          _children = children;
          foreach (var child in _children) {
             if (child.Editor == null) continue;
@@ -174,15 +176,18 @@ namespace SorceryHex {
          }
       }
 
-      public IModel Duplicate(int start, int length) {
-         var segment = _segment.Duplicate(start, length);
-         var dup = new CompositeModel(segment, _children.Select(child => child.CreateNew(segment, start)).ToArray()) { _loaded = true };
-         return dup;
-      }
-
       public void Append(ICommandFactory commander, int length) {
          _segment.Append(length);
          _children.Foreach(child => child.LoadAppended(commander, length));
+      }
+
+      public int Repoint(int initialLocation, int newLocation) { return _operations.Repoint(initialLocation, newLocation); }
+
+      public IModel Duplicate(int start, int length) {
+         var segment = _segment.Duplicate(start, length);
+         var ops = new DefaultModelOperations();
+         var dup = new CompositeModel(segment, ops, _children.Select(child => child.CreateNew(segment, start)).ToArray()) { _loaded = true };
+         return dup;
       }
 
       #region Parser

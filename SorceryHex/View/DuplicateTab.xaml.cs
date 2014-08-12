@@ -28,6 +28,8 @@ namespace SorceryHex {
       }
 
       #region Boilerplate
+      public void Append(ICommandFactory commander, int length) { _model.Append(commander, length); }
+      public int Repoint(int initialLocation, int newLocation) { return _model.Repoint(initialLocation,newLocation); }
       public IModel Duplicate(int start, int length) { return _model.Duplicate(start, length); }
       public ISegment Segment { get { return _model.Segment; } }
       public void Load(ICommandFactory commander) { _model.Load(commander); }
@@ -40,7 +42,6 @@ namespace SorceryHex {
       public FrameworkElement GetInterpretation(int location) { return _model.GetInterpretation(location); }
       public IEnumerable<int> Find(string term) { return _model.Find(term); }
       public FrameworkElement CreateElementEditor(ISegment segment) { return _model.CreateElementEditor(segment); }
-      public void Append(ICommandFactory commander, int length) { _model.Append(commander, length); }
       public void Edit(ISegment segment, char c) { _model.Edit(segment, c); }
       public void CompleteEdit(ISegment segment) { _model.CompleteEdit(segment); }
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
@@ -106,6 +107,7 @@ namespace SorceryHex {
 
       #region Events
 
+      // TODO feature envy: this code should be pushed to the _container
       void ReplaceOriginal(object sender, EventArgs e) {
          if (Model.Segment.Length <= OriginalLength) {
             _container.PushData(this, OriginalOffset);
@@ -114,6 +116,7 @@ namespace SorceryHex {
          var offset = _container.FindFreeSpace(Model.Segment.Length);
          _container.PushData(this, offset);
          _container.Repoint(OriginalOffset, offset);
+         // TODO delete original data
       }
 
       #endregion

@@ -100,10 +100,15 @@ namespace SorceryHex {
       public void CompleteEdit(ISegment segment) { }
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
 
+      public void Append(ICommandFactory commander, int length) { throw new NotImplementedException(); }
+      public int Repoint(int initialLocation, int newLocation) { throw new NotImplementedException(); }
       public IModel Duplicate(int start, int length) {
          return new SimpleFactory { Segment = Segment.Duplicate(start, length) };
       }
-      public void Append(ICommandFactory commander, int length) { throw new NotImplementedException(); }
+   }
+
+   public class DefaultModelOperations : IModelOperations {
+      public int Repoint(int initialLocation, int newLocation) { return 0; }
    }
 
    [Export(typeof(IModelFactory))]
@@ -111,7 +116,7 @@ namespace SorceryHex {
       public string DisplayName { get { return "Default"; } }
       public string Version { get { return "1.0"; } }
       public bool CanCreateModel(string name, byte[] data) { return true; }
-      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(new Segment(data, 0, data.Length)); }
+      public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) { return new CompositeModel(new Segment(data, 0, data.Length), new DefaultModelOperations()); }
       public int CompareTo(IModelFactory other) { return (other is SimpleFactory) ? 1 : -1; }
    }
 
@@ -122,7 +127,7 @@ namespace SorceryHex {
       public bool CanCreateModel(string name, byte[] data) { return true; }
       public IModel CreateModel(string name, byte[] data, ScriptInfo scriptInfo) {
          var segment = new Segment(data, 0, data.Length);
-         return new CompositeModel(segment, new StringDecoder(segment, 1));
+         return new CompositeModel(segment, new DefaultModelOperations(), new StringDecoder(segment, 1));
       }
       public int CompareTo(IModelFactory other) { return -1; }
    }

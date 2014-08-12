@@ -21,12 +21,13 @@ namespace SorceryHex.Gba {
       void Claim(IRunStorage runs, int location, int pointer);
    }
 
-   public class PointerMapper : IPointerMapper {
+   public class PointerMapper : IPointerMapper, IModelOperations {
       public static Brush Brush = GbaBrushes.Pointer;
       readonly SortedList<int, int> _pointerSet = new SortedList<int, int>(); // unclaimed pointers
       readonly IDictionary<int, List<int>> _reversePointerSet = new Dictionary<int, List<int>>(); // unclaimed pointers helper
       readonly IDictionary<int, int[]> _destinations = new Dictionary<int, int[]>(); // claimed destinations (with pointers)
       readonly IDictionary<int, IDataRun> _pointedRuns = new Dictionary<int, IDataRun>();
+      readonly ISegment _segment;
       readonly SimpleDataRun _pointerRun;
 
       public IEnumerable<int> OpenDestinations { get { return _pointerSet.Values.Distinct().ToArray(); } }
@@ -34,6 +35,7 @@ namespace SorceryHex.Gba {
       public List<int> MappedDestinations { get { lock (_destinations) return _destinations.Keys.ToList(); } }
 
       public PointerMapper(ISegment segment) {
+         _segment = segment;
          _pointerRun = new SimpleDataRun(new GeometryElementProvider(Utils.ByteFlyweights, Brush, true), 4) { Interpret = InterpretPointer, Jump = JumpPointer };
 
          for (int i = 3; i < segment.Length; i += 4) {
@@ -183,6 +185,28 @@ namespace SorceryHex.Gba {
          return _destinations[destination];
       }
 
+      #region Model Operations
+
+      public int Repoint(int startLocation, int newLocation) {
+         Debug.Assert(_destinations.ContainsKey(startLocation));
+         Debug.Assert(!_destinations.ContainsKey(newLocation));
+         var sources = _destinations[startLocation];
+         _destinations.Remove(startLocation);
+         _destinations[newLocation] = sources;
+
+         Debug.Assert(_pointedRuns.ContainsKey(startLocation));
+         Debug.Assert(!_pointedRuns.ContainsKey(newLocation));
+         _pointedRuns.Remove(startLocation);
+         // TODO new run should be added to the collection when the data/formatting is added.
+
+         var writeLocation = newLocation | 0x08000000;
+         sources.Foreach(source => _segment.Write(source, 4, writeLocation));
+
+         return sources.Length;
+      }
+
+      #endregion
+
       FrameworkElement InterpretPointer(ISegment segment) {
          if (!_pointedRuns.ContainsKey(segment.Location) || _pointedRuns[segment.Location].Interpret == null) return null;
          var run = _pointedRuns[segment.Location];
@@ -209,9 +233,11 @@ namespace SorceryHex.Gba {
 
       #endregion
 
-      public IModel Duplicate(int start, int length) { return _base.Duplicate(start, length); }
-
       public void Append(ICommandFactory commander, int length) { _base.Append(commander, length); }
+
+      public int Repoint(int startLocation, int newLocation) { return _base.Repoint(startLocation, newLocation); }
+
+      public IModel Duplicate(int start, int length) { return _base.Duplicate(start, length); }
 
       #region Parser
 
