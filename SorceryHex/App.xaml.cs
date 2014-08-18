@@ -110,10 +110,26 @@ namespace SorceryHex {
          // Enumerable.Range(originalOffset, originalLength).Foreach(i => Segment.Write(i, 1, 0));
          Enumerable.Range(newOffset, model.Segment.Length).Foreach(i => Segment.Write(i, 1, model.Segment[i - newOffset]));
       }
+      public int FindFreeSpace(int length) {
+         int currentByte = -1;
+         int currentLength = 0;
+         for (int i = 0; i < Segment.Length; i++) {
+            if (Segment[i] != currentByte) {
+               currentByte = Segment[i];
+               currentLength = 1;
+               continue;
+            }
+            currentLength++;
+            if (currentLength == length) return i - length + 1;
+         }
+         return -1;
+      }
    }
 
    public class DefaultModelOperations : IModelOperations {
       public int Repoint(int initialLocation, int newLocation) { return 0; }
+      public void Clear(IModel model, int offset, int length) { model.Segment.Write(offset, length, 0); }
+      public int FindFreeSpace(int length) { return -1; }
    }
 
    [Export(typeof(IModelFactory))]

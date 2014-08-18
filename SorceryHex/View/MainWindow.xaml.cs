@@ -231,8 +231,7 @@ namespace SorceryHex {
       }
 
       public int FindFreeSpace(int length) {
-         // TODO ask the hometab's model
-         throw new NotImplementedException();
+         return _homeTab.Model.FindFreeSpace(length);
       }
 
       public void Repoint(int originalOffset, int newOffset) {

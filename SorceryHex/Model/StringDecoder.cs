@@ -23,6 +23,9 @@ namespace SorceryHex {
       public IEditor Editor { get { return this; } }
       public void Load(ICommandFactory commander) { }
       public void LoadAppended(ICommandFactory commander, int length) { }
+      public void Unload(int offset, int length) { }
+      public void LoadCopied(IList<IPartialModel> search, int newOffset, int length) { }
+
       public IPartialModel CreateNew(ISegment segment, int start) { return new StringDecoder(segment, Stride); }
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) { // TODO push start and length into a segment

@@ -25,9 +25,12 @@ namespace SorceryHex {
 
    public interface IModelOperations {
       int Repoint(int initialLocation, int newLocation);
+      void Clear(IModel model, int offset, int length);
+      int FindFreeSpace(int length);
    }
 
    public class RunStorage : IPartialModel, IRunStorage, IEditor {
+      // TODO merge _keys and _runs into a thread-safe, quick-add dictionary implementation
       readonly IDictionary<int, IDataRun> _runs = new Dictionary<int, IDataRun>();
       readonly Queue<Border> _recycles = new Queue<Border>();
       readonly IDictionary<int, FrameworkElement> _interpretations = new Dictionary<int, FrameworkElement>();
@@ -128,12 +131,42 @@ namespace SorceryHex {
       }
 
       public void LoadAppended(ICommandFactory commander, int length) {
+         UpdateList();
          lock (_runs) {
             lock (_keys) {
                _keys.Where(key => key >= Segment.Length - length * 2).Foreach(key => _runs[key + length] = _runs[key]);
                _listNeedsUpdate = true;
             }
          }
+      }
+
+      public void Unload(int offset, int length) {
+         UpdateList();
+         lock (_runs) {
+            lock (_keys) {
+               _keys.Where(key => key >= offset && key < offset + length).Foreach(key => _runs.Remove(key));
+               _listNeedsUpdate = true;
+            }
+         }
+      }
+
+      public void LoadCopied(IList<IPartialModel> search, int newOffset, int length) {
+         UpdateList();
+         foreach (var model in search) {
+            var other = model as RunStorage;
+            if (other == null) return;
+            lock (_runs) {
+               lock (_keys) {
+                  lock (other._runs) {
+                     lock (other._keys) {
+                        other._keys.Where(key => key < length).Foreach(key => _runs[key + newOffset] = other._runs[key]);
+                        _listNeedsUpdate = true;
+                     }
+                  }
+               }
+            }
+         }
+         // TODO validate that there are no conflicts with other runs already in the storage
       }
 
       public IPartialModel CreateNew(ISegment segment, int start) {

@@ -131,14 +131,18 @@ namespace SorceryHex {
       int Repoint(int initialLocation, int newLocation);
       IModel Duplicate(int start, int length);
       void Replace(int originalOffset, int originalLength, IModel model, int newOffset);
+      int FindFreeSpace(int length);
    }
 
    public interface IPartialModel {
       bool CanEdit(ISegment segment);
       string GetLabel(int location);
       IEditor Editor { get; }
+
       void Load(ICommandFactory commander);
       void LoadAppended(ICommandFactory commander, int length);
+      void Unload(int offset, int length);
+      void LoadCopied(IList<IPartialModel> search, int newOffset, int length);
 
       /// <param name="segment">The new data segment for the new partial model</param>
       /// <param name="start">
@@ -192,10 +196,24 @@ namespace SorceryHex {
       }
 
       public void Replace(int originalOffset, int originalLength, IModel model, int newOffset) {
-         // TODO remove all the data at originalOffset, up to originalLength
+         // remove all the original data
+         _operations.Clear(this, originalOffset, originalLength);
+
+         // remove formatting
+         _children.Foreach(child => child.Unload(originalOffset, originalLength));
+
+         // add new data
          Enumerable.Range(newOffset, model.Segment.Length).Foreach(i => _segment.Write(i, 1, model.Segment[i - newOffset]));
-         // TODO add all formatting from previous model
+
+         // add all formatting from previous model
+         var decorator = model as AddLineDecorator;
+         if (decorator == null) return; // no formatting transferred
+         var composite = decorator.Model as CompositeModel;
+         if (composite == null) return; // no formatting transferred
+         _children.Foreach(child => child.LoadCopied(composite._children, newOffset, model.Segment.Length));
       }
+
+      public int FindFreeSpace(int length) { return _operations.FindFreeSpace(length); }
 
       #region Parser
 

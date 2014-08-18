@@ -15,42 +15,43 @@ using System.Windows.Shapes;
 
 namespace SorceryHex {
    class AddLineDecorator : IModel {
-      readonly IModel _model;
+      public readonly IModel Model;
       readonly ButtonBase _addButton = new Button { Content = "+", HorizontalContentAlignment = HorizontalAlignment.Center };
 
       public AddLineDecorator(ICommandFactory commander, IModel model, int lineLength) {
-         _model = model;
-         _model.MoveToNext += (sender, e) => MoveToNext(sender, e);
+         Model = model;
+         Model.MoveToNext += (sender, e) => MoveToNext(sender, e);
          _addButton.Click += (sender, e) => {
-            _model.Append(commander, lineLength);
-            MoveToNext(this, new UpdateLocationEventArgs(Enumerable.Range(_model.Segment.Length - lineLength, lineLength + 1).ToArray()));
+            Model.Append(commander, lineLength);
+            MoveToNext(this, new UpdateLocationEventArgs(Enumerable.Range(Model.Segment.Length - lineLength, lineLength + 1).ToArray()));
          };
       }
 
       #region Boilerplate
-      public ISegment Segment { get { return _model.Segment; } }
-      public void Append(ICommandFactory commander, int length) { _model.Append(commander, length); }
-      public int Repoint(int initialLocation, int newLocation) { return _model.Repoint(initialLocation, newLocation); }
-      public IModel Duplicate(int start, int length) { return _model.Duplicate(start, length); }
-      public void Replace(int originalOffset, int originalLength, IModel model, int newOffset) { _model.Replace(originalOffset, originalLength, model, newOffset); }
-      public void Load(ICommandFactory commander) { _model.Load(commander); }
-      public void Recycle(ICommandFactory commander, FrameworkElement element) { if (element != _addButton) _model.Recycle(commander, element); }
-      public bool IsStartOfDataBlock(int location) { return _model.IsStartOfDataBlock(location); }
-      public bool IsWithinDataBlock(int location) { return _model.IsWithinDataBlock(location); }
-      public string GetLabel(int location) { return _model.GetLabel(location); }
-      public int GetDataBlockStart(int location) { return _model.GetDataBlockStart(location); }
-      public int GetDataBlockLength(int location) { return _model.GetDataBlockLength(location); }
-      public FrameworkElement GetInterpretation(int location) { return _model.GetInterpretation(location); }
-      public IEnumerable<int> Find(string term) { return _model.Find(term); }
-      public FrameworkElement CreateElementEditor(ISegment segment) { return _model.CreateElementEditor(segment); }
-      public void Edit(ISegment segment, char c) { _model.Edit(segment, c); }
-      public void CompleteEdit(ISegment segment) { _model.CompleteEdit(segment); }
+      public ISegment Segment { get { return Model.Segment; } }
+      public void Append(ICommandFactory commander, int length) { Model.Append(commander, length); }
+      public int Repoint(int initialLocation, int newLocation) { return Model.Repoint(initialLocation, newLocation); }
+      public IModel Duplicate(int start, int length) { return Model.Duplicate(start, length); }
+      public void Replace(int originalOffset, int originalLength, IModel model, int newOffset) { Model.Replace(originalOffset, originalLength, model, newOffset); }
+      public int FindFreeSpace(int length) { return Model.FindFreeSpace(length); }
+      public void Load(ICommandFactory commander) { Model.Load(commander); }
+      public void Recycle(ICommandFactory commander, FrameworkElement element) { if (element != _addButton) Model.Recycle(commander, element); }
+      public bool IsStartOfDataBlock(int location) { return Model.IsStartOfDataBlock(location); }
+      public bool IsWithinDataBlock(int location) { return Model.IsWithinDataBlock(location); }
+      public string GetLabel(int location) { return Model.GetLabel(location); }
+      public int GetDataBlockStart(int location) { return Model.GetDataBlockStart(location); }
+      public int GetDataBlockLength(int location) { return Model.GetDataBlockLength(location); }
+      public FrameworkElement GetInterpretation(int location) { return Model.GetInterpretation(location); }
+      public IEnumerable<int> Find(string term) { return Model.Find(term); }
+      public FrameworkElement CreateElementEditor(ISegment segment) { return Model.CreateElementEditor(segment); }
+      public void Edit(ISegment segment, char c) { Model.Edit(segment, c); }
+      public void CompleteEdit(ISegment segment) { Model.CompleteEdit(segment); }
       public event EventHandler<UpdateLocationEventArgs> MoveToNext;
       #endregion
 
       public IList<FrameworkElement> CreateElements(ICommandFactory commander, int start, int length) {
-         var elements = _model.CreateElements(commander, start, length);
-         if (start <= _model.Segment.Length && _model.Segment.Length < start + length) elements[_model.Segment.Length - start] = _addButton;
+         var elements = Model.CreateElements(commander, start, length);
+         if (start <= Model.Segment.Length && Model.Segment.Length < start + length) elements[Model.Segment.Length - start] = _addButton;
          return elements;
       }
    }
@@ -117,7 +118,7 @@ namespace SorceryHex {
          }
          var offset = _container.FindFreeSpace(Model.Segment.Length);
          _container.PushData(this, offset);
-         _container.Repoint(OriginalOffset, offset);
+         _container.Repoint(OriginalOffset, offset); // this gets mad about the original pointer not existing
          // TODO delete original data
       }
 

@@ -194,15 +194,30 @@ namespace SorceryHex.Gba {
          _destinations.Remove(startLocation);
          _destinations[newLocation] = sources;
 
-         Debug.Assert(_pointedRuns.ContainsKey(startLocation));
          Debug.Assert(!_pointedRuns.ContainsKey(newLocation));
-         _pointedRuns.Remove(startLocation);
-         // TODO new run should be added to the collection when the data/formatting is added.
+         if (_pointedRuns.ContainsKey(startLocation)) {
+            _pointedRuns.Remove(startLocation);
+         }
 
          var writeLocation = newLocation | 0x08000000;
          sources.Foreach(source => _segment.Write(source, 4, writeLocation));
 
          return sources.Length;
+      }
+
+      public void Clear(IModel model, int offset, int length) {
+         Enumerable.Range(offset, length).Foreach(i => model.Segment.Write(i, 1, 0xFF));
+      }
+
+      public int FindFreeSpace(int length) {
+         byte blank = 0xFF;
+         int count = 0;
+         for (int i = 0; i < _segment.Length; i++) {
+            count = _segment[i] == blank ? count + 1 : 0;
+            // TODO consider known runs / lengths. Check that this "free space" doesn't have anything pointing to it for any length.
+            if (count >= length) return i - count + 1;
+         }
+         return -1;
       }
 
       #endregion
@@ -240,6 +255,8 @@ namespace SorceryHex.Gba {
       public IModel Duplicate(int start, int length) { return _base.Duplicate(start, length); }
 
       public void Replace(int originalOffset, int originalLength, IModel model, int newOffset) { _base.Replace(originalOffset, originalLength, model, newOffset); }
+
+      public int FindFreeSpace(int length) { return _base.FindFreeSpace(length); }
 
       #region Parser
 
